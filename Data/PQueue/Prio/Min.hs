@@ -31,93 +31,93 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Prio.Min (
-	MinPQueue,
-	-- * Construction
-	empty,
-	singleton,
-	insert,
-	union,
-	unions, 
-	-- * Query
-	null,
-	size,
-	-- ** Minimum view
-	findMin,
-	getMin,
-	deleteMin,
-	deleteFindMin,
-	adjustMin,
-	adjustMinWithKey,
-	updateMin,
-	updateMinWithKey,
-	minView,
-	minViewWithKey,
-	-- * Traversal
-	-- ** Map
-	map,
-	mapWithKey,
-	mapKeys,
-	mapKeysMonotonic,
-	-- ** Fold
-	foldrWithKey,
-	foldlWithKey,
-	-- ** Traverse
-	traverseWithKey,
-	-- * Subsets
-	-- ** Indexed
-	take,
-	drop,
-	splitAt,
-	-- ** Predicates
-	takeWhile,
-	takeWhileWithKey,
-	dropWhile,
-	dropWhileWithKey,
-	span,
-	spanWithKey,
-	break,
-	breakWithKey,
-	-- *** Filter
-	filter,
-	filterWithKey,
-	partition,
-	partitionWithKey,
-	mapMaybe,
-	mapMaybeWithKey,
-	mapEither,
-	mapEitherWithKey,
-	-- * List operations
-	-- ** Conversion from lists
-	fromList,
-	fromAscList,
-	fromDescList,
-	-- ** Conversion to lists
-	keys,
-	elems,
-	assocs,
-	toAscList,
-	toDescList,
-	toList,
-	-- * Unordered operations
-	foldrU,
-	foldrWithKeyU,
-	foldlU,
-	foldlWithKeyU,
-	traverseU,
-	traverseWithKeyU,
-	keysU,
-	elemsU,
-	assocsU,
-	toListU,
-	-- * Helper methods
-	seqSpine
-	)
-	where
+  MinPQueue,
+  -- * Construction
+  empty,
+  singleton,
+  insert,
+  union,
+  unions, 
+  -- * Query
+  null,
+  size,
+  -- ** Minimum view
+  findMin,
+  getMin,
+  deleteMin,
+  deleteFindMin,
+  adjustMin,
+  adjustMinWithKey,
+  updateMin,
+  updateMinWithKey,
+  minView,
+  minViewWithKey,
+  -- * Traversal
+  -- ** Map
+  map,
+  mapWithKey,
+  mapKeys,
+  mapKeysMonotonic,
+  -- ** Fold
+  foldrWithKey,
+  foldlWithKey,
+  -- ** Traverse
+  traverseWithKey,
+  -- * Subsets
+  -- ** Indexed
+  take,
+  drop,
+  splitAt,
+  -- ** Predicates
+  takeWhile,
+  takeWhileWithKey,
+  dropWhile,
+  dropWhileWithKey,
+  span,
+  spanWithKey,
+  break,
+  breakWithKey,
+  -- *** Filter
+  filter,
+  filterWithKey,
+  partition,
+  partitionWithKey,
+  mapMaybe,
+  mapMaybeWithKey,
+  mapEither,
+  mapEitherWithKey,
+  -- * List operations
+  -- ** Conversion from lists
+  fromList,
+  fromAscList,
+  fromDescList,
+  -- ** Conversion to lists
+  keys,
+  elems,
+  assocs,
+  toAscList,
+  toDescList,
+  toList,
+  -- * Unordered operations
+  foldrU,
+  foldrWithKeyU,
+  foldlU,
+  foldlWithKeyU,
+  traverseU,
+  traverseWithKeyU,
+  keysU,
+  elemsU,
+  assocsU,
+  toListU,
+  -- * Helper methods
+  seqSpine
+  )
+  where
 
 import Control.Applicative (Applicative (..), (<$>))
 import Data.Monoid 
 import qualified Data.List as List
-import Data.Foldable hiding (toList)
+import Data.Foldable hiding (toList, null)
 import Data.Traversable
 import Data.Maybe (fromMaybe)
 
@@ -128,7 +128,7 @@ import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
-	readPrec, readListPrec, readListPrecDefault)
+  readPrec, readListPrec, readListPrecDefault)
 import Data.Data
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
@@ -150,27 +150,27 @@ uncurry' f (a, b) = f a b
 infixr 8 .:
 
 instance Ord k => Monoid (MinPQueue k a) where
-	mempty = empty
-	mappend = union
-	mconcat = unions
+  mempty = empty
+  mappend = union
+  mconcat = unions
 
 instance (Ord k, Show k, Show a) => Show (MinPQueue k a) where
-	showsPrec p xs = showParen (p > 10) $
-		showString "fromAscList " . shows (toAscList xs)
+  showsPrec p xs = showParen (p > 10) $
+    showString "fromAscList " . shows (toAscList xs)
 
 instance (Read k, Read a) => Read (MinPQueue k a) where
 #ifdef __GLASGOW_HASKELL__
-	readPrec = parens $ prec 10 $ do
-		Ident "fromAscList" <- lexP
-		xs <- readPrec
-		return (fromAscList xs)
+  readPrec = parens $ prec 10 $ do
+    Ident "fromAscList" <- lexP
+    xs <- readPrec
+    return (fromAscList xs)
 
-	readListPrec = readListPrecDefault
+  readListPrec = readListPrecDefault
 #else
-	readsPrec p = readParen (p > 10) $ \ r -> do
-		("fromAscList",s) <- lex r
-		(xs,t) <- reads s
-		return (fromAscList xs,t)
+  readsPrec p = readParen (p > 10) $ \ r -> do
+    ("fromAscList",s) <- lex r
+    (xs,t) <- reads s
+    return (fromAscList xs,t)
 #endif
 
 
@@ -203,8 +203,8 @@ updateMin = updateMinWithKey . const
 -- | /O(log n)/.  Retrieves the value associated with the minimal key of the queue, and the queue
 -- stripped of that element, or 'Nothing' if passed an empty queue.
 minView :: Ord k => MinPQueue k a -> Maybe (a, MinPQueue k a)
-minView q = do	((_, a), q') <- minViewWithKey q
-		return (a, q')
+minView q = do  ((_, a), q') <- minViewWithKey q
+                return (a, q')
 
 -- | /O(n)/.  Map a function over all values in the queue.
 map :: (a -> b) -> MinPQueue k a -> MinPQueue k b
@@ -220,8 +220,8 @@ mapKeys f q = fromList [(f k, a) | (k, a) <- toListU q]
 -- If you do not care about the /order/ of the traversal, consider using 'traverseWithKeyU'.
 traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKey f q = case minViewWithKey q of
-	Nothing			-> pure empty
-	Just ((k, a), q')	-> insertMin k <$> f k a <*> traverseWithKey f q'
+  Nothing      -> pure empty
+  Just ((k, a), q')  -> insertMin k <$> f k a <*> traverseWithKey f q'
 
 -- | /O(n)/.  Map values and collect the 'Just' results.
 mapMaybe :: Ord k => (a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
@@ -258,20 +258,20 @@ take n = List.take n . toAscList
 -- | /O(k log n)/.  Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
 drop :: Ord k => Int -> MinPQueue k a -> MinPQueue k a
 drop n q 
-	| n <= 0	= q
-	| n >= size q	= empty
-	| otherwise	= drop' n q
-	where	drop' n q
-			| n == 0	= q
-			| otherwise	= drop' (n-1) (deleteMin q)
+  | n <= 0  = q
+  | n >= size q  = empty
+  | otherwise  = drop' n q
+  where drop' n q
+          | n == 0  = q
+          | otherwise  = drop' (n-1) (deleteMin q)
 
 -- | /O(k log n)/.  Equivalent to @('take' k q, 'drop' k q)@.
 splitAt :: Ord k => Int -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 splitAt n q 
-	| n <= 0	= ([], q)
-	| otherwise	= n `seq` case minViewWithKey q of
-		Just (ka, q')	-> let (kas, q'') = splitAt (n-1) q' in (ka:kas, q'')
-		_		-> ([], q)
+  | n <= 0  = ([], q)
+  | otherwise  = n `seq` case minViewWithKey q of
+    Just (ka, q')  -> let (kas, q'') = splitAt (n-1) q' in (ka:kas, q'')
+    _    -> ([], q)
 
 {-# INLINE takeWhile #-}
 -- | Takes the longest possible prefix of elements satisfying the predicate.
@@ -284,7 +284,7 @@ takeWhile = takeWhileWithKey . const
 -- (@'takeWhile' p q == 'List.takeWhile' (uncurry p) ('toAscList' q)@)
 takeWhileWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> [(k, a)]
 takeWhileWithKey p = takeWhileFB (uncurry' p) . toAscList where
-	takeWhileFB p xs = build (\ c n -> foldr (\ x z -> if p x then x `c` z else n) n xs)
+  takeWhileFB p xs = build (\ c n -> foldr (\ x z -> if p x then x `c` z else n) n xs)
 
 -- | Removes the longest possible prefix of elements satisfying the predicate.
 dropWhile :: Ord k => (a -> Bool) -> MinPQueue k a -> MinPQueue k a
@@ -293,9 +293,9 @@ dropWhile = dropWhileWithKey . const
 -- | Removes the longest possible prefix of elements satisfying the predicate.
 dropWhileWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> MinPQueue k a
 dropWhileWithKey p q = case minViewWithKey q of
-	Just ((k, a), q')
-		| p k a		-> dropWhileWithKey p q'
-	_			-> q
+  Just ((k, a), q')
+    | p k a    -> dropWhileWithKey p q'
+  _      -> q
 
 -- | Equivalent to @('takeWhile' p q, 'dropWhile' p q)@.
 span :: Ord k => (a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
@@ -309,9 +309,9 @@ spanWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueu
 -- | Equivalent to @'spanWithKey' (\ k a -> 'not' (p k a)) q@.
 breakWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 spanWithKey p q = case minViewWithKey q of
-	Just ((k, a), q')
-		| p k a		-> let (kas, q'') = spanWithKey p q' in ((k, a):kas, q'')
-	_			-> ([], q)
+  Just ((k, a), q')
+    | p k a    -> let (kas, q'') = spanWithKey p q' in ((k, a):kas, q'')
+  _      -> ([], q)
 breakWithKey p = spanWithKey (not .: p)
 
 -- | /O(n)/.  Build a priority queue from the list of (key, value) pairs.
@@ -327,11 +327,11 @@ fromDescList :: [(k, a)] -> MinPQueue k a
 fromDescList = foldl' (\ q (k, a) -> insertMin k a q) empty
 
 {-# RULES
-	"fromList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) . 
-		fromList (build g) = g (uncurry' insert) empty;
-	"fromAscList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) .
-		fromAscList (build g) = g (uncurry' insertMin) empty;
-	#-}
+  "fromList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) . 
+    fromList (build g) = g (uncurry' insert) empty;
+  "fromAscList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) .
+    fromAscList (build g) = g (uncurry' insertMin) empty;
+  #-}
 
 {-# INLINE keys #-}
 -- | /O(n log n)/.  Return all keys of the queue in ascending order.
@@ -352,10 +352,10 @@ toDescList :: Ord k => MinPQueue k a -> [(k, a)]
 toDescList = foldlWithKey (\ z k a -> (k, a) : z) []
 
 {-# RULES
-	"toAscList" toAscList = \ q -> build (\ c n -> foldrWithKey (curry c) n q);
-	"toDescList" toDescList = \ q -> build (\ c n -> foldlWithKey (\ z k a -> (k, a) `c` z) n q);
-	"toListU" toListU = \ q -> build (\ c n -> foldrWithKeyU (curry c) n q);
-	#-}
+  "toAscList" toAscList = \ q -> build (\ c n -> foldrWithKey (curry c) n q);
+  "toDescList" toDescList = \ q -> build (\ c n -> foldlWithKey (\ z k a -> (k, a) `c` z) n q);
+  "toListU" toListU = \ q -> build (\ c n -> foldrWithKeyU (curry c) n q);
+  #-}
 
 {-# INLINE toList #-}
 -- | /O(n log n)/.  Equivalent to 'toAscList'.
@@ -403,11 +403,11 @@ traverseU :: (Applicative f) => (a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseU = traverseWithKeyU . const
 
 instance Functor (MinPQueue k) where
-	fmap = map
+  fmap = map
 
 instance Ord k => Foldable (MinPQueue k) where
-	foldr = foldrWithKey . const
-	foldl f = foldlWithKey (const . f)
+  foldr = foldrWithKey . const
+  foldl f = foldlWithKey (const . f)
 
 instance Ord k => Traversable (MinPQueue k) where
-	traverse = traverseWithKey . const
+  traverse = traverseWithKey . const

@@ -17,37 +17,37 @@ import Data.PQueue.Prio.Internals (MinPQueue)
 
 newtype Down a = Down {unDown :: a} 
 # if __GLASGOW_HASKELL__
-	deriving (Eq, Data, Typeable)
+  deriving (Eq, Data, Typeable)
 # else
-	deriving (Eq)
+  deriving (Eq)
 # endif
 
 -- | A priority queue where values of type @a@ are annotated with keys of type @k@.
 -- The queue supports extracting the element with maximum key.
 newtype MaxPQueue k a = MaxPQ (MinPQueue (Down k) a)
 # if __GLASGOW_HASKELL__
-	deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Typeable)
 # else
-	deriving (Eq, Ord)
+  deriving (Eq, Ord)
 # endif
 
 instance (NFData k, NFData a) => NFData (MaxPQueue k a) where
-	rnf (MaxPQ q) = rnf q
+  rnf (MaxPQ q) = rnf q
 
 instance NFData a => NFData (Down a) where
-	rnf (Down a) = rnf a
+  rnf (Down a) = rnf a
 
 instance Ord a => Ord (Down a) where
-	Down a `compare` Down b = b `compare` a
-	Down a <= Down b = b <= a
+  Down a `compare` Down b = b `compare` a
+  Down a <= Down b = b <= a
 
 instance Functor Down where
-	fmap f (Down a) = Down (f a)
+  fmap f (Down a) = Down (f a)
 
 
 instance Foldable Down where
-	foldr f z (Down a) = a `f` z
-	foldl f z (Down a) = z `f` a
+  foldr f z (Down a) = a `f` z
+  foldl f z (Down a) = z `f` a
 
 instance Traversable Down where
-	traverse f (Down a) = Down <$> f a
+  traverse f (Down a) = Down <$> f a

@@ -26,60 +26,60 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Min (
-	MinQueue,
-	-- * Basic operations
-	empty,
-	null,
-	size, 
-	-- * Query operations
-	findMin,
-	getMin,
-	deleteMin,
-	deleteFindMin,
-	minView,
-	-- * Construction operations
-	singleton,
-	insert,
-	union,
-	unions,
-	-- * Subsets
-	-- ** Extracting subsets
-	(!!),
-	take,
-	drop,
-	splitAt,
-	-- ** Predicates
-	takeWhile,
-	dropWhile,
-	span,
-	break,
-	-- * Filter/Map
-	filter,
-	partition,
-	mapMaybe,
-	mapEither,
-	-- * Fold\/Functor\/Traversable variations
-	map,
-	foldrAsc,
-	foldlAsc,
-	foldrDesc,
-	foldlDesc,
-	-- * List operations
-	toList,
-	toAscList,
-	toDescList,
-	fromList,
-	fromAscList,
-	fromDescList,
-	-- * Unordered operations
-	mapU,
-	foldrU,
-	foldlU,
-	elemsU,
-	toListU,
-	-- * Miscellaneous operations
-	keysQueue,
-	seqSpine) where
+  MinQueue,
+  -- * Basic operations
+  empty,
+  null,
+  size, 
+  -- * Query operations
+  findMin,
+  getMin,
+  deleteMin,
+  deleteFindMin,
+  minView,
+  -- * Construction operations
+  singleton,
+  insert,
+  union,
+  unions,
+  -- * Subsets
+  -- ** Extracting subsets
+  (!!),
+  take,
+  drop,
+  splitAt,
+  -- ** Predicates
+  takeWhile,
+  dropWhile,
+  span,
+  break,
+  -- * Filter/Map
+  filter,
+  partition,
+  mapMaybe,
+  mapEither,
+  -- * Fold\/Functor\/Traversable variations
+  map,
+  foldrAsc,
+  foldlAsc,
+  foldrDesc,
+  foldlDesc,
+  -- * List operations
+  toList,
+  toAscList,
+  toDescList,
+  fromList,
+  fromAscList,
+  fromDescList,
+  -- * Unordered operations
+  mapU,
+  foldrU,
+  foldlU,
+  elemsU,
+  toListU,
+  -- * Miscellaneous operations
+  keysQueue,
+  seqSpine) where
 
 import Prelude hiding (null, foldr, foldl, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
 
@@ -88,7 +88,7 @@ import Control.Applicative.Identity
 
 import Data.Monoid
 import Data.Maybe hiding (mapMaybe)
-import Data.Foldable hiding (toList)
+import Data.Foldable hiding (toList, null)
 import Data.Traversable
 
 import qualified Data.List as List
@@ -98,7 +98,7 @@ import Data.PQueue.Internals
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
-	readPrec, readListPrec, readListPrecDefault)
+  readPrec, readListPrec, readListPrecDefault)
 import Data.Data
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
@@ -108,28 +108,28 @@ build f = f (:) []
 -- instance 
 
 instance (Ord a, Show a) => Show (MinQueue a) where
-	showsPrec p xs = showParen (p > 10) $
-		showString "fromAscList " . shows (toAscList xs)
+  showsPrec p xs = showParen (p > 10) $
+    showString "fromAscList " . shows (toAscList xs)
 
 instance Read a => Read (MinQueue a) where
 #ifdef __GLASGOW_HASKELL__
-	readPrec = parens $ prec 10 $ do
-		Ident "fromAscList" <- lexP
-		xs <- readPrec
-		return (fromAscList xs)
+  readPrec = parens $ prec 10 $ do
+    Ident "fromAscList" <- lexP
+    xs <- readPrec
+    return (fromAscList xs)
 
-	readListPrec = readListPrecDefault
+  readListPrec = readListPrecDefault
 #else
-	readsPrec p = readParen (p > 10) $ \ r -> do
-		("fromAscList",s) <- lex r
-		(xs,t) <- reads s
-		return (fromAscList xs,t)
+  readsPrec p = readParen (p > 10) $ \ r -> do
+    ("fromAscList",s) <- lex r
+    (xs,t) <- reads s
+    return (fromAscList xs,t)
 #endif
 
 instance Ord a => Monoid (MinQueue a) where
-	mempty = empty
-	mappend = union
-	mconcat = unions
+  mempty = empty
+  mappend = union
+  mconcat = unions
 
 -- | /O(1)/.  Returns the minimum element.  Throws an error on an empty queue.
 findMin :: MinQueue a -> a
@@ -138,8 +138,8 @@ findMin = fromMaybe (error "Error: findMin called on empty queue") . getMin
 -- | /O(log n)/.  Deletes the minimum element.  If the queue is empty, does nothing.
 deleteMin :: Ord a => MinQueue a -> MinQueue a
 deleteMin q = case minView q of
-	Nothing		-> empty
-	Just (_, q')	-> q'
+  Nothing    -> empty
+  Just (_, q')  -> q'
 
 -- | /O(log n)/.  Extracts the minimum element.  Throws an error on an empty queue.
 deleteFindMin :: Ord a => MinQueue a -> (a, MinQueue a)
@@ -152,8 +152,8 @@ unions = foldl union empty
 -- | /O(k log n)/.  Index (subscript) operator, starting from 0.  @queue !! k@ returns the @(k+1)@th smallest 
 -- element in the queue.  Equivalent to @toAscList queue !! k@.
 (!!) :: Ord a => MinQueue a -> Int -> a
-q !! n	| n >= size q
-		= error "Data.PQueue.Min.!!: index too large"
+q !! n  | n >= size q
+    = error "Data.PQueue.Min.!!: index too large"
 q !! n = (List.!!) (toAscList q) n
 
 {-# INLINE takeWhile #-}
@@ -166,27 +166,26 @@ takeWhile p = foldWhileFB p . toAscList
 -- | Equivalent to Data.List.takeWhile, but is a better producer.
 foldWhileFB :: (a -> Bool) -> [a] -> [a]
 foldWhileFB p xs = build (\ c nil -> let 
-	consWhile x xs
-		| p x		= x `c` xs
-		| otherwise	= nil
-	in foldr consWhile nil xs)
+  consWhile x xs
+    | p x    = x `c` xs
+    | otherwise  = nil
+  in foldr consWhile nil xs)
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
 dropWhile :: Ord a => (a -> Bool) -> MinQueue a -> MinQueue a
 dropWhile p = drop' where
-	drop' q = case minView q of
-	  Just (x, q')
-		| p x	-> drop' q'
-	  _		-> q
+  drop' q = case minView q of
+    Just (x, q') | p x -> drop' q'
+    _                  -> q
 
 -- | 'span', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
 -- satisfy @p@ and second element is the remainder of the queue.
 span :: Ord a => (a -> Bool) -> MinQueue a -> ([a], MinQueue a)
 span p queue = case minView queue of
-	Just (x, q') 
-		| p x	-> let (ys, q'') = span p q' in (x:ys, q'')
-	_		-> ([], queue)
+  Just (x, q') 
+    | p x  -> let (ys, q'') = span p q' in (x:ys, q'')
+  _    -> ([], queue)
 
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
@@ -204,16 +203,16 @@ take n = List.take n . toAscList
 -- or an empty queue if @k >= size 'queue'@.
 drop :: Ord a => Int -> MinQueue a -> MinQueue a
 drop n queue = n `seq` case minView queue of
-	Just (_, queue')
-	  | n > 0	-> drop (n-1) queue'
-	_		-> queue
+  Just (_, queue')
+    | n > 0  -> drop (n-1) queue'
+  _    -> queue
 
 -- | /O(k log n)/.  Equivalent to @('take' k queue, 'drop' k queue)@.
 splitAt :: Ord a => Int -> MinQueue a -> ([a], MinQueue a)
 splitAt n queue = n `seq` case minView queue of
-	Just (x, queue')
-	  | n > 0	-> let (xs, queue'') = splitAt (n-1) queue' in (x:xs, queue'')
-	_		-> ([], queue)
+  Just (x, queue')
+    | n > 0  -> let (xs, queue'') = splitAt (n-1) queue' in (x:xs, queue'')
+  _    -> ([], queue)
 
 -- | /O(n)/.  Returns the queue with all elements not satisfying @p@ removed.
 filter :: Ord a => (a -> Bool) -> MinQueue a -> MinQueue a
@@ -247,10 +246,10 @@ toList :: Ord a => MinQueue a -> [a]
 toList = toAscList
 
 {-# RULES
-	"toAscList" forall q . toAscList q = build (\ c nil -> foldrAsc c nil q);
-		-- inlining doesn't seem to be working out =/
-	"toDescList" forall q . toDescList q = build (\ c nil -> foldrDesc c nil q);
-	#-}
+  "toAscList" forall q . toAscList q = build (\ c nil -> foldrAsc c nil q);
+    -- inlining doesn't seem to be working out =/
+  "toDescList" forall q . toDescList q = build (\ c nil -> foldrDesc c nil q);
+  #-}
 
 -- | /O(n log n)/.  Performs a right-fold on the elements of a priority queue in descending order.
 -- @foldrDesc f z q == foldlAsc (flip f) z q@.
@@ -268,9 +267,9 @@ fromList :: Ord a => [a] -> MinQueue a
 fromList = foldr insert empty
 
 {-# RULES
-	"fromList" fromList = foldr insert empty;
-	"fromAscList" fromAscList = foldr insertMinQ empty;
-	#-}
+  "fromList" fromList = foldr insert empty;
+  "fromAscList" fromAscList = foldr insertMinQ empty;
+  #-}
 
 {-# INLINE fromAscList #-}
 -- | /O(n)/.  Constructs a priority queue from an ascending list.  /Warning/: Does not check the precondition.
@@ -296,6 +295,6 @@ toListU :: MinQueue a -> [a]
 toListU q = build (\ c n -> foldrU c n q)
 
 {-# RULES
-	"foldr/toListU" forall f z q . foldr f z (toListU q) = foldrU f z q;
-	"foldl/toListU" forall f z q . foldl f z (toListU q) = foldlU f z q;
-	#-}
+  "foldr/toListU" forall f z q . foldr f z (toListU q) = foldrU f z q;
+  "foldl/toListU" forall f z q . foldl f z (toListU q) = foldlU f z q;
+  #-}

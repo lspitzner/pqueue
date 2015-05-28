@@ -26,67 +26,67 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Max (
-	MaxQueue,
-	-- * Basic operations
-	empty,
-	null,
-	size, 
-	-- * Query operations
-	findMax,
-	getMax,
-	deleteMax,
-	deleteFindMax,
-	maxView,
-	-- * Construction operations
-	singleton,
-	insert,
-	union,
-	unions,
-	-- * Subsets
-	-- ** Extracting subsets
-	(!!),
-	take,
-	drop,
-	splitAt,
-	-- ** Predicates
-	takeWhile,
-	dropWhile,
-	span,
-	break,
-	-- * Filter/Map
-	filter,
-	partition,
-	mapMaybe,
-	mapEither,
-	-- * Fold\/Functor\/Traversable variations
-	map,
-	foldrAsc,
-	foldlAsc,
-	foldrDesc,
-	foldlDesc,
-	-- * List operations
-	toList,
-	toAscList,
-	toDescList,
-	fromList,
-	fromAscList,
-	fromDescList,
-	-- * Unordered operations
-	mapU,
-	foldrU,
-	foldlU,
-	elemsU,
-	toListU,
-	-- * Miscellaneous operations
-	keysQueue,
-	seqSpine) where
+  MaxQueue,
+  -- * Basic operations
+  empty,
+  null,
+  size, 
+  -- * Query operations
+  findMax,
+  getMax,
+  deleteMax,
+  deleteFindMax,
+  maxView,
+  -- * Construction operations
+  singleton,
+  insert,
+  union,
+  unions,
+  -- * Subsets
+  -- ** Extracting subsets
+  (!!),
+  take,
+  drop,
+  splitAt,
+  -- ** Predicates
+  takeWhile,
+  dropWhile,
+  span,
+  break,
+  -- * Filter/Map
+  filter,
+  partition,
+  mapMaybe,
+  mapEither,
+  -- * Fold\/Functor\/Traversable variations
+  map,
+  foldrAsc,
+  foldlAsc,
+  foldrDesc,
+  foldlDesc,
+  -- * List operations
+  toList,
+  toAscList,
+  toDescList,
+  fromList,
+  fromAscList,
+  fromDescList,
+  -- * Unordered operations
+  mapU,
+  foldrU,
+  foldlU,
+  elemsU,
+  toListU,
+  -- * Miscellaneous operations
+  keysQueue,
+  seqSpine) where
 
 import Control.Applicative (Applicative(..), (<$>))
 import Control.DeepSeq
 
 import Data.Monoid
 import Data.Maybe hiding (mapMaybe)
-import Data.Foldable hiding (toList)
+import Data.Foldable hiding (toList, null)
 import Data.Traversable
 
 import qualified Data.PQueue.Min as Min
@@ -98,7 +98,7 @@ import Prelude hiding (null, foldr, foldl, take, drop, takeWhile, dropWhile, spl
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
-	readPrec, readListPrec, readListPrecDefault)
+  readPrec, readListPrec, readListPrecDefault)
 import Data.Data
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
@@ -109,36 +109,36 @@ build f = f (:) []
 -- Implemented as a wrapper around 'Min.MinQueue'.
 newtype MaxQueue a = MaxQ (Min.MinQueue (Down a))
 # if __GLASGOW_HASKELL__
-	deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Typeable)
 # else
-	deriving (Eq, Ord)
+  deriving (Eq, Ord)
 # endif
 
 instance NFData a => NFData (MaxQueue a) where
-	rnf (MaxQ q) = rnf q
+  rnf (MaxQ q) = rnf q
 
 instance (Ord a, Show a) => Show (MaxQueue a) where
-	showsPrec p xs = showParen (p > 10) $
-		showString "fromDescList " . shows (toDescList xs)
-		
+  showsPrec p xs = showParen (p > 10) $
+    showString "fromDescList " . shows (toDescList xs)
+    
 instance Read a => Read (MaxQueue a) where
 #ifdef __GLASGOW_HASKELL__
-	readPrec = parens $ prec 10 $ do
-		Ident "fromDescList" <- lexP
-		xs <- readPrec
-		return (fromDescList xs)
+  readPrec = parens $ prec 10 $ do
+    Ident "fromDescList" <- lexP
+    xs <- readPrec
+    return (fromDescList xs)
 
-	readListPrec = readListPrecDefault
+  readListPrec = readListPrecDefault
 #else
-	readsPrec p = readParen (p > 10) $ \ r -> do
-		("fromDescList",s) <- lex r
-		(xs,t) <- reads s
-		return (fromDescList xs,t)
+  readsPrec p = readParen (p > 10) $ \ r -> do
+    ("fromDescList",s) <- lex r
+    (xs,t) <- reads s
+    return (fromDescList xs,t)
 #endif
 
 instance Ord a => Monoid (MaxQueue a) where
-	mempty = empty
-	mappend = union
+  mempty = empty
+  mappend = union
 
 -- | /O(1)/.  The empty priority queue.
 empty :: MaxQueue a
@@ -171,10 +171,10 @@ deleteFindMax = fromMaybe (error "Error: deleteFindMax called on empty queue") .
 -- | /O(log n)/.  Extract the top (maximum) element of the sequence, if there is one.
 maxView :: Ord a => MaxQueue a -> Maybe (a, MaxQueue a)
 maxView (MaxQ q) = case Min.minView q of
-	Nothing	-> Nothing
-	Just (Down x, q')
-		-> Just (x, MaxQ q')
-		
+  Nothing  -> Nothing
+  Just (Down x, q')
+    -> Just (x, MaxQ q')
+    
 -- | /O(log n)/.  Delete the top (maximum) element of the sequence, if there is one.
 delete :: Ord a => MaxQueue a -> Maybe (MaxQueue a)
 delete = fmap snd . maxView
@@ -212,8 +212,8 @@ drop k (MaxQ q) = MaxQ (Min.drop k q)
 -- | /O(k log n)/.  Equivalent to @(take k queue, drop k queue)@.
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
 splitAt k (MaxQ q) = (map unDown xs, MaxQ q') where
-	(xs, q') = Min.splitAt k q
-	
+  (xs, q') = Min.splitAt k q
+  
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
 takeWhile :: Ord a => (a -> Bool) -> MaxQueue a -> [a]
@@ -229,7 +229,7 @@ dropWhile p (MaxQ q) = MaxQ (Min.dropWhile (p . unDown) q)
 -- 
 span :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
 span p (MaxQ q) = (map unDown xs, MaxQ q') where
-	(xs, q') = Min.span (p . unDown) q
+  (xs, q') = Min.span (p . unDown) q
 
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
@@ -245,7 +245,7 @@ filter p (MaxQ q) = MaxQ (Min.filter (p . unDown) q)
 -- and the right queue contains those that do not.
 partition :: Ord a => (a -> Bool) -> MaxQueue a -> (MaxQueue a, MaxQueue a)
 partition p (MaxQ q) = (MaxQ q0, MaxQ q1)
-	where	(q0, q1) = Min.partition (p . unDown) q
+  where  (q0, q1) = Min.partition (p . unDown) q
 
 -- | /O(n)/.  Maps a function over the elements of the queue, and collects the 'Just' values.
 mapMaybe :: Ord b => (a -> Maybe b) -> MaxQueue a -> MaxQueue b
@@ -254,7 +254,7 @@ mapMaybe f (MaxQ q) = MaxQ (Min.mapMaybe (\ (Down x) -> Down <$> f x) q)
 -- | /O(n)/.  Maps a function over the elements of the queue, and separates the 'Left' and 'Right' values.
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MaxQueue a -> (MaxQueue b, MaxQueue c)
 mapEither f (MaxQ q) = (MaxQ q0, MaxQ q1)
-	where	(q0, q1) = Min.mapEither (either (Left . Down) (Right . Down) . f . unDown) q
+  where  (q0, q1) = Min.mapEither (either (Left . Down) (Right . Down) . f . unDown) q
 
 -- | /O(n)/.  Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue.
 -- /Does not check the precondition/.

@@ -31,94 +31,94 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Prio.Max (
-	MaxPQueue,
-	-- * Construction
-	empty,
-	singleton,
-	insert,
-	union,
-	unions, 
-	-- * Query
-	null,
-	size,
-	-- ** Maximum view
-	findMax,
-	getMax,
-	deleteMax,
-	deleteFindMax,
-	adjustMax,
-	adjustMaxWithKey,
-	updateMax,
-	updateMaxWithKey,
-	maxView,
-	maxViewWithKey,
-	-- * Traversal
-	-- ** Map
-	map,
-	mapWithKey,
-	mapKeys,
-	mapKeysMonotonic,
-	-- ** Fold
-	foldrWithKey,
-	foldlWithKey,
-	-- ** Traverse
-	traverseWithKey,
-	-- * Subsets
-	-- ** Indexed
-	take,
-	drop,
-	splitAt,
-	-- ** Predicates
-	takeWhile,
-	takeWhileWithKey,
-	dropWhile,
-	dropWhileWithKey,
-	span,
-	spanWithKey,
-	break,
-	breakWithKey,
-	-- *** Filter
-	filter,
-	filterWithKey,
-	partition,
-	partitionWithKey,
-	mapMaybe,
-	mapMaybeWithKey,
-	mapEither,
-	mapEitherWithKey,
-	-- * List operations
-	-- ** Conversion from lists
-	fromList,
-	fromAscList,
-	fromDescList,
-	-- ** Conversion to lists
-	keys,
-	elems,
-	assocs,
-	toAscList,
-	toDescList,
-	toList,
-	-- * Unordered operations
-	foldrU,
-	foldrWithKeyU,
-	foldlU,
-	foldlWithKeyU,
-	traverseU,
-	traverseWithKeyU,
-	keysU,
-	elemsU,
-	assocsU,
-	toListU,
-	-- * Helper methods
-	seqSpine
-	)
-	where
+  MaxPQueue,
+  -- * Construction
+  empty,
+  singleton,
+  insert,
+  union,
+  unions, 
+  -- * Query
+  null,
+  size,
+  -- ** Maximum view
+  findMax,
+  getMax,
+  deleteMax,
+  deleteFindMax,
+  adjustMax,
+  adjustMaxWithKey,
+  updateMax,
+  updateMaxWithKey,
+  maxView,
+  maxViewWithKey,
+  -- * Traversal
+  -- ** Map
+  map,
+  mapWithKey,
+  mapKeys,
+  mapKeysMonotonic,
+  -- ** Fold
+  foldrWithKey,
+  foldlWithKey,
+  -- ** Traverse
+  traverseWithKey,
+  -- * Subsets
+  -- ** Indexed
+  take,
+  drop,
+  splitAt,
+  -- ** Predicates
+  takeWhile,
+  takeWhileWithKey,
+  dropWhile,
+  dropWhileWithKey,
+  span,
+  spanWithKey,
+  break,
+  breakWithKey,
+  -- *** Filter
+  filter,
+  filterWithKey,
+  partition,
+  partitionWithKey,
+  mapMaybe,
+  mapMaybeWithKey,
+  mapEither,
+  mapEitherWithKey,
+  -- * List operations
+  -- ** Conversion from lists
+  fromList,
+  fromAscList,
+  fromDescList,
+  -- ** Conversion to lists
+  keys,
+  elems,
+  assocs,
+  toAscList,
+  toDescList,
+  toList,
+  -- * Unordered operations
+  foldrU,
+  foldrWithKeyU,
+  foldlU,
+  foldlWithKeyU,
+  traverseU,
+  traverseWithKeyU,
+  keysU,
+  elemsU,
+  assocsU,
+  toListU,
+  -- * Helper methods
+  seqSpine
+  )
+  where
 
 import Control.Applicative hiding (empty)
 import Control.Arrow
 import Data.Monoid
 import qualified Data.List as List
-import Data.Foldable hiding (toList)
+import Data.Foldable hiding (toList, null)
 import Data.Traversable
 import Data.Maybe hiding (mapMaybe)
 import Data.PQueue.Prio.Max.Internals
@@ -130,7 +130,7 @@ import qualified Data.PQueue.Prio.Min as Q
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
-	readPrec, readListPrec, readListPrecDefault)
+  readPrec, readListPrec, readListPrecDefault)
 import Data.Data
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
@@ -144,33 +144,33 @@ second' :: (b -> c) -> (a, b) -> (a, c)
 second' f (a, b) = (a, f b)
 
 instance (Ord k, Show k, Show a) => Show (MaxPQueue k a) where
-	showsPrec p xs = showParen (p > 10) $
-		showString "fromDescList " . shows (toDescList xs)
+  showsPrec p xs = showParen (p > 10) $
+    showString "fromDescList " . shows (toDescList xs)
 
 instance (Read k, Read a) => Read (MaxPQueue k a) where
 #ifdef __GLASGOW_HASKELL__
-	readPrec = parens $ prec 10 $ do
-		Ident "fromDescList" <- lexP
-		xs <- readPrec
-		return (fromDescList xs)
+  readPrec = parens $ prec 10 $ do
+    Ident "fromDescList" <- lexP
+    xs <- readPrec
+    return (fromDescList xs)
 
-	readListPrec = readListPrecDefault
+  readListPrec = readListPrecDefault
 #else
-	readsPrec p = readParen (p > 10) $ \ r -> do
-		("fromDescList",s) <- lex r
-		(xs,t) <- reads s
-		return (fromDescList xs,t)
+  readsPrec p = readParen (p > 10) $ \ r -> do
+    ("fromDescList",s) <- lex r
+    (xs,t) <- reads s
+    return (fromDescList xs,t)
 #endif
 
 instance Functor (MaxPQueue k) where
-	fmap f (MaxPQ q) = MaxPQ (fmap f q)
+  fmap f (MaxPQ q) = MaxPQ (fmap f q)
 
 instance Ord k => Foldable (MaxPQueue k) where
-	foldr f z (MaxPQ q) = foldr f z q
-	foldl f z (MaxPQ q) = foldl f z q
+  foldr f z (MaxPQ q) = foldr f z q
+  foldl f z (MaxPQ q) = foldl f z q
 
 instance Ord k => Traversable (MaxPQueue k) where
-	traverse f (MaxPQ q) = MaxPQ <$> traverse f q
+  traverse f (MaxPQ q) = MaxPQ <$> traverse f q
 
 -- | /O(1)/.  Returns the empty priority queue.
 empty :: MaxPQueue k a
@@ -209,8 +209,8 @@ findMax = fromMaybe (error "Error: findMax called on an empty queue") . getMax
 -- | /O(1)/.  The maximal (key, element) in the queue, if the queue is nonempty.
 getMax :: MaxPQueue k a -> Maybe (k, a)
 getMax (MaxPQ q) = do
-	(Down k, a) <- Q.getMin q
-	return (k, a)
+  (Down k, a) <- Q.getMin q
+  return (k, a)
 
 -- | /O(log n)/.  Delete and find the element with the maximum key.  Calls 'error' if empty.
 deleteMax :: Ord k => MaxPQueue k a -> MaxPQueue k a
@@ -242,15 +242,15 @@ updateMaxWithKey f (MaxPQ q) = MaxPQ (Q.updateMinWithKey (f . unDown) q)
 -- stripped of that element, or 'Nothing' if passed an empty queue.
 maxView :: Ord k => MaxPQueue k a -> Maybe (a, MaxPQueue k a)
 maxView q = do
-	((_, a), q') <- maxViewWithKey q
-	return (a, q')
+  ((_, a), q') <- maxViewWithKey q
+  return (a, q')
 
 -- | /O(log n)/.  Retrieves the maximal (key, value) pair of the map, and the map stripped of that
 -- element, or 'Nothing' if passed an empty map.
 maxViewWithKey :: Ord k => MaxPQueue k a -> Maybe ((k, a), MaxPQueue k a)
 maxViewWithKey (MaxPQ q) = do
-	((Down k, a), q') <- Q.minViewWithKey q
-	return ((k, a), MaxPQ q')
+  ((Down k, a), q') <- Q.minViewWithKey q
+  return ((k, a), MaxPQ q')
 
 -- | /O(n)/.  Map a function over all values in the queue.
 map :: (a -> b) -> MaxPQueue k a -> MaxPQueue k b
@@ -303,7 +303,7 @@ drop k (MaxPQ q) = MaxPQ (Q.drop k q)
 -- | /O(k log n)/.  Equivalent to @('take' k q, 'drop' k q)@.
 splitAt :: Ord k => Int -> MaxPQueue k a -> ([(k, a)], MaxPQueue k a)
 splitAt k (MaxPQ q) = case Q.splitAt k q of
-	(xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
+  (xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
 
 -- | Takes the longest possible prefix of elements satisfying the predicate.
 -- (@'takeWhile' p q == 'List.takeWhile' (p . 'snd') ('toAscList' q)@)
@@ -334,12 +334,12 @@ break = breakWithKey . const
 -- | Equivalent to @'spanWithKey' (\ k a -> 'not' (p k a)) q@.
 spanWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> ([(k, a)], MaxPQueue k a)
 spanWithKey p (MaxPQ q) = case Q.spanWithKey (p . unDown) q of
-	(xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
+  (xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
 
 -- | Equivalent to @'spanWithKey' (\ k a -> 'not' (p k a)) q@.
 breakWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> ([(k, a)], MaxPQueue k a)
 breakWithKey p (MaxPQ q) = case Q.breakWithKey (p . unDown) q of
-	(xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
+  (xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
 
 -- | /O(n)/.  Filter all values that satisfy the predicate.
 filter :: Ord k => (a -> Bool) -> MaxPQueue k a -> MaxPQueue k a
@@ -358,7 +358,7 @@ partition = partitionWithKey . const
 -- which satisfy the predicate, the second all elements that fail the predicate.
 partitionWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> (MaxPQueue k a, MaxPQueue k a)
 partitionWithKey p (MaxPQ q) = case Q.partitionWithKey (p . unDown) q of
-	(q1, q0) -> (MaxPQ q1, MaxPQ q0)
+  (q1, q0) -> (MaxPQ q1, MaxPQ q0)
 
 -- | /O(n)/.  Map values and collect the 'Just' results.
 mapMaybe :: Ord k => (a -> Maybe b) -> MaxPQueue k a -> MaxPQueue k b
@@ -375,7 +375,7 @@ mapEither = mapEitherWithKey . const
 -- | /O(n)/.  Map values and separate the 'Left' and 'Right' results.
 mapEitherWithKey :: Ord k => (k -> a -> Either b c) -> MaxPQueue k a -> (MaxPQueue k b, MaxPQueue k c)
 mapEitherWithKey f (MaxPQ q) = case Q.mapEitherWithKey (f . unDown) q of
-	(qL, qR) -> (MaxPQ qL, MaxPQ qR)
+  (qL, qR) -> (MaxPQ qL, MaxPQ qR)
 
 -- | /O(n)/.  Build a priority queue from the list of (key, value) pairs.
 fromList :: Ord k => [(k, a)] -> MaxPQueue k a
