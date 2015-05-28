@@ -88,7 +88,7 @@ import Control.Applicative.Identity
 
 import Data.Monoid
 import Data.Maybe hiding (mapMaybe)
-import Data.Foldable hiding (toList, null)
+import Data.Foldable (foldl, foldr, foldl')
 import Data.Traversable
 
 import qualified Data.List as List

@@ -86,7 +86,7 @@ import Control.DeepSeq
 
 import Data.Monoid
 import Data.Maybe hiding (mapMaybe)
-import Data.Foldable hiding (toList, null)
+import Data.Foldable (foldl, foldr)
 import Data.Traversable
 
 import qualified Data.PQueue.Min as Min

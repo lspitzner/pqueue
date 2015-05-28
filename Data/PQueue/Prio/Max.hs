@@ -118,7 +118,7 @@ import Control.Applicative hiding (empty)
 import Control.Arrow
 import Data.Monoid
 import qualified Data.List as List
-import Data.Foldable hiding (toList, null)
+import Data.Foldable (Foldable, foldr, foldl)
 import Data.Traversable
 import Data.Maybe hiding (mapMaybe)
 import Data.PQueue.Prio.Max.Internals
