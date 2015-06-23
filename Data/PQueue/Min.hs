@@ -138,8 +138,8 @@ findMin = fromMaybe (error "Error: findMin called on empty queue") . getMin
 -- | /O(log n)/.  Deletes the minimum element.  If the queue is empty, does nothing.
 deleteMin :: Ord a => MinQueue a -> MinQueue a
 deleteMin q = case minView q of
-  Nothing    -> empty
-  Just (_, q')  -> q'
+  Nothing      -> empty
+  Just (_, q') -> q'
 
 -- | /O(log n)/.  Extracts the minimum element.  Throws an error on an empty queue.
 deleteFindMin :: Ord a => MinQueue a -> (a, MinQueue a)
@@ -185,7 +185,7 @@ span :: Ord a => (a -> Bool) -> MinQueue a -> ([a], MinQueue a)
 span p queue = case minView queue of
   Just (x, q') 
     | p x  -> let (ys, q'') = span p q' in (x:ys, q'')
-  _    -> ([], queue)
+  _        -> ([], queue)
 
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
@@ -205,14 +205,14 @@ drop :: Ord a => Int -> MinQueue a -> MinQueue a
 drop n queue = n `seq` case minView queue of
   Just (_, queue')
     | n > 0  -> drop (n-1) queue'
-  _    -> queue
+  _          -> queue
 
 -- | /O(k log n)/.  Equivalent to @('take' k queue, 'drop' k queue)@.
 splitAt :: Ord a => Int -> MinQueue a -> ([a], MinQueue a)
 splitAt n queue = n `seq` case minView queue of
   Just (x, queue')
     | n > 0  -> let (xs, queue'') = splitAt (n-1) queue' in (x:xs, queue'')
-  _    -> ([], queue)
+  _          -> ([], queue)
 
 -- | /O(n)/.  Returns the queue with all elements not satisfying @p@ removed.
 filter :: Ord a => (a -> Bool) -> MinQueue a -> MinQueue a

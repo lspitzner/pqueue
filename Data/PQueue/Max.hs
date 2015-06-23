@@ -171,9 +171,9 @@ deleteFindMax = fromMaybe (error "Error: deleteFindMax called on empty queue") .
 -- | /O(log n)/.  Extract the top (maximum) element of the sequence, if there is one.
 maxView :: Ord a => MaxQueue a -> Maybe (a, MaxQueue a)
 maxView (MaxQ q) = case Min.minView q of
-  Nothing  -> Nothing
+  Nothing -> Nothing
   Just (Down x, q')
-    -> Just (x, MaxQ q')
+          -> Just (x, MaxQ q')
     
 -- | /O(log n)/.  Delete the top (maximum) element of the sequence, if there is one.
 delete :: Ord a => MaxQueue a -> Maybe (MaxQueue a)

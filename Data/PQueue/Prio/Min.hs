@@ -261,17 +261,18 @@ drop n q
   | n <= 0  = q
   | n >= size q  = empty
   | otherwise  = drop' n q
-  where drop' n q
-          | n == 0  = q
-          | otherwise  = drop' (n-1) (deleteMin q)
+  where
+    drop' n q
+      | n == 0    = q
+      | otherwise = drop' (n-1) (deleteMin q)
 
 -- | /O(k log n)/.  Equivalent to @('take' k q, 'drop' k q)@.
 splitAt :: Ord k => Int -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 splitAt n q 
-  | n <= 0  = ([], q)
+  | n <= 0     = ([], q)
   | otherwise  = n `seq` case minViewWithKey q of
-    Just (ka, q')  -> let (kas, q'') = splitAt (n-1) q' in (ka:kas, q'')
-    _    -> ([], q)
+      Just (ka, q') -> let (kas, q'') = splitAt (n-1) q' in (ka:kas, q'')
+      _             -> ([], q)
 
 {-# INLINE takeWhile #-}
 -- | Takes the longest possible prefix of elements satisfying the predicate.
@@ -294,8 +295,8 @@ dropWhile = dropWhileWithKey . const
 dropWhileWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> MinPQueue k a
 dropWhileWithKey p q = case minViewWithKey q of
   Just ((k, a), q')
-    | p k a    -> dropWhileWithKey p q'
-  _      -> q
+    | p k a -> dropWhileWithKey p q'
+  _         -> q
 
 -- | Equivalent to @('takeWhile' p q, 'dropWhile' p q)@.
 span :: Ord k => (a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
@@ -310,8 +311,8 @@ spanWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueu
 breakWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 spanWithKey p q = case minViewWithKey q of
   Just ((k, a), q')
-    | p k a    -> let (kas, q'') = spanWithKey p q' in ((k, a):kas, q'')
-  _      -> ([], q)
+    | p k a -> let (kas, q'') = spanWithKey p q' in ((k, a):kas, q'')
+  _         -> ([], q)
 breakWithKey p = spanWithKey (not .: p)
 
 -- | /O(n)/.  Build a priority queue from the list of (key, value) pairs.
@@ -406,7 +407,7 @@ instance Functor (MinPQueue k) where
   fmap = map
 
 instance Ord k => Foldable (MinPQueue k) where
-  foldr = foldrWithKey . const
+  foldr   = foldrWithKey . const
   foldl f = foldlWithKey (const . f)
 
 instance Ord k => Traversable (MinPQueue k) where

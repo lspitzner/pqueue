@@ -44,7 +44,6 @@ instance Ord a => Ord (Down a) where
 instance Functor Down where
   fmap f (Down a) = Down (f a)
 
-
 instance Foldable Down where
   foldr f z (Down a) = a `f` z
   foldl f z (Down a) = z `f` a

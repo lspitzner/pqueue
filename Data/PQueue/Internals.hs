@@ -55,9 +55,8 @@ INSTANCE_TYPEABLE1(MinQueue,minQTC,"MinQueue")
 #ifdef __GLASGOW_HASKELL__
 instance (Ord a, Data a) => Data (MinQueue a) where
   gfoldl f z q  = case minView q of
-    Nothing  -> z Empty
-    Just (x, q')
-      -> z insertMinQ `f` x `f` q'
+    Nothing      -> z Empty
+    Just (x, q') -> z insertMinQ `f` x `f` q'
   
   gunfold k z c = case constrIndex c of
     1  -> z Empty
@@ -91,7 +90,7 @@ instance Ord a => Eq (MinQueue a) where
         -> x1 == x2 && eq' q1' q2'
       (Nothing, Nothing)
         -> True
-      _  -> False
+      _ -> False
   _ == _ = False
 
 instance Ord a => Ord (MinQueue a) where
@@ -163,25 +162,25 @@ empty = Empty
 -- | /O(1)/.  Is this the empty priority queue?
 null :: MinQueue a -> Bool
 null Empty = True
-null _ = False
+null _     = False
 
 -- | /O(1)/.  The number of elements in the queue.
 size :: MinQueue a -> Int
-size Empty = 0
+size Empty            = 0
 size (MinQueue n _ _) = n
 
 -- | Returns the minimum element of the queue, if the queue is nonempty.
 getMin :: MinQueue a -> Maybe a
 getMin (MinQueue _ x _) = Just x
-getMin _ = Nothing
+getMin _                = Nothing
 
 -- | Retrieves the minimum element of the queue, and the queue stripped of that element, 
 -- or 'Nothing' if passed an empty queue.
 minView :: Ord a => MinQueue a -> Maybe (a, MinQueue a)
 minView Empty = Nothing
 minView (MinQueue n x ts) = Just (x, case extractHeap ts of
-  Nothing    -> Empty
-  Just (x', ts')  -> MinQueue (n-1) x' ts')
+  Nothing        -> Empty
+  Just (x', ts') -> MinQueue (n-1) x' ts')
 
 -- | /O(1)/.  Construct a priority queue with a single element.
 singleton :: a -> MinQueue a
@@ -199,14 +198,15 @@ union = union' (<=)
 mapMaybe :: Ord b => (a -> Maybe b) -> MinQueue a -> MinQueue b
 mapMaybe _ Empty = Empty
 mapMaybe f (MinQueue _ x ts) = maybe q' (`insert` q') (f x)
-  where  q' = mapMaybeQueue f (<=) (const Empty) Empty ts
+  where
+    q' = mapMaybeQueue f (<=) (const Empty) Empty ts
 
 -- | /O(n)/.  Map elements and separate the 'Left' and 'Right' results.
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MinQueue a -> (MinQueue b, MinQueue c)
 mapEither _ Empty = (Empty, Empty)
 mapEither f (MinQueue _ x ts) = case (mapEitherQueue f (<=) (<=) (const (Empty, Empty)) (Empty, Empty) ts, f x) of
   ((qL, qR), Left b)  -> (insert b qL, qR)
-  ((qL, qR), Right c)  -> (qL, insert c qR)
+  ((qL, qR), Right c) -> (qL, insert c qR)
 
 -- | /O(n)/.  Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
 -- as in 'fmap'.  If it is not, the result is undefined.
@@ -224,12 +224,12 @@ foldrAsc f z (MinQueue _ x ts) = x `f` foldrUnfold f z extractHeap ts
 foldrUnfold :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
 foldrUnfold f z suc s0 = unf s0 where
   unf s = case suc s of
-    Nothing    -> z
-    Just (x, s')  -> x `f` unf s'
+    Nothing      -> z
+    Just (x, s') -> x `f` unf s'
 
 -- | /O(n log n)/.  Performs a left-fold on the elements of a priority queue in ascending order.
 foldlAsc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
-foldlAsc _ z Empty = z
+foldlAsc _ z Empty             = z
 foldlAsc f z (MinQueue _ x ts) = foldlUnfold f (z `f` x) extractHeap ts
 
 {-# INLINE foldlUnfold #-}
@@ -237,13 +237,14 @@ foldlAsc f z (MinQueue _ x ts) = foldlUnfold f (z `f` x) extractHeap ts
 foldlUnfold :: (c -> a -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
 foldlUnfold f z suc s0 = unf z s0 where
   unf z s = case suc s of
-    Nothing    -> z
-    Just (x, s')  -> unf (z `f` x) s'
+    Nothing      -> z
+    Just (x, s') -> unf (z `f` x) s'
+
 insert' :: LEq a -> a -> MinQueue a -> MinQueue a
 insert' _ x Empty = singleton x
 insert' (<=) x (MinQueue n x' ts)
-  | x <= x'  = MinQueue (n+1) x (incr (<=) (tip x') ts)
-  | otherwise  = MinQueue (n+1) x' (incr (<=) (tip x) ts)
+  | x <= x'   = MinQueue (n+1) x (incr (<=) (tip x') ts)
+  | otherwise = MinQueue (n+1) x' (incr (<=) (tip x) ts)
 
 {-# INLINE union' #-}
 union' :: LEq a -> MinQueue a -> MinQueue a -> MinQueue a
@@ -251,13 +252,13 @@ union' _ Empty q = q
 union' _ q Empty = q
 union' (<=) (MinQueue n1 x1 f1) (MinQueue n2 x2 f2)
   | x1 <= x2  = MinQueue (n1 + n2) x1 (carry (<=) (tip x2) f1 f2)
-  | otherwise  = MinQueue (n1 + n2) x2 (carry (<=) (tip x1) f1 f2)
+  | otherwise = MinQueue (n1 + n2) x2 (carry (<=) (tip x1) f1 f2)
 
 -- | Takes a size and a binomial forest and produces a priority queue with a distinguished global root.
 extractHeap :: Ord a => BinomHeap a -> Maybe (a, BinomHeap a)
 extractHeap ts = case extractBin (<=) ts of
-  Yes (Extract x _ ts')  -> Just (x, ts')
-  _      -> Nothing
+  Yes (Extract x _ ts') -> Just (x, ts')
+  _                     -> Nothing
 
 -- | A specialized type intended to organize the return of extract-min queries
 -- from a binomial forest.  We walk all the way through the forest, and then
@@ -291,7 +292,8 @@ incrExtract (Extract minKey (Succ kChild kChildren) ts)
 incrExtract' :: LEq a -> BinomTree rk a -> Extract (Succ rk) a -> Extract rk a
 incrExtract' (<=) t (Extract minKey (Succ kChild kChildren) ts)
   = Extract minKey kChildren (Skip (incr (<=) (t `cat` kChild) ts))
-  where  cat = joinBin (<=)
+  where
+    cat = joinBin (<=)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress.  Each successive application of @extractBin@ takes
@@ -299,30 +301,30 @@ incrExtract' (<=) t (Extract minKey (Succ kChild kChildren) ts)
 extractBin :: LEq a -> BinomForest rk a -> MExtract rk a
 extractBin _ Nil = No
 extractBin (<=) (Skip f) = case extractBin (<=) f of
-  Yes ex  -> Yes (incrExtract ex)
-  No  -> No
+  Yes ex -> Yes (incrExtract ex)
+  No     -> No
 extractBin (<=) (Cons t@(BinomTree x ts) f) = Yes $ case extractBin (<=) f of
   Yes ex@(Extract minKey _ _)
     | minKey < x  -> incrExtract' (<=) t ex
-  _      -> Extract x ts (Skip f)
-  where  a < b = not (b <= a)
+  _               -> Extract x ts (Skip f)
+  where a < b = not (b <= a)
 
 mapMaybeQueue :: (a -> Maybe b) -> LEq b -> (rk a -> MinQueue b) -> MinQueue b -> BinomForest rk a -> MinQueue b
 mapMaybeQueue f (<=) fCh q0 forest = q0 `seq` case forest of
   Nil    -> q0
   Skip forest'  -> mapMaybeQueue f (<=) fCh' q0 forest'
   Cons t forest'  -> mapMaybeQueue f (<=) fCh' (union' (<=) (mapMaybeT t) q0) forest'
-  where  fCh' (Succ t tss) = union' (<=) (mapMaybeT t) (fCh tss)
-         mapMaybeT (BinomTree x ts) = maybe (fCh ts) (\ x -> insert' (<=) x (fCh ts)) (f x)
+  where fCh' (Succ t tss) = union' (<=) (mapMaybeT t) (fCh tss)
+        mapMaybeT (BinomTree x ts) = maybe (fCh ts) (\ x -> insert' (<=) x (fCh ts)) (f x)
 
 type Partition a b = (MinQueue a, MinQueue b)
 
 mapEitherQueue :: (a -> Either b c) -> LEq b -> LEq c -> (rk a -> Partition b c) -> Partition b c ->
   BinomForest rk a -> Partition b c
 mapEitherQueue f (<=) (<=.) fCh (q0, q1) ts = q0 `seq` q1 `seq` case ts of
-  Nil    -> (q0, q1)
-  Skip ts'  -> mapEitherQueue f (<=) (<=.) fCh' (q0, q1) ts'
-  Cons t ts'  -> mapEitherQueue f (<=) (<=.) fCh' (both (union' (<=)) (union' (<=.)) (partitionT t) (q0, q1)) ts'
+  Nil        -> (q0, q1)
+  Skip ts'   -> mapEitherQueue f (<=) (<=.) fCh' (q0, q1) ts'
+  Cons t ts' -> mapEitherQueue f (<=) (<=.) fCh' (both (union' (<=)) (union' (<=.)) (partitionT t) (q0, q1)) ts'
   where  both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)
          fCh' (Succ t tss) = both (union' (<=)) (union' (<=.)) (partitionT t) (fCh tss)
          partitionT (BinomTree x ts) = case fCh ts of
@@ -351,13 +353,13 @@ insertMin (BinomTree x ts) (Cons t' f) = Skip (insertMin (BinomTree x (Succ t' t
 -- from the beginning costs /O(log n)/.
 merge :: LEq a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
 merge (<=) f1 f2 = case (f1, f2) of
-  (Skip f1', Skip f2')  -> Skip (merge (<=) f1' f2')
-  (Skip f1', Cons t2 f2')  -> Cons t2 (merge (<=) f1' f2')
-  (Cons t1 f1', Skip f2')  -> Cons t1 (merge (<=) f1' f2')
+  (Skip f1', Skip f2')    -> Skip (merge (<=) f1' f2')
+  (Skip f1', Cons t2 f2') -> Cons t2 (merge (<=) f1' f2')
+  (Cons t1 f1', Skip f2') -> Cons t1 (merge (<=) f1' f2')
   (Cons t1 f1', Cons t2 f2')
         -> Skip (carry (<=) (t1 `cat` t2) f1' f2')
-  (Nil, _)    -> f2
-  (_, Nil)    -> f1
+  (Nil, _)                -> f2
+  (_, Nil)                -> f1
   where  cat = joinBin (<=)
 
 -- | Merges two binomial forests with another tree. If we are thinking of the trees 
@@ -365,13 +367,13 @@ merge (<=) f1 f2 = case (f1, f2) of
 -- Each call to this function takes /O(1)/ time, so in total, it costs /O(log n)/.
 carry :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
 carry (<=) t0 f1 f2 = t0 `seq` case (f1, f2) of
-  (Skip f1', Skip f2')  -> Cons t0 (merge (<=) f1' f2')
-  (Skip f1', Cons t2 f2')  -> Skip (mergeCarry t0 t2 f1' f2')
-  (Cons t1 f1', Skip f2')  -> Skip (mergeCarry t0 t1 f1' f2')
+  (Skip f1', Skip f2')    -> Cons t0 (merge (<=) f1' f2')
+  (Skip f1', Cons t2 f2') -> Skip (mergeCarry t0 t2 f1' f2')
+  (Cons t1 f1', Skip f2') -> Skip (mergeCarry t0 t1 f1' f2')
   (Cons t1 f1', Cons t2 f2')
         -> Cons t0 (mergeCarry t1 t2 f1' f2')
-  (Nil, _f2)    -> incr (<=) t0 f2
-  (_f1, Nil)    -> incr (<=) t0 f1
+  (Nil, _f2)              -> incr (<=) t0 f2
+  (_f1, Nil)              -> incr (<=) t0 f1
   where  cat = joinBin (<=)
          mergeCarry tA tB = carry (<=) (tA `cat` tB)
 
@@ -381,7 +383,7 @@ carry (<=) t0 f1 f2 = t0 `seq` case (f1, f2) of
 incr :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a
 incr (<=) t f = t `seq` case f of
   Nil  -> Cons t Nil
-  Skip f  -> Cons t f
+  Skip f     -> Cons t f
   Cons t' f' -> Skip (incr (<=) (t `cat` t') f')
   where  cat = joinBin (<=)
 
@@ -419,11 +421,11 @@ instance Foldable rk => Foldable (BinomTree rk) where
   foldl f z (BinomTree x ts) = foldl f (z `f` x) ts
 
 instance Foldable rk => Foldable (BinomForest rk) where
-  foldr _ z Nil = z
-  foldr f z (Skip tss) = foldr f z tss
+  foldr _ z Nil          = z
+  foldr f z (Skip tss)   = foldr f z tss
   foldr f z (Cons t tss) = foldr f (foldr f z tss) t
-  foldl _ z Nil = z
-  foldl f z (Skip tss) = foldl f z tss
+  foldl _ z Nil          = z
+  foldl f z (Skip tss)   = foldl f z tss
   foldl f z (Cons t tss) = foldl f (foldl f z t) tss
 
 -- instance Traversable Zero where
@@ -464,8 +466,8 @@ seqSpine Empty z = z
 seqSpine (MinQueue _ _ ts) z = seqSpineF ts z
 
 seqSpineF :: BinomForest rk a -> b -> b
-seqSpineF Nil z = z
-seqSpineF (Skip ts') z = seqSpineF ts' z
+seqSpineF Nil z          = z
+seqSpineF (Skip ts') z   = seqSpineF ts' z
 seqSpineF (Cons _ ts') z = seqSpineF ts' z
 
 -- | Constructs a priority queue out of the keys of the specified 'Prio.MinPQueue'.
@@ -475,7 +477,7 @@ keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (keysF (const Zero) ts)
 
 keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
 keysF f ts = case ts of
-  Prio.Nil  -> Nil
+  Prio.Nil       -> Nil
   Prio.Skip ts'  -> Skip (keysF f' ts')
   Prio.Cons (Prio.BinomTree k _ ts) ts'
     -> Cons (BinomTree k (f ts)) (keysF f' ts')
@@ -494,10 +496,10 @@ instance (NFData a, NFRank rk) => NFData (BinomTree rk a) where
   rnf (BinomTree x ts) = x `deepseq` rnfRk ts
 
 instance (NFData a, NFRank rk) => NFData (BinomForest rk a) where
-  rnf Nil = ()
-  rnf (Skip ts) = rnf ts
+  rnf Nil         = ()
+  rnf (Skip ts)   = rnf ts
   rnf (Cons t ts) = t `deepseq` rnf ts
 
 instance NFData a => NFData (MinQueue a) where
-  rnf Empty = ()
+  rnf Empty             = ()
   rnf (MinQueue _ x ts) = x `deepseq` rnf ts
