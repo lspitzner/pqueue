@@ -143,6 +143,11 @@ first' f (a, c) = (f a, c)
 second' :: (b -> c) -> (a, b) -> (a, c)
 second' f (a, b) = (a, f b)
 
+instance Ord k => Monoid (MaxPQueue k a) where
+  mempty = empty
+  mappend = union
+  mconcat = unions
+
 instance (Ord k, Show k, Show a) => Show (MaxPQueue k a) where
   showsPrec p xs = showParen (p > 10) $
     showString "fromDescList " . shows (toDescList xs)
