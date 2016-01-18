@@ -27,7 +27,8 @@ module Data.PQueue.Prio.Internals (
   foldrWithKeyU,
   foldlWithKeyU,
   traverseWithKeyU,
-  seqSpine
+  seqSpine,
+  mapForest
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
@@ -101,7 +102,7 @@ instance (Ord k, Eq a) => Eq (MinPQueue k a) where
 infixr 6 <>
 
 instance (Ord k, Ord a) => Ord (MinPQueue k a) where
-  MinPQ n1 k1 a1 ts1 `compare` MinPQ n2 k2 a2 ts2 =
+  MinPQ _n1 k1 a1 ts1 `compare` MinPQ _n2 k2 a2 ts2 =
     k1 `compare` k2 <> a1 `compare` a2 <> ts1 `cmpHeap` ts2
    where
     ts1 `cmpHeap` ts2 = case (extract ts1, extract ts2) of
@@ -318,7 +319,7 @@ data Extract rk k a = Extract k a (rk k a) (BinomForest rk k a)
 data MExtract rk k a = No | Yes {-# UNPACK #-} !(Extract rk k a)
 
 incrExtract :: LEq k -> Maybe (BinomTree rk k a) -> Extract (Succ rk) k a -> Extract rk k a
-incrExtract (<=) Nothing (Extract k a (Succ t ts) tss)
+incrExtract _    Nothing (Extract k a (Succ t ts) tss)
   = Extract k a ts (Cons t tss)
 incrExtract (<=) (Just t) (Extract k a (Succ t' ts) tss)
   = Extract k a ts (Skip (incr (<=) (meld (<=) t t') tss))

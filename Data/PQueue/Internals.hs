@@ -97,7 +97,7 @@ instance Ord a => Ord (MinQueue a) where
   Empty `compare` Empty = EQ
   Empty `compare` _ = LT
   _ `compare` Empty = GT
-  MinQueue n1 x1 q1 `compare` MinQueue n2 x2 q2 = compare x1 x2 `mappend` cmp' q1 q2 where
+  MinQueue _n1 x1 q1 `compare` MinQueue _n2 x2 q2 = compare x1 x2 `mappend` cmp' q1 q2 where
     cmp' q1 q2 = case (extractHeap q1, extractHeap q2) of
       (Just (x1, q1'), Just (x2, q2'))
         -> compare x1 x2 `mappend` cmp' q1' q2'

@@ -36,6 +36,7 @@ module Data.PQueue.Max (
   getMax,
   deleteMax,
   deleteFindMax,
+  delete,
   maxView,
   -- * Construction operations
   singleton,

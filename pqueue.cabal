@@ -33,5 +33,15 @@ Library {
   if impl(ghc) {
     extensions: DeriveDataTypeable
   }
-  ghc-options: -fdicts-strict
+  ghc-options: {
+    -fdicts-strict
+    -Wall
+    -fno-warn-name-shadowing
+    -fno-warn-unused-imports
+  }
+ if impl(ghc>=7.8) {
+  ghc-options: {
+    -fno-warn-inline-rule-shadowing
+  }
+ }
 }

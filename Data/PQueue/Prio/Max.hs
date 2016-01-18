@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -139,9 +140,6 @@ build f = f (:) []
 
 first' :: (a -> b) -> (a, c) -> (b, c)
 first' f (a, c) = (f a, c)
-
-second' :: (b -> c) -> (a, b) -> (a, c)
-second' f (a, b) = (a, f b)
 
 instance Ord k => Monoid (MaxPQueue k a) where
   mempty = empty
@@ -439,13 +437,13 @@ foldlWithKeyU f z (MaxPQ q) = Q.foldlWithKeyU (\ z -> f z . unDown) z q
 -- | /O(n)/.  An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
-traverseU :: (Applicative f, Ord b) => (a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
+traverseU :: (Applicative f) => (a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
 traverseU = traverseWithKeyU . const
 
 -- | /O(n)/.  An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
-traverseWithKeyU :: (Applicative f, Ord b) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
+traverseWithKeyU :: (Applicative f) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
 traverseWithKeyU f (MaxPQ q) = MaxPQ <$> Q.traverseWithKeyU (f . unDown) q
 
 -- | /O(n)/.  Return all keys of the queue in no particular order.

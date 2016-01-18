@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -137,12 +138,6 @@ build f = f (:) []
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (f .: g) x y = f (g x y)
-
-first' :: (a -> b) -> (a, c) -> (b, c)
-first' f (a, c) = (f a, c)
-
-second' :: (b -> c) -> (a, b) -> (a, c)
-second' f (a, b) = (a, f b)
 
 uncurry' :: (a -> b -> c) -> (a, b) -> c
 uncurry' f (a, b) = f a b
