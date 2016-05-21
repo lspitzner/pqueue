@@ -37,6 +37,7 @@ module Data.PQueue.Prio.Max (
   empty,
   singleton,
   insert,
+  insertBehind,
   union,
   unions, 
   -- * Query
@@ -187,6 +188,11 @@ singleton k a = MaxPQ (Q.singleton (Down k) a)
 -- an element with the specified key into the queue.
 insert :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
 insert k a (MaxPQ q) = MaxPQ (Q.insert (Down k) a q)
+
+-- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element into the priority queue,
+--   putting it behind elements that compare equal to the inserted one.
+insertBehind :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
+insertBehind k a (MaxPQ q) = MaxPQ (Q.insertBehind (Down k) a q)
 
 -- | Amortized /O(log(min(n1, n2)))/, worst-case /O(log(max(n1, n2)))/.  Returns the union
 -- of the two specified queues.

@@ -15,6 +15,7 @@ module Data.PQueue.Internals (
   minView,
   singleton,
   insert,
+  insertBehind,
   union,
   mapMaybe,
   mapEither,
@@ -189,6 +190,11 @@ singleton x = MinQueue 1 x Nil
 -- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element into the priority queue.  
 insert :: Ord a => a -> MinQueue a -> MinQueue a
 insert = insert' (<=)
+
+-- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element into the priority queue,
+--   putting it behind elements that compare equal to the inserted one.
+insertBehind :: Ord a => a -> MinQueue a -> MinQueue a
+insertBehind = insert' (<)
 
 -- | Amortized /O(log (min(n,m)))/, worst-case /O(log (max (n,m)))/.  Take the union of two priority queues.
 union :: Ord a => MinQueue a -> MinQueue a -> MinQueue a

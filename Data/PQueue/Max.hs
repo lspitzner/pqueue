@@ -41,6 +41,7 @@ module Data.PQueue.Max (
   -- * Construction operations
   singleton,
   insert,
+  insertBehind,
   union,
   unions,
   -- * Subsets
@@ -187,6 +188,11 @@ singleton = MaxQ . Min.singleton . Down
 -- | /O(1)/.  Insert an element into the priority queue.  
 insert :: Ord a => a -> MaxQueue a -> MaxQueue a
 x `insert` MaxQ q = MaxQ (Down x `Min.insert` q)
+
+-- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element into the priority queue,
+--   putting it behind elements that compare equal to the inserted one.
+insertBehind :: Ord a => a -> MaxQueue a -> MaxQueue a
+x `insertBehind` MaxQ q = MaxQ (Down x `Min.insertBehind` q)
 
 -- | /O(log (min(n1,n2)))/.  Take the union of two priority queues.
 union :: Ord a => MaxQueue a -> MaxQueue a -> MaxQueue a

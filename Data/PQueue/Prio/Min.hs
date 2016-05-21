@@ -37,6 +37,7 @@ module Data.PQueue.Prio.Min (
   empty,
   singleton,
   insert,
+  insertBehind,
   union,
   unions, 
   -- * Query
