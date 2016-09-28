@@ -47,8 +47,8 @@ checks:
   upper-bounds-exist:
     enabled: True
   changelog:
-    enabled: False
-    location: changelog.md
+    enabled: True
+    location: CHANGELOG.md
   compiler-versions:
     enabled: True
     # for this to work, cabal will need the paths to the actual
