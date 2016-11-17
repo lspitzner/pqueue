@@ -308,14 +308,18 @@ foldlDesc f z (MaxQ q) = Min.foldlAsc (foldl f) z q
 -- | /O(n log n)/.  Extracts the elements of the priority queue in ascending order.
 toAscList :: Ord a => MaxQueue a -> [a]
 toAscList q = build (\ c nil -> foldrAsc c nil q)
+-- I can see no particular reason this does not simply forward to Min.toDescList. (lsp, 2016)
 
 {-# INLINE toDescList #-}
 -- | /O(n log n)/.  Extracts the elements of the priority queue in descending order.
 toDescList :: Ord a => MaxQueue a -> [a]
 toDescList q = build (\ c nil -> foldrDesc c nil q)
+-- I can see no particular reason this does not simply forward to Min.toAscList. (lsp, 2016)
 
 {-# INLINE toList #-}
--- | /O(n)/.  Returns the elements of the priority queue in no particular order.
+-- | /O(n log n)/.  Returns the elements of the priority queue in ascending order.  Equivalent to 'toDescList'.
+-- 
+-- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
 toList (MaxQ q) = map unDown (Min.toList q)
 

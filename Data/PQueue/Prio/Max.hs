@@ -418,7 +418,7 @@ toAscList (MaxPQ q) = fmap (first' unDown) (Q.toDescList q)
 toDescList :: Ord k => MaxPQueue k a -> [(k, a)]
 toDescList (MaxPQ q) = fmap (first' unDown) (Q.toAscList q)
 
--- | /O(n log n)/.  Equivalent to 'toAscList'.
+-- | /O(n log n)/.  Equivalent to 'toDescList'.
 -- 
 -- If the traversal order is irrelevant, consider using 'toListU'.
 toList :: Ord k => MaxPQueue k a -> [(k, a)]

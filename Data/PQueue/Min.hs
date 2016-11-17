@@ -241,7 +241,7 @@ toDescList :: Ord a => MinQueue a -> [a]
 toDescList queue = build (\ c nil -> foldrDesc c nil queue)
 
 {-# INLINE toList #-}
--- | /O(n)/.  Returns the elements of the priority queue in ascending order.  Equivalent to 'toAscList'.
+-- | /O(n log n)/.  Returns the elements of the priority queue in ascending order.  Equivalent to 'toAscList'.
 -- 
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MinQueue a -> [a]
@@ -292,7 +292,7 @@ mapU = mapMonotonic
 elemsU :: MinQueue a -> [a]
 elemsU = toListU
 
--- | Returns the elements of the queue, in no particular order.
+-- | /O(n)/.  Returns the elements of the queue, in no particular order.
 toListU :: MinQueue a -> [a]
 toListU q = build (\ c n -> foldrU c n q)
 
