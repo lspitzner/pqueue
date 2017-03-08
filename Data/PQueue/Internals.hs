@@ -85,29 +85,32 @@ type BinomHeap = BinomForest Zero
 
 instance Ord a => Eq (MinQueue a) where
   Empty == Empty = True
-  MinQueue n1 x1 q1 == MinQueue n2 x2 q2 = n1 == n2 && x1 == x2 && eq' q1 q2 where
-    eq' q1 q2 = case (extractHeap q1, extractHeap q2) of
-      (Just (x1, q1'), Just (x2, q2'))
-        -> x1 == x2 && eq' q1' q2'
-      (Nothing, Nothing)
-        -> True
-      _ -> False
+  MinQueue n1 x1 q1 == MinQueue n2 x2 q2 =
+    n1 == n2 && eqExtract (x1,q1) (x2,q2)
   _ == _ = False
+
+eqExtract :: Ord a => (a, BinomHeap a) -> (a, BinomHeap a) -> Bool
+eqExtract (x1,q1) (x2,q2) =
+  x1 == x2 &&
+  case (extractHeap q1, extractHeap q2) of
+    (Just h1, Just h2) -> eqExtract h1 h2
+    (Nothing, Nothing) -> True
+    _ -> False
 
 instance Ord a => Ord (MinQueue a) where
   Empty `compare` Empty = EQ
   Empty `compare` _ = LT
   _ `compare` Empty = GT
-  MinQueue _n1 x1 q1 `compare` MinQueue _n2 x2 q2 = compare x1 x2 `mappend` cmp' q1 q2 where
-    cmp' q1 q2 = case (extractHeap q1, extractHeap q2) of
-      (Just (x1, q1'), Just (x2, q2'))
-        -> compare x1 x2 `mappend` cmp' q1' q2'
-      (Nothing, Nothing)
-        -> EQ
-      (Just{}, Nothing)
-        -> GT
-      (Nothing, Just{})
-        -> LT
+  MinQueue _n1 x1 q1 `compare` MinQueue _n2 x2 q2 = cmpExtract (x1,q1) (x2,q2)
+
+cmpExtract :: Ord a => (a, BinomHeap a) -> (a, BinomHeap a) -> Ordering
+cmpExtract (x1,q1) (x2,q2) =
+  compare x1 x2 `mappend`
+  case (extractHeap q1, extractHeap q2) of
+    (Just h1, Just h2) -> cmpExtract h1 h2
+    (Nothing, Nothing) -> EQ
+    (Just _, Nothing) -> GT
+    (Nothing, Just _) -> LT
       
     -- We compare their first elements, then their other elements up to the smaller queue's length,
     -- and then the longer queue wins.
