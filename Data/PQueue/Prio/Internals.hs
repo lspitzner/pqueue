@@ -94,7 +94,6 @@ instance (Ord k, Eq a) => Eq (MinPQueue k a) where
                -> k1 == k2 && a1 == a2 && equHeap ts1' ts2'
       (No, No) -> True
       _        -> False
-    extract = extractForest (<=)
   Empty == Empty = True
   _     == _     = False
 
@@ -112,7 +111,6 @@ instance (Ord k, Ord a) => Ord (MinPQueue k a) where
       (No, Yes{}) -> LT
       (Yes{}, No) -> GT
       (No, No)    -> EQ
-    extract = extractForest (<=)
   Empty `compare` Empty   = EQ
   Empty `compare` MinPQ{} = LT
   MinPQ{} `compare` Empty = GT
@@ -221,7 +219,6 @@ mapEitherWithKey f (MinPQ _ k a ts) = either (first' . insert k) (second' . inse
 foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> MinPQueue k a -> b
 foldrWithKey _ z Empty = z
 foldrWithKey f z (MinPQ _ k a ts) = f k a (foldF ts) where
-  extract = extractForest (<=)
   foldF ts = case extract ts of
     Yes (Extract k a _ ts') -> f k a (foldF ts')
     _                       -> z
@@ -233,7 +230,6 @@ foldrWithKey f z (MinPQ _ k a ts) = f k a (foldF ts) where
 foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKey _ z Empty = z
 foldlWithKey f z (MinPQ _ k a ts) = foldF (f z k a) ts where
-  extract = extractForest (<=)
   foldF z ts = case extract ts of
     Yes (Extract k a _ ts') -> foldF (f z k a) ts'
     _                       -> z
@@ -346,6 +342,9 @@ extractForest (<=) (Cons t@(BinomTree k a ts) tss) = Yes $ case extractForest (<
   _            -> Extract k a ts (Skip tss)
   where
     a <? b = not (b <= a)
+
+extract :: (Ord k) => BinomForest rk k a -> MExtract rk k a
+extract = extractForest (<=)
 
 -- | Utility function for mapping over a forest.
 mapForest :: (k -> a -> b) -> (rk k a -> rk k b) -> BinomForest rk k a -> BinomForest rk k b
