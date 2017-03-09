@@ -162,9 +162,9 @@ insertBehind = insert' (<)
 -- | Internal helper method, using a specific comparator function.
 insert' :: CompF k -> k -> a -> MinPQueue k a -> MinPQueue k a
 insert' _ k a Empty = singleton k a
-insert' (<=) k a (MinPQ n k' a' ts)
-  | k <= k'    = MinPQ (n+1) k  a  (incr (<=) (tip k' a') ts)
-  | otherwise  = MinPQ (n+1) k' a' (incr (<=) (tip k  a ) ts)
+insert' le k a (MinPQ n k' a' ts)
+  | k `le` k'  = MinPQ (n+1) k  a  (incr le (tip k' a') ts)
+  | otherwise  = MinPQ (n+1) k' a' (incr le (tip k  a ) ts)
 
 -- | Amortized /O(log(min(n1, n2)))/, worst-case /O(log(max(n1, n2)))/.  Returns the union
 -- of the two specified queues.
@@ -173,10 +173,10 @@ union = union' (<=)
 
 -- | Takes the union of the two specified queues, using the given comparison function.
 union' :: CompF k -> MinPQueue k a -> MinPQueue k a -> MinPQueue k a
-union' (<=) (MinPQ n1 k1 a1 ts1) (MinPQ n2 k2 a2 ts2)
-  | k1 <= k2   = MinPQ (n1 + n2) k1 a1 (insMerge k2 a2)
+union' le (MinPQ n1 k1 a1 ts1) (MinPQ n2 k2 a2 ts2)
+  | k1 `le` k2 = MinPQ (n1 + n2) k1 a1 (insMerge k2 a2)
   | otherwise  = MinPQ (n1 + n2) k2 a2 (insMerge k1 a1)
-  where  insMerge k a = carryForest (<=) (tip k a) ts1 ts2
+  where  insMerge k a = carryForest le (tip k a) ts1 ts2
 union' _ Empty q2 = q2
 union' _ q1 Empty = q1
 
@@ -261,38 +261,38 @@ tip k a = BinomTree k a Zero
 
 -- | /O(1)/.  Takes the union of two binomial trees of the same rank.
 meld :: CompF k -> BinomTree rk k a -> BinomTree rk k a -> BinomTree (Succ rk) k a
-meld (<=) t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
-  | k1 <= k2   = BinomTree k1 v1 (Succ t2 ts1)
+meld le t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
+  | k1 `le` k2 = BinomTree k1 v1 (Succ t2 ts1)
   | otherwise  = BinomTree k2 v2 (Succ t1 ts2)
 
 -- | Takes the union of two binomial forests, starting at the same rank.  Analogous to binary addition.
 mergeForest :: CompF k -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
-mergeForest (<=) f1 f2 = case (f1, f2) of
-  (Skip ts1, Skip ts2)       -> Skip (mergeForest (<=) ts1 ts2)
-  (Skip ts1, Cons t2 ts2)    -> Cons t2 (mergeForest (<=) ts1 ts2)
-  (Cons t1 ts1, Skip ts2)    -> Cons t1 (mergeForest (<=) ts1 ts2)
-  (Cons t1 ts1, Cons t2 ts2) -> Skip (carryForest (<=) (meld (<=) t1 t2) ts1 ts2)
+mergeForest le f1 f2 = case (f1, f2) of
+  (Skip ts1, Skip ts2)       -> Skip (mergeForest le ts1 ts2)
+  (Skip ts1, Cons t2 ts2)    -> Cons t2 (mergeForest le ts1 ts2)
+  (Cons t1 ts1, Skip ts2)    -> Cons t1 (mergeForest le ts1 ts2)
+  (Cons t1 ts1, Cons t2 ts2) -> Skip (carryForest le (meld le t1 t2) ts1 ts2)
   (Nil, _)                   -> f2
   (_, Nil)                   -> f1
 
 -- | Takes the union of two binomial forests, starting at the same rank, with an additional tree.  
 -- Analogous to binary addition when a digit has been carried.
 carryForest :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
-carryForest (<=) t0 f1 f2 = t0 `seq` case (f1, f2) of
+carryForest le t0 f1 f2 = t0 `seq` case (f1, f2) of
   (Cons t1 ts1, Cons t2 ts2) -> Cons t0 (carryMeld t1 t2 ts1 ts2)
   (Cons t1 ts1, Skip ts2)    -> Skip (carryMeld t0 t1 ts1 ts2)
   (Skip ts1, Cons t2 ts2)    -> Skip (carryMeld t0 t2 ts1 ts2)
-  (Skip ts1, Skip ts2)       -> Cons t0 (mergeForest (<=) ts1 ts2)
-  (Nil, _)                   -> incr (<=) t0 f2
-  (_, Nil)                   -> incr (<=) t0 f1
-  where  carryMeld = carryForest (<=) .: meld (<=)
+  (Skip ts1, Skip ts2)       -> Cons t0 (mergeForest le ts1 ts2)
+  (Nil, _)                   -> incr le t0 f2
+  (_, Nil)                   -> incr le t0 f1
+  where  carryMeld = carryForest le .: meld le
 
 -- | Inserts a binomial tree into a binomial forest.  Analogous to binary incrementation.
 incr :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
-incr (<=) t ts = t `seq` case ts of
+incr le t ts = t `seq` case ts of
   Nil         -> Cons t Nil
   Skip ts'    -> Cons t ts'
-  Cons t' ts' -> Skip (incr (<=) (meld (<=) t t') ts')
+  Cons t' ts' -> Skip (incr le (meld le t t') ts')
 
 -- | Inserts a binomial tree into a binomial forest.  Assumes that the root of this tree
 -- is less than all other roots.  Analogous to binary incrementation.  Equivalent to
@@ -304,7 +304,7 @@ incrMin t@(BinomTree k a ts) tss = case tss of
   Cons t' tss' -> Skip (incrMin (BinomTree k a (Succ t' ts)) tss')
 
 extractHeap :: CompF k -> Int -> BinomHeap k a -> MinPQueue k a
-extractHeap (<=) n ts = n `seq` case extractForest (<=) ts of
+extractHeap le n ts = n `seq` case extractForest le ts of
   No                      -> Empty
   Yes (Extract k a _ ts') -> MinPQ (n-1) k a ts'
 
@@ -339,23 +339,23 @@ data MExtract rk k a = No | Yes {-# UNPACK #-} !(Extract rk k a)
 incrExtract :: CompF k -> Maybe (BinomTree rk k a) -> Extract (Succ rk) k a -> Extract rk k a
 incrExtract _ Nothing (Extract k a (Succ t ts) tss)
   = Extract k a ts (Cons t tss)
-incrExtract (<=) (Just t) (Extract k a (Succ t' ts) tss)
-  = Extract k a ts (Skip (incr (<=) (meld (<=) t t') tss))
+incrExtract le (Just t) (Extract k a (Succ t' ts) tss)
+  = Extract k a ts (Skip (incr le (meld le t t') tss))
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress.  Each successive application of @extractBin@ takes
 -- amortized /O(1)/ time, so applying it from the beginning takes /O(log n)/ time.
 extractForest :: CompF k -> BinomForest rk k a -> MExtract rk k a
 extractForest _ Nil = No
-extractForest (<=) (Skip tss) = case extractForest (<=) tss of
+extractForest le (Skip tss) = case extractForest le tss of
   No     -> No
-  Yes ex -> Yes (incrExtract (<=) Nothing ex)
-extractForest (<=) (Cons t@(BinomTree k a0 ts) tss) = Yes $ case extractForest (<=) tss of
+  Yes ex -> Yes (incrExtract le Nothing ex)
+extractForest le (Cons t@(BinomTree k a0 ts) tss) = Yes $ case extractForest le tss of
   Yes ex@(Extract k' _ _ _)
-    | k' <? k  -> incrExtract (<=) (Just t) ex
+    | k' <? k  -> incrExtract le (Just t) ex
   _            -> Extract k a0 ts (Skip tss)
   where
-    a <? b = not (b <= a)
+    a <? b = not (b `le` a)
 
 extract :: (Ord k) => BinomForest rk k a -> MExtract rk k a
 extract = extractForest (<=)
@@ -373,26 +373,26 @@ mapForest f fCh ts0 = case ts0 of
 -- | Utility function for mapping a 'Maybe' function over a forest.
 mapMaybeF :: CompF k -> (k -> a -> Maybe b) -> (rk k a -> MinPQueue k b) ->
   BinomForest rk k a -> MinPQueue k b
-mapMaybeF (<=) f fCh ts0 = case ts0 of
+mapMaybeF le f fCh ts0 = case ts0 of
   Nil    -> Empty
-  Skip ts'  -> mapMaybeF (<=) f fCh' ts'
+  Skip ts'  -> mapMaybeF le f fCh' ts'
   Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapMaybeF (<=) f fCh' ts')
-  where  insF k a = maybe id (insert' (<=) k) (f k a) .: union' (<=)
+      -> insF k a (fCh ts) (mapMaybeF le f fCh' ts')
+  where  insF k a = maybe id (insert' le k) (f k a) .: union' le
          fCh' (Succ (BinomTree k a ts) tss) =
            insF k a (fCh ts) (fCh tss)
 
 -- | Utility function for mapping an 'Either' function over a forest.
 mapEitherF :: CompF k -> (k -> a -> Either b c) -> (rk k a -> (MinPQueue k b, MinPQueue k c)) ->
   BinomForest rk k a -> (MinPQueue k b, MinPQueue k c)
-mapEitherF (<=) f0 fCh ts0 = case ts0 of
+mapEitherF le f0 fCh ts0 = case ts0 of
   Nil    -> (Empty, Empty)
-  Skip ts'  -> mapEitherF (<=) f0 fCh' ts'
+  Skip ts'  -> mapEitherF le f0 fCh' ts'
   Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapEitherF (<=) f0 fCh' ts')
+      -> insF k a (fCh ts) (mapEitherF le f0 fCh' ts')
   where
-    insF k a = either (first' . insert' (<=) k) (second' . insert' (<=) k) (f0 k a) .:
-      (union' (<=) `both` union' (<=))
+    insF k a = either (first' . insert' le k) (second' . insert' le k) (f0 k a) .:
+      (union' le `both` union' le)
     fCh' (Succ (BinomTree k a ts) tss) =
       insF k a (fCh ts) (fCh tss)
     both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)

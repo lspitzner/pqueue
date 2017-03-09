@@ -43,7 +43,6 @@ Library {
   ghc-options: {
     -fdicts-strict
     -Wall
-    -fno-warn-name-shadowing
     -fno-warn-unused-imports
   }
  if impl(ghc>=7.8) {
