@@ -232,7 +232,7 @@ mapEitherWithKey f (MinPQ _ k a ts) = either (first' . insert k) (second' . inse
 -- If you do not care about the traversal order, consider using 'foldrWithKeyU'.
 foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> MinPQueue k a -> b
 foldrWithKey _ z Empty = z
-foldrWithKey f z (MinPQ _ k a ts) = f k a (foldF ts) where
+foldrWithKey f z (MinPQ _ k0 a0 ts0) = f k0 a0 (foldF ts0) where
   foldF ts = case extract ts of
     Yes (Extract k a _ ts') -> f k a (foldF ts')
     _                       -> z
@@ -243,7 +243,7 @@ foldrWithKey f z (MinPQ _ k a ts) = f k a (foldF ts) where
 -- If you do not care about the traversal order, consider using 'foldlWithKeyU'.
 foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKey _ z Empty = z
-foldlWithKey f z (MinPQ _ k a ts) = foldF (f z k a) ts where
+foldlWithKey f z0 (MinPQ _ k0 a0 ts0) = foldF (f z0 k0 a0) ts0 where
   foldF z ts = case extract ts of
     Yes (Extract k a _ ts') -> foldF (f z k a) ts'
     _                       -> z
@@ -350,10 +350,10 @@ extractForest _ Nil = No
 extractForest (<=) (Skip tss) = case extractForest (<=) tss of
   No     -> No
   Yes ex -> Yes (incrExtract (<=) Nothing ex)
-extractForest (<=) (Cons t@(BinomTree k a ts) tss) = Yes $ case extractForest (<=) tss of
+extractForest (<=) (Cons t@(BinomTree k a0 ts) tss) = Yes $ case extractForest (<=) tss of
   Yes ex@(Extract k' _ _ _)
     | k' <? k  -> incrExtract (<=) (Just t) ex
-  _            -> Extract k a ts (Skip tss)
+  _            -> Extract k a0 ts (Skip tss)
   where
     a <? b = not (b <= a)
 
@@ -362,7 +362,7 @@ extract = extractForest (<=)
 
 -- | Utility function for mapping over a forest.
 mapForest :: (k -> a -> b) -> (rk k a -> rk k b) -> BinomForest rk k a -> BinomForest rk k b
-mapForest f fCh ts = case ts of
+mapForest f fCh ts0 = case ts0 of
   Nil      -> Nil
   Skip ts' -> Skip (mapForest f fCh' ts')
   Cons (BinomTree k a ts) tss
@@ -373,7 +373,7 @@ mapForest f fCh ts = case ts of
 -- | Utility function for mapping a 'Maybe' function over a forest.
 mapMaybeF :: CompF k -> (k -> a -> Maybe b) -> (rk k a -> MinPQueue k b) ->
   BinomForest rk k a -> MinPQueue k b
-mapMaybeF (<=) f fCh ts = case ts of
+mapMaybeF (<=) f fCh ts0 = case ts0 of
   Nil    -> Empty
   Skip ts'  -> mapMaybeF (<=) f fCh' ts'
   Cons (BinomTree k a ts) ts'
@@ -385,13 +385,13 @@ mapMaybeF (<=) f fCh ts = case ts of
 -- | Utility function for mapping an 'Either' function over a forest.
 mapEitherF :: CompF k -> (k -> a -> Either b c) -> (rk k a -> (MinPQueue k b, MinPQueue k c)) ->
   BinomForest rk k a -> (MinPQueue k b, MinPQueue k c)
-mapEitherF (<=) f fCh ts = case ts of
+mapEitherF (<=) f0 fCh ts0 = case ts0 of
   Nil    -> (Empty, Empty)
-  Skip ts'  -> mapEitherF (<=) f fCh' ts'
+  Skip ts'  -> mapEitherF (<=) f0 fCh' ts'
   Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapEitherF (<=) f fCh' ts')
+      -> insF k a (fCh ts) (mapEitherF (<=) f0 fCh' ts')
   where
-    insF k a = either (first' . insert' (<=) k) (second' . insert' (<=) k) (f k a) .: 
+    insF k a = either (first' . insert' (<=) k) (second' . insert' (<=) k) (f0 k a) .:
       (union' (<=) `both` union' (<=))
     fCh' (Succ (BinomTree k a ts) tss) =
       insF k a (fCh ts) (fCh tss)
@@ -405,7 +405,7 @@ foldrWithKeyU f z (MinPQ _ k a ts) = f k a (foldrWithKeyF_ f (const id) ts z)
 -- | /O(n)/.  An unordered left fold over the elements of the queue, in no particular order.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU _ z Empty = z
-foldlWithKeyU f z (MinPQ _ k a ts) = foldlWithKeyF_ (\ k a z -> f z k a) (const id) ts (f z k a)
+foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\ k a z -> f z k a) (const id) ts (f z0 k0 a0)
 
 traverseWithKeyU :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKeyU _ Empty = pure Empty
@@ -414,7 +414,7 @@ traverseWithKeyU f (MinPQ n k a ts) = MinPQ n k <$> f k a <*> traverseForest f (
 {-# SPECIALIZE traverseForest :: (k -> a -> Identity b) -> (rk k a -> Identity (rk k b)) -> BinomForest rk k a ->
   Identity (BinomForest rk k b) #-}
 traverseForest :: (Applicative f) => (k -> a -> f b) -> (rk k a -> f (rk k b)) -> BinomForest rk k a -> f (BinomForest rk k b)
-traverseForest f fCh ts = case ts of
+traverseForest f fCh ts0 = case ts0 of
   Nil       -> pure Nil
   Skip ts'  -> Skip <$> traverseForest f fCh' ts'
   Cons (BinomTree k a ts) tss
@@ -425,18 +425,18 @@ traverseForest f fCh ts = case ts of
 
 -- | Unordered right fold on a binomial forest.
 foldrWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b
-foldrWithKeyF_ f fCh ts z = case ts of
-  Nil    -> z
-  Skip ts'  -> foldrWithKeyF_ f fCh' ts' z
+foldrWithKeyF_ f fCh ts0 z0 = case ts0 of
+  Nil    -> z0
+  Skip ts'  -> foldrWithKeyF_ f fCh' ts' z0
   Cons (BinomTree k a ts) ts'
-    -> f k a (fCh ts (foldrWithKeyF_ f fCh' ts' z))
+    -> f k a (fCh ts (foldrWithKeyF_ f fCh' ts' z0))
   where
     fCh' (Succ (BinomTree k a ts) tss) z =
       f k a (fCh ts (fCh tss z))
 
 -- | Unordered left fold on a binomial forest.
 foldlWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b
-foldlWithKeyF_ f fCh ts = case ts of
+foldlWithKeyF_ f fCh ts0 = case ts0 of
   Nil    -> id
   Skip ts'  -> foldlWithKeyF_ f fCh' ts'
   Cons (BinomTree k a ts) ts'
@@ -447,7 +447,7 @@ foldlWithKeyF_ f fCh ts = case ts of
 
 -- | Maps a monotonic function over the keys in a binomial forest.
 mapKeysMonoF :: (k -> k') -> (rk k a -> rk k' a) -> BinomForest rk k a -> BinomForest rk k' a
-mapKeysMonoF f fCh ts = case ts of
+mapKeysMonoF f fCh ts0 = case ts0 of
   Nil    -> Nil
   Skip ts'  -> Skip (mapKeysMonoF f fCh' ts')
   Cons (BinomTree k a ts) ts'
@@ -458,8 +458,8 @@ mapKeysMonoF f fCh ts = case ts of
 
 -- | /O(log n)/.  Analogous to @deepseq@ in the @deepseq@ package, but only forces the spine of the binomial heap.
 seqSpine :: MinPQueue k a -> b -> b
-seqSpine Empty z = z
-seqSpine (MinPQ _ _ _ ts) z = ts `seqSpineF` z where
+seqSpine Empty z0 = z0
+seqSpine (MinPQ _ _ _ ts0) z0 = ts0 `seqSpineF` z0 where
   seqSpineF :: BinomForest rk k a -> b -> b
   seqSpineF ts z = case ts of
     Nil        -> z

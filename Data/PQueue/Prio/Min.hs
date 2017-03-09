@@ -253,10 +253,10 @@ take n = List.take n . toAscList
 
 -- | /O(k log n)/.  Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
 drop :: Ord k => Int -> MinPQueue k a -> MinPQueue k a
-drop n q 
-  | n <= 0  = q
-  | n >= size q  = empty
-  | otherwise  = drop' n q
+drop n0 q0
+  | n0 <= 0  = q0
+  | n0 >= size q0  = empty
+  | otherwise  = drop' n0 q0
   where
     drop' n q
       | n == 0    = q
@@ -280,7 +280,7 @@ takeWhile = takeWhileWithKey . const
 -- | Takes the longest possible prefix of elements satisfying the predicate.
 -- (@'takeWhile' p q == 'List.takeWhile' (uncurry p) ('toAscList' q)@)
 takeWhileWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> [(k, a)]
-takeWhileWithKey p = takeWhileFB (uncurry' p) . toAscList where
+takeWhileWithKey p0 = takeWhileFB (uncurry' p0) . toAscList where
   takeWhileFB p xs = build (\ c n -> foldr (\ x z -> if p x then x `c` z else n) n xs)
 
 -- | Removes the longest possible prefix of elements satisfying the predicate.

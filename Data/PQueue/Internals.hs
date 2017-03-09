@@ -244,7 +244,7 @@ foldlAsc f z (MinQueue _ x ts) = foldlUnfold f (z `f` x) extractHeap ts
 {-# INLINE foldlUnfold #-}
 -- | @foldlUnfold f z suc s0@ is equivalent to @foldl f z (unfoldr suc s0)@.
 foldlUnfold :: (c -> a -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
-foldlUnfold f z suc s0 = unf z s0 where
+foldlUnfold f z0 suc s0 = unf z0 s0 where
   unf z s = case suc s of
     Nothing      -> z
     Just (x, s') -> unf (z `f` x) s'
@@ -324,20 +324,20 @@ mapMaybeQueue f (<=) fCh q0 forest = q0 `seq` case forest of
   Skip forest'  -> mapMaybeQueue f (<=) fCh' q0 forest'
   Cons t forest'  -> mapMaybeQueue f (<=) fCh' (union' (<=) (mapMaybeT t) q0) forest'
   where fCh' (Succ t tss) = union' (<=) (mapMaybeT t) (fCh tss)
-        mapMaybeT (BinomTree x ts) = maybe (fCh ts) (\ x -> insert' (<=) x (fCh ts)) (f x)
+        mapMaybeT (BinomTree x0 ts) = maybe (fCh ts) (\ x -> insert' (<=) x (fCh ts)) (f x0)
 
 type Partition a b = (MinQueue a, MinQueue b)
 
 mapEitherQueue :: (a -> Either b c) -> LEq b -> LEq c -> (rk a -> Partition b c) -> Partition b c ->
   BinomForest rk a -> Partition b c
-mapEitherQueue f (<=) (<=.) fCh (q0, q1) ts = q0 `seq` q1 `seq` case ts of
-  Nil        -> (q0, q1)
-  Skip ts'   -> mapEitherQueue f (<=) (<=.) fCh' (q0, q1) ts'
-  Cons t ts' -> mapEitherQueue f (<=) (<=.) fCh' (both (union' (<=)) (union' (<=.)) (partitionT t) (q0, q1)) ts'
+mapEitherQueue f0 (<=) (<=.) fCh (q00, q10) ts0 = q00 `seq` q10 `seq` case ts0 of
+  Nil        -> (q00, q10)
+  Skip ts'   -> mapEitherQueue f0 (<=) (<=.) fCh' (q00, q10) ts'
+  Cons t ts' -> mapEitherQueue f0 (<=) (<=.) fCh' (both (union' (<=)) (union' (<=.)) (partitionT t) (q00, q10)) ts'
   where  both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)
          fCh' (Succ t tss) = both (union' (<=)) (union' (<=.)) (partitionT t) (fCh tss)
          partitionT (BinomTree x ts) = case fCh ts of
-           (q0, q1) -> case f x of
+           (q0, q1) -> case f0 x of
              Left b  -> (insert' (<=) b q0, q1)
              Right c  -> (q0, insert' (<=.) c q1)
 
@@ -390,7 +390,7 @@ carry (<=) t0 f1 f2 = t0 `seq` case (f1, f2) of
 -- of the trees in the binomial forest as binary digits, this corresponds
 -- to adding a power of 2.  This costs amortized /O(1)/ time.
 incr :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a
-incr (<=) t f = t `seq` case f of
+incr (<=) t f0 = t `seq` case f0 of
   Nil  -> Cons t Nil
   Skip f     -> Cons t f
   Cons t' f' -> Skip (incr (<=) (t `cat` t') f')
@@ -485,7 +485,7 @@ keysQueue Prio.Empty = Empty
 keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (keysF (const Zero) ts)
 
 keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
-keysF f ts = case ts of
+keysF f ts0 = case ts0 of
   Prio.Nil       -> Nil
   Prio.Skip ts'  -> Skip (keysF f' ts')
   Prio.Cons (Prio.BinomTree k _ ts) ts'
