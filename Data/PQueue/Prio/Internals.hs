@@ -87,33 +87,47 @@ type CompF a = a -> a -> Bool
 
 instance (Ord k, Eq a) => Eq (MinPQueue k a) where
   MinPQ n1 k1 a1 ts1 == MinPQ n2 k2 a2 ts2 =
-    n1 == n2 && k1 == k2 && a1 == a2 && equHeap ts1 ts2
-   where
-    equHeap ts1 ts2 = case (extract ts1, extract ts2) of
-      (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
-               -> k1 == k2 && a1 == a2 && equHeap ts1' ts2'
-      (No, No) -> True
-      _        -> False
+    n1 == n2 && eqExtract k1 a1 ts1 k2 a2 ts2
   Empty == Empty = True
   _     == _     = False
+
+eqExtract ::
+  (Ord k, Eq a) =>
+  k -> a -> BinomForest rk k a ->
+  k -> a -> BinomForest rk k a ->
+  Bool
+eqExtract k10 a10 ts10 k20 a20 ts20 =
+  k10 == k20 && a10 == a20 &&
+  case (extract ts10, extract ts20) of
+    (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
+             -> eqExtract k1 a1 ts1' k2 a2 ts2'
+    (No, No) -> True
+    _        -> False
 
 (<>) :: Monoid m => m -> m -> m
 (<>) = mappend
 infixr 6 <>
 
 instance (Ord k, Ord a) => Ord (MinPQueue k a) where
-  MinPQ _n1 k1 a1 ts1 `compare` MinPQ _n2 k2 a2 ts2 =
-    k1 `compare` k2 <> a1 `compare` a2 <> ts1 `cmpHeap` ts2
-   where
-    ts1 `cmpHeap` ts2 = case (extract ts1, extract ts2) of
-      (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
-                  -> k1 `compare` k2 <> a1 `compare` a2 <> ts1' `cmpHeap` ts2'
-      (No, Yes{}) -> LT
-      (Yes{}, No) -> GT
-      (No, No)    -> EQ
+  MinPQ _n1 k10 a10 ts10 `compare` MinPQ _n2 k20 a20 ts20 =
+    cmpExtract k10 a10 ts10 k20 a20 ts20
   Empty `compare` Empty   = EQ
   Empty `compare` MinPQ{} = LT
   MinPQ{} `compare` Empty = GT
+
+cmpExtract ::
+  (Ord k, Ord a) =>
+  k -> a -> BinomForest rk k a ->
+  k -> a -> BinomForest rk k a ->
+  Ordering
+cmpExtract k10 a10 ts10 k20 a20 ts20 =
+  k10 `compare` k20 <> a10 `compare` a20 <>
+  case (extract ts10, extract ts20) of
+    (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
+                -> cmpExtract k1 a1 ts1' k2 a2 ts2'
+    (No, Yes{}) -> LT
+    (Yes{}, No) -> GT
+    (No, No)    -> EQ
 
 -- | /O(1)/.  Returns the empty priority queue.
 empty :: MinPQueue k a
