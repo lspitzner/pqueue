@@ -119,7 +119,7 @@ module Data.PQueue.Prio.Min (
 import Control.Applicative (Applicative, pure, (<*>), (<$>))
 
 import qualified Data.List as List
-import qualified Data.Foldable as Fold
+import qualified Data.Foldable as Fold(Foldable(..))
 import Data.Monoid (Monoid(mempty, mappend, mconcat))
 import Data.Traversable (Traversable(traverse))
 import Data.Foldable (Foldable)

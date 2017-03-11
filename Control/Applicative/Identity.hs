@@ -2,6 +2,8 @@ module Control.Applicative.Identity where
 
 import Control.Applicative
 
+import Prelude
+
 newtype Identity a = Identity {runIdentity :: a}
 
 instance Functor Identity where
