@@ -2,20 +2,20 @@
 
 module Data.PQueue.Prio.Max.Internals where
 
-import Control.Applicative
-import Control.DeepSeq
+import Control.DeepSeq (NFData(rnf))
 
-import Data.Foldable
-import Data.Traversable
+import Data.Traversable (Traversable(traverse))
+import Data.Foldable (Foldable(foldr, foldl))
+import Data.Functor ((<$>))
 # if __GLASGOW_HASKELL__
-import Data.Data
+import Data.Data (Data, Typeable)
 # endif
 
 import Prelude hiding (foldr, foldl)
 
 import Data.PQueue.Prio.Internals (MinPQueue)
 
-newtype Down a = Down {unDown :: a} 
+newtype Down a = Down {unDown :: a}
 # if __GLASGOW_HASKELL__
   deriving (Eq, Data, Typeable)
 # else

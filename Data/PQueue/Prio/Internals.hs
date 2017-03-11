@@ -33,10 +33,11 @@ module Data.PQueue.Prio.Internals (
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
-import Control.Applicative.Identity
-import Control.DeepSeq
+import Control.Applicative.Identity (Identity(Identity, runIdentity))
+import Control.DeepSeq (NFData(rnf), deepseq)
 
 import Data.Monoid (Monoid (..))
+
 import Prelude hiding (null)
 
 #if __GLASGOW_HASKELL__
@@ -73,7 +74,7 @@ data MinPQueue k a = Empty | MinPQ {-# UNPACK #-} !Int k a (BinomHeap k a)
   deriving (Typeable)
 #endif
 
-data BinomForest rk k a = 
+data BinomForest rk k a =
   Nil |
   Skip (BinomForest (Succ rk) k a) |
   Cons {-# UNPACK #-} !(BinomTree rk k a) (BinomForest (Succ rk) k a)
@@ -152,7 +153,7 @@ singleton k a = MinPQ 1 k a Nil
 insert :: Ord k => k -> a -> MinPQueue k a -> MinPQueue k a
 insert = insert' (<=)
 
--- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element 
+-- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element
 --   with the specified key into the priority queue,
 --   putting it behind elements whos key compares equal to the
 --   inserted one.
@@ -223,12 +224,12 @@ mapMaybeWithKey f (MinPQ _ k a ts) = maybe id (insert k) (f k a) (mapMaybeF (<=)
 -- | /O(n)/.  Map values and separate the 'Left' and 'Right' results.
 mapEitherWithKey :: Ord k => (k -> a -> Either b c) -> MinPQueue k a -> (MinPQueue k b, MinPQueue k c)
 mapEitherWithKey _ Empty            = (Empty, Empty)
-mapEitherWithKey f (MinPQ _ k a ts) = either (first' . insert k) (second' . insert k) (f k a) 
+mapEitherWithKey f (MinPQ _ k a ts) = either (first' . insert k) (second' . insert k) (f k a)
   (mapEitherF (<=) f (const (Empty, Empty)) ts)
 
--- | /O(n log n)/.  Fold the keys and values in the map, such that 
+-- | /O(n log n)/.  Fold the keys and values in the map, such that
 -- @'foldrWithKey' f z q == 'List.foldr' ('uncurry' f) z ('toAscList' q)@.
--- 
+--
 -- If you do not care about the traversal order, consider using 'foldrWithKeyU'.
 foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> MinPQueue k a -> b
 foldrWithKey _ z Empty = z
@@ -237,9 +238,9 @@ foldrWithKey f z (MinPQ _ k0 a0 ts0) = f k0 a0 (foldF ts0) where
     Yes (Extract k a _ ts') -> f k a (foldF ts')
     _                       -> z
 
--- | /O(n log n)/.  Fold the keys and values in the map, such that 
+-- | /O(n log n)/.  Fold the keys and values in the map, such that
 -- @'foldlWithKey' f z q == 'List.foldl' ('uncurry' . f) z ('toAscList' q)@.
--- 
+--
 -- If you do not care about the traversal order, consider using 'foldlWithKeyU'.
 foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKey _ z Empty = z
@@ -275,7 +276,7 @@ mergeForest le f1 f2 = case (f1, f2) of
   (Nil, _)                   -> f2
   (_, Nil)                   -> f1
 
--- | Takes the union of two binomial forests, starting at the same rank, with an additional tree.  
+-- | Takes the union of two binomial forests, starting at the same rank, with an additional tree.
 -- Analogous to binary addition when a digit has been carried.
 carryForest :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
 carryForest le t0 f1 f2 = t0 `seq` case (f1, f2) of
@@ -310,27 +311,27 @@ extractHeap le n ts = n `seq` case extractForest le ts of
 
 -- | A specialized type intended to organize the return of extract-min queries
 -- from a binomial forest.  We walk all the way through the forest, and then
--- walk backwards.  @Extract rk a@ is the result type of an extract-min 
+-- walk backwards.  @Extract rk a@ is the result type of an extract-min
 -- operation that has walked as far backwards of rank @rk@ -- that is, it
 -- has visited every root of rank @>= rk@.
--- 
+--
 -- The interpretation of @Extract minKey minVal children forest@ is
--- 
+--
 --   * @minKey@ is the key of the minimum root visited so far.  It may have
---     any rank @>= rk@.  We will denote the root corresponding to 
+--     any rank @>= rk@.  We will denote the root corresponding to
 --     @minKey@ as @minRoot@.
---     
+--
 --   * @minVal@ is the value corresponding to @minKey@.
---   
---   * @children@ is those children of @minRoot@ which have not yet been 
---     merged with the rest of the forest. Specifically, these are 
+--
+--   * @children@ is those children of @minRoot@ which have not yet been
+--     merged with the rest of the forest. Specifically, these are
 --     the children with rank @< rk@.
---   
---   * @forest@ is an accumulating parameter that maintains the partial 
---     reconstruction of the binomial forest without @minRoot@. It is 
---     the union of all old roots with rank @>= rk@ (except @minRoot@), 
---     with the set of all children of @minRoot@ with rank @>= rk@.  
---     Note that @forest@ is lazy, so if we discover a smaller key 
+--
+--   * @forest@ is an accumulating parameter that maintains the partial
+--     reconstruction of the binomial forest without @minRoot@. It is
+--     the union of all old roots with rank @>= rk@ (except @minRoot@),
+--     with the set of all children of @minRoot@ with rank @>= rk@.
+--     Note that @forest@ is lazy, so if we discover a smaller key
 --     than @minKey@ later, we haven't wasted significant work.
 
 data Extract rk k a = Extract k a (rk k a) (BinomForest rk k a)
@@ -419,7 +420,7 @@ traverseForest f fCh ts0 = case ts0 of
   Skip ts'  -> Skip <$> traverseForest f fCh' ts'
   Cons (BinomTree k a ts) tss
     -> Cons <$> (BinomTree k <$> f k a <*> fCh ts) <*> traverseForest f fCh' tss
-  where 
+  where
     fCh' (Succ (BinomTree k a ts) tss)
       = Succ <$> (BinomTree k <$> f k a <*> fCh ts) <*> fCh tss
 
@@ -441,7 +442,7 @@ foldlWithKeyF_ f fCh ts0 = case ts0 of
   Skip ts'  -> foldlWithKeyF_ f fCh' ts'
   Cons (BinomTree k a ts) ts'
     -> foldlWithKeyF_ f fCh' ts' . fCh ts . f k a
-  where 
+  where
     fCh' (Succ (BinomTree k a ts) tss) =
       fCh tss . fCh ts . f k a
 

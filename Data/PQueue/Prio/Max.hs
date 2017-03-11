@@ -20,13 +20,13 @@
 -- This implementation is based on a binomial heap augmented with a global root.
 -- The spine of the heap is maintained lazily.  To force the spine of the heap,
 -- use 'seqSpine'.
--- 
+--
 -- We do not guarantee stable behavior.
--- Ties are broken arbitrarily -- that is, if @k1 <= k2@ and @k2 <= k1@, then there 
+-- Ties are broken arbitrarily -- that is, if @k1 <= k2@ and @k2 <= k1@, then there
 -- are no guarantees about the relative order in which @k1@, @k2@, and their associated
 -- elements are returned.  (Unlike Data.Map, we allow multiple elements with the
 -- same key.)
--- 
+--
 -- This implementation offers a number of methods of the form @xxxU@, where @U@ stands for
 -- unordered.  No guarantees whatsoever are made on the execution or traversal order of
 -- these functions.
@@ -39,7 +39,7 @@ module Data.PQueue.Prio.Max (
   insert,
   insertBehind,
   union,
-  unions, 
+  unions,
   -- * Query
   null,
   size,
@@ -116,13 +116,11 @@ module Data.PQueue.Prio.Max (
   )
   where
 
-import Control.Applicative hiding (empty)
-import Control.Arrow
-import Data.Monoid
-import qualified Data.List as List
+import Control.Applicative (Applicative, (<$>))
+import Data.Monoid (Monoid(mempty, mappend, mconcat))
+import Data.Traversable (Traversable(traverse))
 import Data.Foldable (Foldable, foldr, foldl)
-import Data.Traversable
-import Data.Maybe hiding (mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.PQueue.Prio.Max.Internals
 
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null, foldr, foldl)
@@ -130,10 +128,8 @@ import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, 
 import qualified Data.PQueue.Prio.Min as Q
 
 #ifdef __GLASGOW_HASKELL__
-import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
   readPrec, readListPrec, readListPrecDefault)
-import Data.Data
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
@@ -230,7 +226,7 @@ deleteFindMax :: Ord k => MaxPQueue k a -> ((k, a), MaxPQueue k a)
 deleteFindMax = fromMaybe (error "Error: deleteFindMax called on an empty queue") . maxViewWithKey
 
 -- | /O(1)/.  Alter the value at the maximum key.  If the queue is empty, does nothing.
-adjustMax :: (a -> a) -> MaxPQueue k a -> MaxPQueue k a 
+adjustMax :: (a -> a) -> MaxPQueue k a -> MaxPQueue k a
 adjustMax = adjustMaxWithKey . const
 
 -- | /O(1)/.  Alter the value at the maximum key.  If the queue is empty, does nothing.
@@ -279,23 +275,23 @@ mapKeys f (MaxPQ q) = MaxPQ (Q.mapKeys (fmap f) q)
 mapKeysMonotonic :: (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
 mapKeysMonotonic f (MaxPQ q) = MaxPQ (Q.mapKeysMonotonic (fmap f) q)
 
--- | /O(n log n)/.  Fold the keys and values in the map, such that 
+-- | /O(n log n)/.  Fold the keys and values in the map, such that
 -- @'foldrWithKey' f z q == 'List.foldr' ('uncurry' f) z ('toAscList' q)@.
--- 
+--
 -- If you do not care about the traversal order, consider using 'foldrWithKeyU'.
 foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> MaxPQueue k a -> b
 foldrWithKey f z (MaxPQ q) = Q.foldrWithKey (f . unDown) z q
 
--- | /O(n log n)/.  Fold the keys and values in the map, such that 
+-- | /O(n log n)/.  Fold the keys and values in the map, such that
 -- @'foldlWithKey' f z q == 'List.foldl' ('uncurry' . f) z ('toAscList' q)@.
--- 
+--
 -- If you do not care about the traversal order, consider using 'foldlWithKeyU'.
 foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
 foldlWithKey f z0 (MaxPQ q) = Q.foldlWithKey (\ z -> f z . unDown) z0 q
 
 -- | /O(n log n)/.  Traverses the elements of the queue in descending order by key.
 -- (@'traverseWithKey' f q == 'fromDescList' <$> 'traverse' ('uncurry' f) ('toDescList' q)@)
--- 
+--
 -- If you do not care about the /order/ of the traversal, consider using 'traverseWithKeyU'.
 traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
 traverseWithKey f (MaxPQ q) = MaxPQ <$> Q.traverseWithKey (f . unDown) q
@@ -419,7 +415,7 @@ toDescList :: Ord k => MaxPQueue k a -> [(k, a)]
 toDescList (MaxPQ q) = fmap (first' unDown) (Q.toAscList q)
 
 -- | /O(n log n)/.  Equivalent to 'toDescList'.
--- 
+--
 -- If the traversal order is irrelevant, consider using 'toListU'.
 toList :: Ord k => MaxPQueue k a -> [(k, a)]
 toList = toDescList
