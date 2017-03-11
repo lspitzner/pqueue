@@ -2,7 +2,7 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Data.PQueue.Min
+-- Module      :  Data.PQueue.Max
 -- Copyright   :  (c) Louis Wasserman 2010
 -- License     :  BSD-style
 -- Maintainer  :  libraries@haskell.org

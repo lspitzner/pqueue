@@ -276,14 +276,14 @@ mapKeysMonotonic :: (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
 mapKeysMonotonic f (MaxPQ q) = MaxPQ (Q.mapKeysMonotonic (fmap f) q)
 
 -- | /O(n log n)/.  Fold the keys and values in the map, such that
--- @'foldrWithKey' f z q == 'List.foldr' ('uncurry' f) z ('toAscList' q)@.
+-- @'foldrWithKey' f z q == 'List.foldr' ('uncurry' f) z ('toDescList' q)@.
 --
 -- If you do not care about the traversal order, consider using 'foldrWithKeyU'.
 foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> MaxPQueue k a -> b
 foldrWithKey f z (MaxPQ q) = Q.foldrWithKey (f . unDown) z q
 
 -- | /O(n log n)/.  Fold the keys and values in the map, such that
--- @'foldlWithKey' f z q == 'List.foldl' ('uncurry' . f) z ('toAscList' q)@.
+-- @'foldlWithKey' f z q == 'List.foldl' ('uncurry' . f) z ('toDescList' q)@.
 --
 -- If you do not care about the traversal order, consider using 'foldlWithKeyU'.
 foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
@@ -311,12 +311,12 @@ splitAt k (MaxPQ q) = case Q.splitAt k q of
   (xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
 
 -- | Takes the longest possible prefix of elements satisfying the predicate.
--- (@'takeWhile' p q == 'List.takeWhile' (p . 'snd') ('toAscList' q)@)
+-- (@'takeWhile' p q == 'List.takeWhile' (p . 'snd') ('toDescList' q)@)
 takeWhile :: Ord k => (a -> Bool) -> MaxPQueue k a -> [(k, a)]
 takeWhile = takeWhileWithKey . const
 
 -- | Takes the longest possible prefix of elements satisfying the predicate.
--- (@'takeWhile' p q == 'List.takeWhile' (uncurry p) ('toAscList' q)@)
+-- (@'takeWhile' p q == 'List.takeWhile' (uncurry p) ('toDescList' q)@)
 takeWhileWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> [(k, a)]
 takeWhileWithKey p (MaxPQ q) = fmap (first' unDown) (Q.takeWhileWithKey (p . unDown) q)
 
@@ -394,11 +394,11 @@ fromAscList = MaxPQ . Q.fromDescList . fmap (first' Down)
 fromDescList :: [(k, a)] -> MaxPQueue k a
 fromDescList = MaxPQ . Q.fromAscList . fmap (first' Down)
 
--- | /O(n log n)/.  Return all keys of the queue in ascending order.
+-- | /O(n log n)/.  Return all keys of the queue in descending order.
 keys :: Ord k => MaxPQueue k a -> [k]
 keys = fmap fst . toDescList
 
--- | /O(n log n)/.  Return all elements of the queue in ascending order by key.
+-- | /O(n log n)/.  Return all elements of the queue in descending order by key.
 elems :: Ord k => MaxPQueue k a -> [a]
 elems = fmap snd . toDescList
 
