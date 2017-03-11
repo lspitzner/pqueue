@@ -57,5 +57,8 @@ Test-Suite test
   Build-Depends:
     QuickCheck >=2.5 && <3,
     base
+  ghc-options: -Wall
+  if impl(ghc>=7.10)
+    ghc-options: -fno-warn-unused-imports
   If impl(ghc)
     Extensions: DeriveDataTypeable

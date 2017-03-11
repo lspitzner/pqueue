@@ -77,6 +77,7 @@ validMap :: [Int] -> Bool
 validMap xs = Min.map f (Min.fromList xs) == Min.fromList (List.map f xs)
   where f = either id id . collatz
 
+collatz :: Int -> Either Int Int
 collatz x =
   if even x
     then Left $ x `quot` 2
@@ -105,6 +106,7 @@ validFoldrU :: [Int] -> Bool
 validFoldrU xs = Min.foldrU (+) 0 q == List.sum xs
   where q = Min.fromList xs
 
+main :: IO ()
 main = do
   myCheck validMinToAscList
   myCheck validMinToDescList
@@ -130,4 +132,5 @@ main = do
   myCheck validFoldlU
   myCheck validFoldrU
 
+myCheck :: Testable prop => prop -> IO ()
 myCheck test = quickCheck (whenFail (fail "Test failed to pass") test)
