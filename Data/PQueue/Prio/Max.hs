@@ -394,11 +394,11 @@ fromAscList = MaxPQ . Q.fromDescList . fmap (first' Down)
 fromDescList :: [(k, a)] -> MaxPQueue k a
 fromDescList = MaxPQ . Q.fromAscList . fmap (first' Down)
 
--- | /O(n log n)/.  Return all keys of the queue in ascending order.
+-- | /O(n log n)/.  Return all keys of the queue in descending order.
 keys :: Ord k => MaxPQueue k a -> [k]
 keys = fmap fst . toDescList
 
--- | /O(n log n)/.  Return all elements of the queue in ascending order by key.
+-- | /O(n log n)/.  Return all elements of the queue in descending order by key.
 elems :: Ord k => MaxPQueue k a -> [a]
 elems = fmap snd . toDescList
 
