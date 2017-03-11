@@ -58,14 +58,14 @@ instance (Ord a, Data a) => Data (MinQueue a) where
   gfoldl f z q  = case minView q of
     Nothing      -> z Empty
     Just (x, q') -> z insertMinQ `f` x `f` q'
-  
+
   gunfold k z c = case constrIndex c of
     1  -> z Empty
     2  -> k (k (z insertMinQ))
     _  -> error "gunfold"
-  
+
   dataCast1 x = gcast1 x
-  
+
   toConstr q
     | null q  = emptyConstr
     | otherwise  = consConstr
@@ -111,7 +111,7 @@ cmpExtract (x1,q1) (x2,q2) =
     (Nothing, Nothing) -> EQ
     (Just _, Nothing) -> GT
     (Nothing, Just _) -> LT
-      
+
     -- We compare their first elements, then their other elements up to the smaller queue's length,
     -- and then the longer queue wins.
     -- This is equivalent to @comparing toAscList@, except it fuses much more nicely.
@@ -119,31 +119,31 @@ cmpExtract (x1,q1) (x2,q2) =
 -- We implement tree ranks in the type system with a nicely elegant approach, as follows.
 -- The goal is to have the type system automatically guarantee that our binomial forest
 -- has the correct binomial structure.
--- 
+--
 -- In the traditional set-theoretic construction of the natural numbers, we define
 -- each number to be the set of numbers less than it, and Zero to be the empty set,
 -- as follows:
--- 
+--
 -- 0 = {}  1 = {0}    2 = {0, 1}  3={0, 1, 2} ...
--- 
+--
 -- Binomial trees have a similar structure: a tree of rank @k@ has one child of each
 -- rank less than @k@.  Let's define the type @rk@ corresponding to rank @k@ to refer
 -- to a collection of binomial trees of ranks @0..k-1@.  Then we can say that
--- 
+--
 -- > data Succ rk a = Succ (BinomTree rk a) (rk a)
--- 
+--
 -- and this behaves exactly as the successor operator for ranks should behave.  Furthermore,
 -- we immediately obtain that
--- 
+--
 -- > data BinomTree rk a = BinomTree a (rk a)
--- 
+--
 -- which is nice and compact.  With this construction, things work out extremely nicely:
--- 
+--
 -- > BinomTree (Succ (Succ (Succ Zero)))
--- 
+--
 -- is a type constructor that takes an element type and returns the type of binomial trees
 -- of rank @3@.
-data BinomForest rk a = Nil | Skip (BinomForest (Succ rk) a) | 
+data BinomForest rk a = Nil | Skip (BinomForest (Succ rk) a) |
   Cons {-# UNPACK #-} !(BinomTree rk a) (BinomForest (Succ rk) a)
 
 data BinomTree rk a = BinomTree a (rk a)
@@ -178,7 +178,7 @@ getMin :: MinQueue a -> Maybe a
 getMin (MinQueue _ x _) = Just x
 getMin _                = Nothing
 
--- | Retrieves the minimum element of the queue, and the queue stripped of that element, 
+-- | Retrieves the minimum element of the queue, and the queue stripped of that element,
 -- or 'Nothing' if passed an empty queue.
 minView :: Ord a => MinQueue a -> Maybe (a, MinQueue a)
 minView Empty = Nothing
@@ -190,7 +190,7 @@ minView (MinQueue n x ts) = Just (x, case extractHeap ts of
 singleton :: a -> MinQueue a
 singleton x = MinQueue 1 x Nil
 
--- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element into the priority queue.  
+-- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element into the priority queue.
 insert :: Ord a => a -> MinQueue a -> MinQueue a
 insert = insert' (<=)
 
@@ -271,25 +271,25 @@ extractHeap ts = case extractBin (<=) ts of
 
 -- | A specialized type intended to organize the return of extract-min queries
 -- from a binomial forest.  We walk all the way through the forest, and then
--- walk backwards.  @Extract rk a@ is the result type of an extract-min 
+-- walk backwards.  @Extract rk a@ is the result type of an extract-min
 -- operation that has walked as far backwards of rank @rk@ -- that is, it
 -- has visited every root of rank @>= rk@.
--- 
+--
 -- The interpretation of @Extract minKey children forest@ is
--- 
+--
 --   * @minKey@ is the key of the minimum root visited so far.  It may have
---     any rank @>= rk@.  We will denote the root corresponding to 
+--     any rank @>= rk@.  We will denote the root corresponding to
 --     @minKey@ as @minRoot@.
---   
---   * @children@ is those children of @minRoot@ which have not yet been 
---     merged with the rest of the forest. Specifically, these are 
+--
+--   * @children@ is those children of @minRoot@ which have not yet been
+--     merged with the rest of the forest. Specifically, these are
 --     the children with rank @< rk@.
---   
---   * @forest@ is an accumulating parameter that maintains the partial 
---     reconstruction of the binomial forest without @minRoot@. It is 
---     the union of all old roots with rank @>= rk@ (except @minRoot@), 
---     with the set of all children of @minRoot@ with rank @>= rk@.  
---     Note that @forest@ is lazy, so if we discover a smaller key 
+--
+--   * @forest@ is an accumulating parameter that maintains the partial
+--     reconstruction of the binomial forest without @minRoot@. It is
+--     the union of all old roots with rank @>= rk@ (except @minRoot@),
+--     with the set of all children of @minRoot@ with rank @>= rk@.
+--     Note that @forest@ is lazy, so if we discover a smaller key
 --     than @minKey@ later, we haven't wasted significant work.
 data Extract rk a = Extract a (rk a) (BinomForest rk a)
 data MExtract rk a = No | Yes {-# UNPACK #-} !(Extract rk a)
@@ -371,7 +371,7 @@ merge le f1 f2 = case (f1, f2) of
   (_, Nil)                -> f1
   where  cat = joinBin le
 
--- | Merges two binomial forests with another tree. If we are thinking of the trees 
+-- | Merges two binomial forests with another tree. If we are thinking of the trees
 -- in the binomial forest as binary digits, this corresponds to a carry operation.
 -- Each call to this function takes /O(1)/ time, so in total, it costs /O(log n)/.
 carry :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
@@ -439,13 +439,13 @@ instance Foldable rk => Foldable (BinomForest rk) where
 
 -- instance Traversable Zero where
 --   traverse _ _ = pure Zero
--- 
+--
 -- instance Traversable rk => Traversable (Succ rk) where
 --   traverse f (Succ t ts) = Succ <$> traverse f t <*> traverse f ts
--- 
+--
 -- instance Traversable rk => Traversable (BinomTree rk) where
 --   traverse f (BinomTree x ts) = BinomTree <$> f x <*> traverse f ts
--- 
+--
 -- instance Traversable rk => Traversable (BinomForest rk) where
 --   traverse _ Nil = pure Nil
 --   traverse f (Skip tss) = Skip <$> traverse f tss

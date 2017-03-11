@@ -21,7 +21,7 @@
 -- use 'seqSpine'.
 --
 -- This implementation does not guarantee stable behavior.
--- 
+--
 -- This implementation offers a number of methods of the form @xxxU@, where @U@ stands for
 -- unordered.  No guarantees whatsoever are made on the execution or traversal order of
 -- these functions.
@@ -31,7 +31,7 @@ module Data.PQueue.Min (
   -- * Basic operations
   empty,
   null,
-  size, 
+  size,
   -- * Query operations
   findMin,
   getMin,
@@ -102,7 +102,7 @@ build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
 #endif
 
--- instance 
+-- instance
 
 instance (Ord a, Show a) => Show (MinQueue a) where
   showsPrec p xs = showParen (p > 10) $
@@ -146,7 +146,7 @@ deleteFindMin = fromMaybe (error "Error: deleteFindMin called on empty queue") .
 unions :: Ord a => [MinQueue a] -> MinQueue a
 unions = foldl union empty
 
--- | /O(k log n)/.  Index (subscript) operator, starting from 0.  @queue !! k@ returns the @(k+1)@th smallest 
+-- | /O(k log n)/.  Index (subscript) operator, starting from 0.  @queue !! k@ returns the @(k+1)@th smallest
 -- element in the queue.  Equivalent to @toAscList queue !! k@.
 (!!) :: Ord a => MinQueue a -> Int -> a
 q !! n  | n >= size q
@@ -180,7 +180,7 @@ dropWhile p = drop' where
 -- satisfy @p@ and second element is the remainder of the queue.
 span :: Ord a => (a -> Bool) -> MinQueue a -> ([a], MinQueue a)
 span p queue = case minView queue of
-  Just (x, q') 
+  Just (x, q')
     | p x  -> let (ys, q'') = span p q' in (x:ys, q'')
   _        -> ([], queue)
 
@@ -237,7 +237,7 @@ toDescList queue = build (\ c nil -> foldrDesc c nil queue)
 
 {-# INLINE toList #-}
 -- | /O(n log n)/.  Returns the elements of the priority queue in ascending order.  Equivalent to 'toAscList'.
--- 
+--
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MinQueue a -> [a]
 toList = toAscList

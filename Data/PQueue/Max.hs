@@ -20,7 +20,7 @@
 -- use 'seqSpine'.
 --
 -- This implementation does not guarantee stable behavior.
--- 
+--
 -- This implementation offers a number of methods of the form @xxxU@, where @U@ stands for
 -- unordered.  No guarantees whatsoever are made on the execution or traversal order of
 -- these functions.
@@ -30,7 +30,7 @@ module Data.PQueue.Max (
   -- * Basic operations
   empty,
   null,
-  size, 
+  size,
   -- * Query operations
   findMax,
   getMax,
@@ -106,7 +106,7 @@ build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
 #endif
 
--- | A priority queue with elements of type @a@.  Supports extracting the maximum element.  
+-- | A priority queue with elements of type @a@.  Supports extracting the maximum element.
 -- Implemented as a wrapper around 'Min.MinQueue'.
 newtype MaxQueue a = MaxQ (Min.MinQueue (Down a))
 # if __GLASGOW_HASKELL__
@@ -121,7 +121,7 @@ instance NFData a => NFData (MaxQueue a) where
 instance (Ord a, Show a) => Show (MaxQueue a) where
   showsPrec p xs = showParen (p > 10) $
     showString "fromDescList " . shows (toDescList xs)
-    
+
 instance Read a => Read (MaxQueue a) where
 #ifdef __GLASGOW_HASKELL__
   readPrec = parens $ prec 10 $ do
@@ -175,7 +175,7 @@ maxView (MaxQ q) = case Min.minView q of
   Nothing -> Nothing
   Just (Down x, q')
           -> Just (x, MaxQ q')
-    
+
 -- | /O(log n)/.  Delete the top (maximum) element of the sequence, if there is one.
 delete :: Ord a => MaxQueue a -> Maybe (MaxQueue a)
 delete = fmap snd . maxView
@@ -184,7 +184,7 @@ delete = fmap snd . maxView
 singleton :: a -> MaxQueue a
 singleton = MaxQ . Min.singleton . Down
 
--- | /O(1)/.  Insert an element into the priority queue.  
+-- | /O(1)/.  Insert an element into the priority queue.
 insert :: Ord a => a -> MaxQueue a -> MaxQueue a
 x `insert` MaxQ q = MaxQ (Down x `Min.insert` q)
 
@@ -219,7 +219,7 @@ drop k (MaxQ q) = MaxQ (Min.drop k q)
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
 splitAt k (MaxQ q) = (map unDown xs, MaxQ q') where
   (xs, q') = Min.splitAt k q
-  
+
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
 takeWhile :: Ord a => (a -> Bool) -> MaxQueue a -> [a]
@@ -232,7 +232,7 @@ dropWhile p (MaxQ q) = MaxQ (Min.dropWhile (p . unDown) q)
 -- | 'span', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
 -- satisfy @p@ and second element is the remainder of the queue.
--- 
+--
 span :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
 span p (MaxQ q) = (map unDown xs, MaxQ q') where
   (xs, q') = Min.span (p . unDown) q
@@ -317,13 +317,13 @@ toDescList q = build (\ c nil -> foldrDesc c nil q)
 
 {-# INLINE toList #-}
 -- | /O(n log n)/.  Returns the elements of the priority queue in ascending order.  Equivalent to 'toDescList'.
--- 
+--
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
 toList (MaxQ q) = map unDown (Min.toList q)
 
 {-# INLINE fromAscList #-}
--- | /O(n)/.  Constructs a priority queue from an ascending list.  /Warning/: Does not check the precondition. 
+-- | /O(n)/.  Constructs a priority queue from an ascending list.  /Warning/: Does not check the precondition.
 fromAscList :: [a] -> MaxQueue a
 fromAscList = MaxQ . Min.fromDescList . map Down
 

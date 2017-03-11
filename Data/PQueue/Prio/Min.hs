@@ -20,13 +20,13 @@
 -- This implementation is based on a binomial heap augmented with a global root.
 -- The spine of the heap is maintained lazily.  To force the spine of the heap,
 -- use 'seqSpine'.
--- 
+--
 -- We do not guarantee stable behavior.
--- Ties are broken arbitrarily -- that is, if @k1 <= k2@ and @k2 <= k1@, then there 
+-- Ties are broken arbitrarily -- that is, if @k1 <= k2@ and @k2 <= k1@, then there
 -- are no guarantees about the relative order in which @k1@, @k2@, and their associated
 -- elements are returned.  (Unlike Data.Map, we allow multiple elements with the
 -- same key.)
--- 
+--
 -- This implementation offers a number of methods of the form @xxxU@, where @U@ stands for
 -- unordered.  No guarantees whatsoever are made on the execution or traversal order of
 -- these functions.
@@ -39,7 +39,7 @@ module Data.PQueue.Prio.Min (
   insert,
   insertBehind,
   union,
-  unions, 
+  unions,
   -- * Query
   null,
   size,
@@ -213,7 +213,7 @@ mapKeys f q = fromList [(f k, a) | (k, a) <- toListU q]
 
 -- | /O(n log n)/.  Traverses the elements of the queue in ascending order by key.
 -- (@'traverseWithKey' f q == 'fromAscList' <$> 'traverse' ('uncurry' f) ('toAscList' q)@)
--- 
+--
 -- If you do not care about the /order/ of the traversal, consider using 'traverseWithKeyU'.
 traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKey f q = case minViewWithKey q of
@@ -265,7 +265,7 @@ drop n0 q0
 
 -- | /O(k log n)/.  Equivalent to @('take' k q, 'drop' k q)@.
 splitAt :: Ord k => Int -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
-splitAt n q 
+splitAt n q
   | n <= 0     = ([], q)
   | otherwise  = n `seq` case minViewWithKey q of
       Just (ka, q') -> let (kas, q'') = splitAt (n-1) q' in (ka:kas, q'')
@@ -325,7 +325,7 @@ fromDescList :: [(k, a)] -> MinPQueue k a
 fromDescList = List.foldl' (\ q (k, a) -> insertMin k a q) empty
 
 {-# RULES
-  "fromList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) . 
+  "fromList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) .
     fromList (build g) = g (uncurry' insert) empty;
   "fromAscList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) .
     fromAscList (build g) = g (uncurry' insertMin) empty;
@@ -357,7 +357,7 @@ toDescList = foldlWithKey (\ z k a -> (k, a) : z) []
 
 {-# INLINE toList #-}
 -- | /O(n log n)/.  Equivalent to 'toAscList'.
--- 
+--
 -- If the traversal order is irrelevant, consider using 'toListU'.
 toList :: Ord k => MinPQueue k a -> [(k, a)]
 toList = toAscList

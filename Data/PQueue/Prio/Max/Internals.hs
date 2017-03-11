@@ -15,7 +15,7 @@ import Prelude hiding (foldr, foldl)
 
 import Data.PQueue.Prio.Internals (MinPQueue)
 
-newtype Down a = Down {unDown :: a} 
+newtype Down a = Down {unDown :: a}
 # if __GLASGOW_HASKELL__
   deriving (Eq, Data, Typeable)
 # else
