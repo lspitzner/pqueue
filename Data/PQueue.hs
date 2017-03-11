@@ -89,7 +89,7 @@ module Data.PQueue (
 
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Top as Top
-import qualified Data.PQueue.Prio as Prio
+import Data.PQueue.Prio.Private (PQueue(PQ))
 import Data.PQueue.Top (Top, Wrap(Wrap, unwrap))
 
 import Control.DeepSeq (NFData(rnf))
@@ -387,8 +387,8 @@ fromList :: (Top top, Ord a) => [a] -> Queue top a
 fromList = foldr insert empty
 
 -- | /O(n)/.  Constructs a priority queue from the keys of a 'Prio.PQueue'.
-keysQueue :: Prio.PQueue top k a -> Queue top k
-keysQueue (Prio.PQ q) = Q (Min.keysQueue q)
+keysQueue :: PQueue top k a -> Queue top k
+keysQueue (PQ q) = Q (Min.keysQueue q)
 
 -- | /O(log n)/.  Forces the spine of the heap.
 seqSpine :: Queue top a -> b -> b
