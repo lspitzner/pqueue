@@ -3,6 +3,8 @@ module Data.PQueue.Top where
 
 import Control.DeepSeq (NFData(rnf))
 
+import qualified Data.Foldable as Fold
+
 #ifdef __GLASGOW_HASKELL__
 import Data.Data (Data, Typeable)
 #endif
@@ -38,3 +40,8 @@ instance NFData a => NFData (Wrap top a) where
 
 instance Functor (Wrap top) where
   fmap f (Wrap a) = Wrap (f a)
+
+instance Fold.Foldable (Wrap top) where
+  foldMap f (Wrap a) = f a
+  foldr f z (Wrap a) = a `f` z
+  foldl f z (Wrap a) = z `f` a
