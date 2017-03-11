@@ -1,15 +1,15 @@
 module Main (main) where
 
-import Control.Arrow (second)
-import Control.Monad
+import qualified Data.PQueue.Prio.Max as PMax ()
+import qualified Data.PQueue.Prio.Min as PMin ()
+import qualified Data.PQueue.Max as Max ()
 import qualified Data.PQueue.Min as Min
-import qualified Data.PQueue.Prio.Min as PMin
-import qualified Data.PQueue.Max as Max
-import qualified Data.PQueue.Prio.Max as PMax
+
 import Test.QuickCheck
-import Data.List
-import Data.Data
+
 import qualified Data.List as List
+import Control.Arrow (second)
+
 
 validMinToAscList :: [Int] -> Bool
 validMinToAscList xs = Min.toAscList (Min.fromList xs) == List.sort xs
