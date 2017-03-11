@@ -272,7 +272,7 @@ mapEither f (Q q) = (Q q0, Q q1)
 -- | /O(n)/.  Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue.
 -- /Does not check the precondition/.
 mapU :: (a -> b) -> Queue top a -> Queue top b
-mapU f (Q q) = Q (Min.mapU (\ (Wrap a) -> Wrap (f a)) q)
+mapU f (Q q) = Q (Min.mapU (fmap f) q)
 
 -- | /O(n)/.  Unordered right fold on a priority queue.
 foldrU :: (a -> b -> b) -> b -> Queue top a -> b
