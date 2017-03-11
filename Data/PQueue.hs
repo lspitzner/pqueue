@@ -216,7 +216,7 @@ Q q !! n = unwrap ((Min.!!) q n)
 -- | /O(k log n)/.  Returns the list of the @k@ top elements of the queue, in natural order, or
 -- all elements of the queue, if @k >= n@.
 take :: (Top top, Ord a) => Int -> Queue top a -> [a]
-take k (Q q) = [a | Wrap a <- Min.take k q]
+take k (Q q) = map unwrap $ Min.take k q
 
 -- | /O(k log n)/.  Returns the queue with the @k@ top elements deleted, or the empty queue if @k >= n@.
 drop :: (Top top, Ord a) => Int -> Queue top a -> Queue top a
