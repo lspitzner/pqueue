@@ -43,8 +43,12 @@ Library {
   ghc-options: {
     -fdicts-strict
     -Wall
+  }
+ if impl(ghc>=7.10) {
+  ghc-options: {
     -fno-warn-unused-imports
   }
+ }
  if impl(ghc>=7.8) {
   ghc-options: {
     -fno-warn-inline-rule-shadowing

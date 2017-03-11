@@ -117,9 +117,7 @@ module Data.PQueue.Prio.Max (
   where
 
 import Control.Applicative hiding (empty)
-import Control.Arrow
 import Data.Monoid
-import qualified Data.List as List
 import Data.Foldable (Foldable, foldr, foldl)
 import Data.Traversable
 import Data.Maybe hiding (mapMaybe)
@@ -130,10 +128,8 @@ import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, 
 import qualified Data.PQueue.Prio.Min as Q
 
 #ifdef __GLASGOW_HASKELL__
-import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
   readPrec, readListPrec, readListPrecDefault)
-import Data.Data
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []

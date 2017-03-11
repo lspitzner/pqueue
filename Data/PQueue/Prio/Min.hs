@@ -117,21 +117,22 @@ module Data.PQueue.Prio.Min (
   where
 
 import Control.Applicative (Applicative (..), (<$>))
-import Data.Monoid 
+
 import qualified Data.List as List
-import Data.Foldable (Foldable, foldl, foldr, foldl')
+import qualified Data.Foldable as Fold
+import Data.Monoid
+import Data.Foldable (Foldable)
 import Data.Traversable
 import Data.Maybe (fromMaybe)
 
 import Data.PQueue.Prio.Internals
 
-import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null, foldr)
+import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
   readPrec, readListPrec, readListPrecDefault)
-import Data.Data
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
@@ -321,7 +322,7 @@ fromAscList = foldr (uncurry' insertMin) empty
 
 -- | /O(n)/.  Build a priority queue from a descending list of (key, value) pairs.  /The precondition is not checked./
 fromDescList :: [(k, a)] -> MinPQueue k a
-fromDescList = foldl' (\ q (k, a) -> insertMin k a q) empty
+fromDescList = List.foldl' (\ q (k, a) -> insertMin k a q) empty
 
 {-# RULES
   "fromList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) . 

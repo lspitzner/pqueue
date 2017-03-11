@@ -85,13 +85,9 @@ module Data.PQueue.Min (
 
 import Prelude hiding (null, foldr, foldl, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
 
-import Control.Applicative (Applicative(..), (<$>))
-import Control.Applicative.Identity
-
 import Data.Monoid
 import Data.Maybe hiding (mapMaybe)
 import Data.Foldable (foldl, foldr, foldl')
-import Data.Traversable
 
 import qualified Data.List as List
 
@@ -101,7 +97,6 @@ import Data.PQueue.Internals
 import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
   readPrec, readListPrec, readListPrecDefault)
-import Data.Data
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
