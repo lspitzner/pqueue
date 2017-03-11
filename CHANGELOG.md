@@ -1,5 +1,9 @@
 # Revision history for pqueue
 
+## 1.3.2.2
+
+  * Add test-suite from darcs repository for pqueue-1.0.1.
+
 ## 1.3.2.1  -- 2017-03-11
 
   * Fix documentation errors
