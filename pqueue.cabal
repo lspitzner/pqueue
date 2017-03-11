@@ -58,7 +58,10 @@ Test-Suite test
     QuickCheck >=2.5 && <3,
     base
   ghc-options: -Wall
-  if impl(ghc>=7.10)
-    ghc-options: -fno-warn-unused-imports
+  if impl(ghc>=7.8) {
+    ghc-options: {
+      -fno-warn-inline-rule-shadowing
+    }
+  }
   If impl(ghc)
     Extensions: DeriveDataTypeable
