@@ -3,6 +3,7 @@ module Data.PQueue.Top where
 
 import Control.DeepSeq (NFData(rnf))
 
+import qualified Data.Traversable as Trav
 import qualified Data.Foldable as Fold
 
 #ifdef __GLASGOW_HASKELL__
@@ -45,3 +46,6 @@ instance Fold.Foldable (Wrap top) where
   foldMap f (Wrap a) = f a
   foldr f z (Wrap a) = a `f` z
   foldl f z (Wrap a) = z `f` a
+
+instance Trav.Traversable (Wrap top) where
+  traverse f (Wrap a) = fmap Wrap $ f a

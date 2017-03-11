@@ -97,6 +97,7 @@ import Control.DeepSeq (NFData(rnf))
 import Data.Functor ((<$>))
 import Data.Monoid (Monoid(mempty, mappend))
 import Data.Maybe (fromMaybe)
+import Data.Traversable (traverse)
 import Data.Foldable (foldl, foldr)
 
 import Prelude hiding (null, foldr, foldl, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter)
@@ -262,7 +263,7 @@ partition p (Q q) = (Q q0, Q q1)
 
 -- | /O(n)/.  Maps a function over the elements of the queue, and collects the 'Just' values.
 mapMaybe :: (Top top, Ord b) => (a -> Maybe b) -> Queue top a -> Queue top b
-mapMaybe f (Q q) = Q (Min.mapMaybe (\ (Wrap x) -> Wrap <$> f x) q)
+mapMaybe f (Q q) = Q (Min.mapMaybe (traverse f) q)
 
 -- | /O(n)/.  Maps a function over the elements of the queue, and separates the 'Left' and 'Right' values.
 mapEither :: (Top top, Ord b, Ord c) => (a -> Either b c) -> Queue top a -> (Queue top b, Queue top c)
