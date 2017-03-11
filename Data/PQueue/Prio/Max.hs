@@ -291,7 +291,7 @@ foldrWithKey f z (MaxPQ q) = Q.foldrWithKey (f . unDown) z q
 -- 
 -- If you do not care about the traversal order, consider using 'foldlWithKeyU'.
 foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
-foldlWithKey f z (MaxPQ q) = Q.foldlWithKey (\ z -> f z . unDown) z q
+foldlWithKey f z0 (MaxPQ q) = Q.foldlWithKey (\ z -> f z . unDown) z0 q
 
 -- | /O(n log n)/.  Traverses the elements of the queue in descending order by key.
 -- (@'traverseWithKey' f q == 'fromDescList' <$> 'traverse' ('uncurry' f) ('toDescList' q)@)
@@ -438,7 +438,7 @@ foldlU f = foldlWithKeyU (const . f)
 
 -- | /O(n)/.  An unordered left fold over the elements of the queue, in no particular order.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
-foldlWithKeyU f z (MaxPQ q) = Q.foldlWithKeyU (\ z -> f z . unDown) z q
+foldlWithKeyU f z0 (MaxPQ q) = Q.foldlWithKeyU (\ z -> f z . unDown) z0 q
 
 -- | /O(n)/.  An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting

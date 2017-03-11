@@ -87,35 +87,47 @@ type CompF a = a -> a -> Bool
 
 instance (Ord k, Eq a) => Eq (MinPQueue k a) where
   MinPQ n1 k1 a1 ts1 == MinPQ n2 k2 a2 ts2 =
-    n1 == n2 && k1 == k2 && a1 == a2 && equHeap ts1 ts2
-   where
-    equHeap ts1 ts2 = case (extract ts1, extract ts2) of
-      (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
-               -> k1 == k2 && a1 == a2 && equHeap ts1' ts2'
-      (No, No) -> True
-      _        -> False
-    extract = extractForest (<=)
+    n1 == n2 && eqExtract k1 a1 ts1 k2 a2 ts2
   Empty == Empty = True
   _     == _     = False
+
+eqExtract ::
+  (Ord k, Eq a) =>
+  k -> a -> BinomForest rk k a ->
+  k -> a -> BinomForest rk k a ->
+  Bool
+eqExtract k10 a10 ts10 k20 a20 ts20 =
+  k10 == k20 && a10 == a20 &&
+  case (extract ts10, extract ts20) of
+    (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
+             -> eqExtract k1 a1 ts1' k2 a2 ts2'
+    (No, No) -> True
+    _        -> False
 
 (<>) :: Monoid m => m -> m -> m
 (<>) = mappend
 infixr 6 <>
 
 instance (Ord k, Ord a) => Ord (MinPQueue k a) where
-  MinPQ _n1 k1 a1 ts1 `compare` MinPQ _n2 k2 a2 ts2 =
-    k1 `compare` k2 <> a1 `compare` a2 <> ts1 `cmpHeap` ts2
-   where
-    ts1 `cmpHeap` ts2 = case (extract ts1, extract ts2) of
-      (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
-                  -> k1 `compare` k2 <> a1 `compare` a2 <> ts1' `cmpHeap` ts2'
-      (No, Yes{}) -> LT
-      (Yes{}, No) -> GT
-      (No, No)    -> EQ
-    extract = extractForest (<=)
+  MinPQ _n1 k10 a10 ts10 `compare` MinPQ _n2 k20 a20 ts20 =
+    cmpExtract k10 a10 ts10 k20 a20 ts20
   Empty `compare` Empty   = EQ
   Empty `compare` MinPQ{} = LT
   MinPQ{} `compare` Empty = GT
+
+cmpExtract ::
+  (Ord k, Ord a) =>
+  k -> a -> BinomForest rk k a ->
+  k -> a -> BinomForest rk k a ->
+  Ordering
+cmpExtract k10 a10 ts10 k20 a20 ts20 =
+  k10 `compare` k20 <> a10 `compare` a20 <>
+  case (extract ts10, extract ts20) of
+    (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
+                -> cmpExtract k1 a1 ts1' k2 a2 ts2'
+    (No, Yes{}) -> LT
+    (Yes{}, No) -> GT
+    (No, No)    -> EQ
 
 -- | /O(1)/.  Returns the empty priority queue.
 empty :: MinPQueue k a
@@ -150,9 +162,9 @@ insertBehind = insert' (<)
 -- | Internal helper method, using a specific comparator function.
 insert' :: CompF k -> k -> a -> MinPQueue k a -> MinPQueue k a
 insert' _ k a Empty = singleton k a
-insert' (<=) k a (MinPQ n k' a' ts)
-  | k <= k'    = MinPQ (n+1) k  a  (incr (<=) (tip k' a') ts)
-  | otherwise  = MinPQ (n+1) k' a' (incr (<=) (tip k  a ) ts)
+insert' le k a (MinPQ n k' a' ts)
+  | k `le` k'  = MinPQ (n+1) k  a  (incr le (tip k' a') ts)
+  | otherwise  = MinPQ (n+1) k' a' (incr le (tip k  a ) ts)
 
 -- | Amortized /O(log(min(n1, n2)))/, worst-case /O(log(max(n1, n2)))/.  Returns the union
 -- of the two specified queues.
@@ -161,10 +173,10 @@ union = union' (<=)
 
 -- | Takes the union of the two specified queues, using the given comparison function.
 union' :: CompF k -> MinPQueue k a -> MinPQueue k a -> MinPQueue k a
-union' (<=) (MinPQ n1 k1 a1 ts1) (MinPQ n2 k2 a2 ts2)
-  | k1 <= k2   = MinPQ (n1 + n2) k1 a1 (insMerge k2 a2)
+union' le (MinPQ n1 k1 a1 ts1) (MinPQ n2 k2 a2 ts2)
+  | k1 `le` k2 = MinPQ (n1 + n2) k1 a1 (insMerge k2 a2)
   | otherwise  = MinPQ (n1 + n2) k2 a2 (insMerge k1 a1)
-  where  insMerge k a = carryForest (<=) (tip k a) ts1 ts2
+  where  insMerge k a = carryForest le (tip k a) ts1 ts2
 union' _ Empty q2 = q2
 union' _ q1 Empty = q1
 
@@ -220,8 +232,7 @@ mapEitherWithKey f (MinPQ _ k a ts) = either (first' . insert k) (second' . inse
 -- If you do not care about the traversal order, consider using 'foldrWithKeyU'.
 foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> MinPQueue k a -> b
 foldrWithKey _ z Empty = z
-foldrWithKey f z (MinPQ _ k a ts) = f k a (foldF ts) where
-  extract = extractForest (<=)
+foldrWithKey f z (MinPQ _ k0 a0 ts0) = f k0 a0 (foldF ts0) where
   foldF ts = case extract ts of
     Yes (Extract k a _ ts') -> f k a (foldF ts')
     _                       -> z
@@ -232,8 +243,7 @@ foldrWithKey f z (MinPQ _ k a ts) = f k a (foldF ts) where
 -- If you do not care about the traversal order, consider using 'foldlWithKeyU'.
 foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKey _ z Empty = z
-foldlWithKey f z (MinPQ _ k a ts) = foldF (f z k a) ts where
-  extract = extractForest (<=)
+foldlWithKey f z0 (MinPQ _ k0 a0 ts0) = foldF (f z0 k0 a0) ts0 where
   foldF z ts = case extract ts of
     Yes (Extract k a _ ts') -> foldF (f z k a) ts'
     _                       -> z
@@ -251,38 +261,38 @@ tip k a = BinomTree k a Zero
 
 -- | /O(1)/.  Takes the union of two binomial trees of the same rank.
 meld :: CompF k -> BinomTree rk k a -> BinomTree rk k a -> BinomTree (Succ rk) k a
-meld (<=) t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
-  | k1 <= k2   = BinomTree k1 v1 (Succ t2 ts1)
+meld le t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
+  | k1 `le` k2 = BinomTree k1 v1 (Succ t2 ts1)
   | otherwise  = BinomTree k2 v2 (Succ t1 ts2)
 
 -- | Takes the union of two binomial forests, starting at the same rank.  Analogous to binary addition.
 mergeForest :: CompF k -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
-mergeForest (<=) f1 f2 = case (f1, f2) of
-  (Skip ts1, Skip ts2)       -> Skip (mergeForest (<=) ts1 ts2)
-  (Skip ts1, Cons t2 ts2)    -> Cons t2 (mergeForest (<=) ts1 ts2)
-  (Cons t1 ts1, Skip ts2)    -> Cons t1 (mergeForest (<=) ts1 ts2)
-  (Cons t1 ts1, Cons t2 ts2) -> Skip (carryForest (<=) (meld (<=) t1 t2) ts1 ts2)
+mergeForest le f1 f2 = case (f1, f2) of
+  (Skip ts1, Skip ts2)       -> Skip (mergeForest le ts1 ts2)
+  (Skip ts1, Cons t2 ts2)    -> Cons t2 (mergeForest le ts1 ts2)
+  (Cons t1 ts1, Skip ts2)    -> Cons t1 (mergeForest le ts1 ts2)
+  (Cons t1 ts1, Cons t2 ts2) -> Skip (carryForest le (meld le t1 t2) ts1 ts2)
   (Nil, _)                   -> f2
   (_, Nil)                   -> f1
 
 -- | Takes the union of two binomial forests, starting at the same rank, with an additional tree.  
 -- Analogous to binary addition when a digit has been carried.
 carryForest :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
-carryForest (<=) t0 f1 f2 = t0 `seq` case (f1, f2) of
+carryForest le t0 f1 f2 = t0 `seq` case (f1, f2) of
   (Cons t1 ts1, Cons t2 ts2) -> Cons t0 (carryMeld t1 t2 ts1 ts2)
   (Cons t1 ts1, Skip ts2)    -> Skip (carryMeld t0 t1 ts1 ts2)
   (Skip ts1, Cons t2 ts2)    -> Skip (carryMeld t0 t2 ts1 ts2)
-  (Skip ts1, Skip ts2)       -> Cons t0 (mergeForest (<=) ts1 ts2)
-  (Nil, _)                   -> incr (<=) t0 f2
-  (_, Nil)                   -> incr (<=) t0 f1
-  where  carryMeld = carryForest (<=) .: meld (<=)
+  (Skip ts1, Skip ts2)       -> Cons t0 (mergeForest le ts1 ts2)
+  (Nil, _)                   -> incr le t0 f2
+  (_, Nil)                   -> incr le t0 f1
+  where  carryMeld = carryForest le .: meld le
 
 -- | Inserts a binomial tree into a binomial forest.  Analogous to binary incrementation.
 incr :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
-incr (<=) t ts = t `seq` case ts of
+incr le t ts = t `seq` case ts of
   Nil         -> Cons t Nil
   Skip ts'    -> Cons t ts'
-  Cons t' ts' -> Skip (incr (<=) (meld (<=) t t') ts')
+  Cons t' ts' -> Skip (incr le (meld le t t') ts')
 
 -- | Inserts a binomial tree into a binomial forest.  Assumes that the root of this tree
 -- is less than all other roots.  Analogous to binary incrementation.  Equivalent to
@@ -294,7 +304,7 @@ incrMin t@(BinomTree k a ts) tss = case tss of
   Cons t' tss' -> Skip (incrMin (BinomTree k a (Succ t' ts)) tss')
 
 extractHeap :: CompF k -> Int -> BinomHeap k a -> MinPQueue k a
-extractHeap (<=) n ts = n `seq` case extractForest (<=) ts of
+extractHeap le n ts = n `seq` case extractForest le ts of
   No                      -> Empty
   Yes (Extract k a _ ts') -> MinPQ (n-1) k a ts'
 
@@ -329,27 +339,30 @@ data MExtract rk k a = No | Yes {-# UNPACK #-} !(Extract rk k a)
 incrExtract :: CompF k -> Maybe (BinomTree rk k a) -> Extract (Succ rk) k a -> Extract rk k a
 incrExtract _ Nothing (Extract k a (Succ t ts) tss)
   = Extract k a ts (Cons t tss)
-incrExtract (<=) (Just t) (Extract k a (Succ t' ts) tss)
-  = Extract k a ts (Skip (incr (<=) (meld (<=) t t') tss))
+incrExtract le (Just t) (Extract k a (Succ t' ts) tss)
+  = Extract k a ts (Skip (incr le (meld le t t') tss))
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress.  Each successive application of @extractBin@ takes
 -- amortized /O(1)/ time, so applying it from the beginning takes /O(log n)/ time.
 extractForest :: CompF k -> BinomForest rk k a -> MExtract rk k a
 extractForest _ Nil = No
-extractForest (<=) (Skip tss) = case extractForest (<=) tss of
+extractForest le (Skip tss) = case extractForest le tss of
   No     -> No
-  Yes ex -> Yes (incrExtract (<=) Nothing ex)
-extractForest (<=) (Cons t@(BinomTree k a ts) tss) = Yes $ case extractForest (<=) tss of
+  Yes ex -> Yes (incrExtract le Nothing ex)
+extractForest le (Cons t@(BinomTree k a0 ts) tss) = Yes $ case extractForest le tss of
   Yes ex@(Extract k' _ _ _)
-    | k' <? k  -> incrExtract (<=) (Just t) ex
-  _            -> Extract k a ts (Skip tss)
+    | k' <? k  -> incrExtract le (Just t) ex
+  _            -> Extract k a0 ts (Skip tss)
   where
-    a <? b = not (b <= a)
+    a <? b = not (b `le` a)
+
+extract :: (Ord k) => BinomForest rk k a -> MExtract rk k a
+extract = extractForest (<=)
 
 -- | Utility function for mapping over a forest.
 mapForest :: (k -> a -> b) -> (rk k a -> rk k b) -> BinomForest rk k a -> BinomForest rk k b
-mapForest f fCh ts = case ts of
+mapForest f fCh ts0 = case ts0 of
   Nil      -> Nil
   Skip ts' -> Skip (mapForest f fCh' ts')
   Cons (BinomTree k a ts) tss
@@ -360,26 +373,26 @@ mapForest f fCh ts = case ts of
 -- | Utility function for mapping a 'Maybe' function over a forest.
 mapMaybeF :: CompF k -> (k -> a -> Maybe b) -> (rk k a -> MinPQueue k b) ->
   BinomForest rk k a -> MinPQueue k b
-mapMaybeF (<=) f fCh ts = case ts of
+mapMaybeF le f fCh ts0 = case ts0 of
   Nil    -> Empty
-  Skip ts'  -> mapMaybeF (<=) f fCh' ts'
+  Skip ts'  -> mapMaybeF le f fCh' ts'
   Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapMaybeF (<=) f fCh' ts')
-  where  insF k a = maybe id (insert' (<=) k) (f k a) .: union' (<=)
+      -> insF k a (fCh ts) (mapMaybeF le f fCh' ts')
+  where  insF k a = maybe id (insert' le k) (f k a) .: union' le
          fCh' (Succ (BinomTree k a ts) tss) =
            insF k a (fCh ts) (fCh tss)
 
 -- | Utility function for mapping an 'Either' function over a forest.
 mapEitherF :: CompF k -> (k -> a -> Either b c) -> (rk k a -> (MinPQueue k b, MinPQueue k c)) ->
   BinomForest rk k a -> (MinPQueue k b, MinPQueue k c)
-mapEitherF (<=) f fCh ts = case ts of
+mapEitherF le f0 fCh ts0 = case ts0 of
   Nil    -> (Empty, Empty)
-  Skip ts'  -> mapEitherF (<=) f fCh' ts'
+  Skip ts'  -> mapEitherF le f0 fCh' ts'
   Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapEitherF (<=) f fCh' ts')
+      -> insF k a (fCh ts) (mapEitherF le f0 fCh' ts')
   where
-    insF k a = either (first' . insert' (<=) k) (second' . insert' (<=) k) (f k a) .: 
-      (union' (<=) `both` union' (<=))
+    insF k a = either (first' . insert' le k) (second' . insert' le k) (f0 k a) .:
+      (union' le `both` union' le)
     fCh' (Succ (BinomTree k a ts) tss) =
       insF k a (fCh ts) (fCh tss)
     both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)
@@ -392,7 +405,7 @@ foldrWithKeyU f z (MinPQ _ k a ts) = f k a (foldrWithKeyF_ f (const id) ts z)
 -- | /O(n)/.  An unordered left fold over the elements of the queue, in no particular order.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU _ z Empty = z
-foldlWithKeyU f z (MinPQ _ k a ts) = foldlWithKeyF_ (\ k a z -> f z k a) (const id) ts (f z k a)
+foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\ k a z -> f z k a) (const id) ts (f z0 k0 a0)
 
 traverseWithKeyU :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKeyU _ Empty = pure Empty
@@ -401,7 +414,7 @@ traverseWithKeyU f (MinPQ n k a ts) = MinPQ n k <$> f k a <*> traverseForest f (
 {-# SPECIALIZE traverseForest :: (k -> a -> Identity b) -> (rk k a -> Identity (rk k b)) -> BinomForest rk k a ->
   Identity (BinomForest rk k b) #-}
 traverseForest :: (Applicative f) => (k -> a -> f b) -> (rk k a -> f (rk k b)) -> BinomForest rk k a -> f (BinomForest rk k b)
-traverseForest f fCh ts = case ts of
+traverseForest f fCh ts0 = case ts0 of
   Nil       -> pure Nil
   Skip ts'  -> Skip <$> traverseForest f fCh' ts'
   Cons (BinomTree k a ts) tss
@@ -412,18 +425,18 @@ traverseForest f fCh ts = case ts of
 
 -- | Unordered right fold on a binomial forest.
 foldrWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b
-foldrWithKeyF_ f fCh ts z = case ts of
-  Nil    -> z
-  Skip ts'  -> foldrWithKeyF_ f fCh' ts' z
+foldrWithKeyF_ f fCh ts0 z0 = case ts0 of
+  Nil    -> z0
+  Skip ts'  -> foldrWithKeyF_ f fCh' ts' z0
   Cons (BinomTree k a ts) ts'
-    -> f k a (fCh ts (foldrWithKeyF_ f fCh' ts' z))
+    -> f k a (fCh ts (foldrWithKeyF_ f fCh' ts' z0))
   where
     fCh' (Succ (BinomTree k a ts) tss) z =
       f k a (fCh ts (fCh tss z))
 
 -- | Unordered left fold on a binomial forest.
 foldlWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b
-foldlWithKeyF_ f fCh ts = case ts of
+foldlWithKeyF_ f fCh ts0 = case ts0 of
   Nil    -> id
   Skip ts'  -> foldlWithKeyF_ f fCh' ts'
   Cons (BinomTree k a ts) ts'
@@ -434,7 +447,7 @@ foldlWithKeyF_ f fCh ts = case ts of
 
 -- | Maps a monotonic function over the keys in a binomial forest.
 mapKeysMonoF :: (k -> k') -> (rk k a -> rk k' a) -> BinomForest rk k a -> BinomForest rk k' a
-mapKeysMonoF f fCh ts = case ts of
+mapKeysMonoF f fCh ts0 = case ts0 of
   Nil    -> Nil
   Skip ts'  -> Skip (mapKeysMonoF f fCh' ts')
   Cons (BinomTree k a ts) ts'
@@ -445,8 +458,8 @@ mapKeysMonoF f fCh ts = case ts of
 
 -- | /O(log n)/.  Analogous to @deepseq@ in the @deepseq@ package, but only forces the spine of the binomial heap.
 seqSpine :: MinPQueue k a -> b -> b
-seqSpine Empty z = z
-seqSpine (MinPQ _ _ _ ts) z = ts `seqSpineF` z where
+seqSpine Empty z0 = z0
+seqSpine (MinPQ _ _ _ ts0) z0 = ts0 `seqSpineF` z0 where
   seqSpineF :: BinomForest rk k a -> b -> b
   seqSpineF ts z = case ts of
     Nil        -> z

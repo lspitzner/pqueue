@@ -167,11 +167,11 @@ takeWhile p = foldWhileFB p . toAscList
 {-# INLINE foldWhileFB #-}
 -- | Equivalent to Data.List.takeWhile, but is a better producer.
 foldWhileFB :: (a -> Bool) -> [a] -> [a]
-foldWhileFB p xs = build (\ c nil -> let 
+foldWhileFB p xs0 = build (\ c nil -> let
   consWhile x xs
     | p x    = x `c` xs
     | otherwise  = nil
-  in foldr consWhile nil xs)
+  in foldr consWhile nil xs0)
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
 dropWhile :: Ord a => (a -> Bool) -> MinQueue a -> MinQueue a
