@@ -1,5 +1,11 @@
 # Revision history for pqueue
 
+## 1.3.2.1  -- 2017-03-11
+
+  * Fix documentation errors
+    - complexity on `toList`, `toListU`
+    - PQueue.Prio.Max had "ascending" instead of "descending" in some places
+
 ## 1.3.2    -- 2016-09-28
 
   * Add function `insertBehind` as a slight variation of `insert` which differs
