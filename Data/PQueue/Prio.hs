@@ -94,11 +94,15 @@ module Data.PQueue.Prio (
   -- * List operations
   -- ** Conversion from lists
   fromList,
+  fromAscList,
+  fromDescList,
   fromOrderedList,
   -- ** Conversion to lists
   keys,
   elems,
   assocs,
+  toAscList,
+  toDescList,
   toList,
   -- * Unordered operations
   foldrU,
@@ -407,6 +411,24 @@ mapEitherWithKey f (PQ q) = case Q.mapEitherWithKey (f . unwrap) q of
 fromList :: (Top top, Ord k) => [(k, a)] -> PQueue top k a
 fromList = PQ . Q.fromList . fmap (first' Wrap)
 
+newtype
+  FromList k a top =
+    FromList {runFromList :: [(Wrap top k, a)] -> Q.MinPQueue (Wrap top k) a}
+
+-- | /O(n)/.  Build a priority queue from an ascending list of (key, value) pairs.  /The precondition is not checked./
+fromAscList :: (Top top) => [(k, a)] -> PQueue top k a
+fromAscList =
+  PQ .
+  runFromList (Top.switch (FromList Q.fromAscList) (FromList Q.fromDescList)) .
+  fmap (first' Wrap)
+
+-- | /O(n)/.  Build a priority queue from a descending list of (key, value) pairs.  /The precondition is not checked./
+fromDescList :: (Top top) => [(k, a)] -> PQueue top k a
+fromDescList =
+  PQ .
+  runFromList (Top.switch (FromList Q.fromDescList) (FromList Q.fromAscList)) .
+  fmap (first' Wrap)
+
 -- | /O(n)/.  Build a priority queue from a list of (key, value) pairs where every suffix contains the top element at the list head.  /The precondition is not checked./
 fromOrderedList :: [(k, a)] -> PQueue top k a
 fromOrderedList = PQ . Q.fromAscList . fmap (first' Wrap)
@@ -422,6 +444,22 @@ elems = fmap snd . toList
 -- | /O(n log n)/.  Equivalent to 'toList'.
 assocs :: (Top top, Ord k) => PQueue top k a -> [(k, a)]
 assocs = toList
+
+newtype
+  ToList k a top =
+    ToList {runToList :: Q.MinPQueue (Wrap top k) a -> [(Wrap top k, a)]}
+
+-- | /O(n log n)/.  Return all (key, value) pairs in ascending order by key.
+toAscList :: (Top top, Ord k) => PQueue top k a -> [(k, a)]
+toAscList (PQ q) =
+  fmap (first' unwrap) $
+  runToList (Top.switch (ToList Q.toAscList) (ToList Q.toDescList)) q
+
+-- | /O(n log n)/.  Return all (key, value) pairs in descending order by key.
+toDescList :: (Top top, Ord k) => PQueue top k a -> [(k, a)]
+toDescList (PQ q) =
+  fmap (first' unwrap) $
+  runToList (Top.switch (ToList Q.toDescList) (ToList Q.toAscList)) q
 
 -- | /O(n log n)/.  Return all (key, value) pairs in natural order by key.
 --
