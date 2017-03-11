@@ -116,13 +116,13 @@ module Data.PQueue.Prio.Min (
   )
   where
 
-import Control.Applicative (Applicative (..), (<$>))
+import Control.Applicative (Applicative, pure, (<*>), (<$>))
 
 import qualified Data.List as List
 import qualified Data.Foldable as Fold
-import Data.Monoid
+import Data.Monoid (Monoid(mempty, mappend, mconcat))
+import Data.Traversable (Traversable(traverse))
 import Data.Foldable (Foldable)
-import Data.Traversable
 import Data.Maybe (fromMaybe)
 
 import Data.PQueue.Prio.Internals

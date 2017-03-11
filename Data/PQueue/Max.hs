@@ -83,11 +83,11 @@ module Data.PQueue.Max (
   keysQueue,
   seqSpine) where
 
-import Control.Applicative ((<$>))
-import Control.DeepSeq
+import Control.DeepSeq (NFData(rnf))
 
-import Data.Monoid
-import Data.Maybe hiding (mapMaybe)
+import Data.Functor ((<$>))
+import Data.Monoid (Monoid(mempty, mappend))
+import Data.Maybe (fromMaybe)
 import Data.Foldable (foldl, foldr)
 
 import qualified Data.PQueue.Min as Min

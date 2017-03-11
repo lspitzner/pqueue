@@ -116,11 +116,11 @@ module Data.PQueue.Prio.Max (
   )
   where
 
-import Control.Applicative hiding (empty)
-import Data.Monoid
+import Control.Applicative (Applicative, (<$>))
+import Data.Monoid (Monoid(mempty, mappend, mconcat))
+import Data.Traversable (Traversable(traverse))
 import Data.Foldable (Foldable, foldr, foldl)
-import Data.Traversable
-import Data.Maybe hiding (mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.PQueue.Prio.Max.Internals
 
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null, foldr, foldl)

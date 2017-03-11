@@ -31,11 +31,11 @@ module Data.PQueue.Internals (
   seqSpine
   ) where
 
-import Control.DeepSeq
+import Control.DeepSeq (NFData(rnf), deepseq)
 
-import Data.Functor
+import Data.Functor ((<$>))
 import Data.Foldable (Foldable (foldr, foldl))
-import Data.Monoid (Monoid (..))
+import Data.Monoid (mappend)
 import qualified Data.PQueue.Prio.Internals as Prio
 
 #ifdef __GLASGOW_HASKELL__

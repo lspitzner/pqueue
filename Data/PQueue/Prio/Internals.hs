@@ -33,8 +33,8 @@ module Data.PQueue.Prio.Internals (
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
-import Control.Applicative.Identity
-import Control.DeepSeq
+import Control.Applicative.Identity (Identity(Identity, runIdentity))
+import Control.DeepSeq (NFData(rnf), deepseq)
 
 import Data.Monoid (Monoid (..))
 import Prelude hiding (null)
