@@ -33,6 +33,7 @@ Library {
     Data.PQueue.Prio
     Data.PQueue.Prio.Min
     Data.PQueue.Prio.Max
+    Data.PQueue
     Data.PQueue.Min
     Data.PQueue.Max
   other-modules:

@@ -33,7 +33,7 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Prio (
-  PQueue,
+  PQueue(PQ),
   MinPQueue,
   MaxPQueue,
   -- * Construction
