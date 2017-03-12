@@ -7,6 +7,8 @@ import qualified Data.PQueue.Min as Min
 
 import Test.QuickCheck
 
+import System.Exit
+
 import qualified Data.List as List
 import Control.Arrow (second)
 
@@ -108,29 +110,35 @@ validFoldrU xs = Min.foldrU (+) 0 q == List.sum xs
 
 main :: IO ()
 main = do
-  myCheck validMinToAscList
-  myCheck validMinToDescList
-  myCheck validMinUnfoldr
-  myCheck validMinToList
-  myCheck validMinFromAscList
-  myCheck validMinFromDescList
-  myCheck validMinUnion
-  myCheck validMinMapMonotonic
-  myCheck validMinPartition
-  myCheck validMinCmp
-  myCheck validMinCmp2
-  myCheck validSpan
-  myCheck validSpan2
-  myCheck validSplit
-  myCheck validSplit2
-  myCheck validMinFilter
-  myCheck validMapEither
-  myCheck validMap
-  myCheck validSize
-  myCheck validNull
-  myCheck validFoldl
-  myCheck validFoldlU
-  myCheck validFoldrU
+  check validMinToAscList
+  check validMinToDescList
+  check validMinUnfoldr
+  check validMinToList
+  check validMinFromAscList
+  check validMinFromDescList
+  check validMinUnion
+  check validMinMapMonotonic
+  check validMinPartition
+  check validMinCmp
+  check validMinCmp2
+  check validSpan
+  check validSpan2
+  check validSplit
+  check validSplit2
+  check validMinFilter
+  check validMapEither
+  check validMap
+  check validSize
+  check validNull
+  check validFoldl
+  check validFoldlU
+  check validFoldrU
 
-myCheck :: Testable prop => prop -> IO ()
-myCheck test = quickCheck (whenFail (fail "Test failed to pass") test)
+isPass :: Result -> Bool
+isPass Success{} = True
+isPass _         = False
+
+check :: Testable prop => prop -> IO ()
+check p = do
+  r <- quickCheckResult p
+  if isPass r then return () else exitFailure
