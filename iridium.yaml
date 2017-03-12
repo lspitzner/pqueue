@@ -31,7 +31,7 @@ checks:
   hlint:
     enabled: False
   testsuites:
-    enabled: False
+    enabled: True
   compiler-warnings:
     enabled: True
     # whitelist: [only, these, tests] # not supported yet
