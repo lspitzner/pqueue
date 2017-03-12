@@ -37,6 +37,9 @@ Library {
     Data.PQueue.Internals
     Data.PQueue.Prio.Max.Internals
     Control.Applicative.Identity
+    CustomPrelude
+  extensions:
+    NoImplicitPrelude
   if impl(ghc) {
     extensions: DeriveDataTypeable
   }

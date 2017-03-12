@@ -2,16 +2,15 @@
 
 module Data.PQueue.Prio.Max.Internals where
 
+import CustomPrelude
+
+import Data.Foldable (Foldable(foldr, foldl))
+
 import Control.DeepSeq (NFData(rnf))
 
-import Data.Traversable (Traversable(traverse))
-import Data.Foldable (Foldable(foldr, foldl))
-import Data.Functor ((<$>))
 # if __GLASGOW_HASKELL__
 import Data.Data (Data, Typeable)
 # endif
-
-import Prelude hiding (foldr, foldl)
 
 import Data.PQueue.Prio.Internals (MinPQueue)
 

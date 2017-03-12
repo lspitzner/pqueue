@@ -32,13 +32,12 @@ module Data.PQueue.Prio.Internals (
   mapForest
   ) where
 
-import Control.Applicative (Applicative(..), (<$>))
+import CustomPrelude
+
+import Data.Foldable (foldr)
+
 import Control.Applicative.Identity (Identity(Identity, runIdentity))
 import Control.DeepSeq (NFData(rnf), deepseq)
-
-import Data.Monoid (Monoid (..))
-
-import Prelude hiding (null)
 
 #if __GLASGOW_HASKELL__
 

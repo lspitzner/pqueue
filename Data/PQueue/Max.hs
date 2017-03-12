@@ -83,18 +83,16 @@ module Data.PQueue.Max (
   keysQueue,
   seqSpine) where
 
+import CustomPrelude
+
 import Control.DeepSeq (NFData(rnf))
 
-import Data.Functor ((<$>))
-import Data.Monoid (Monoid(mempty, mappend))
-import Data.Maybe (fromMaybe)
 import Data.Foldable (foldl, foldr)
+import Data.List (map)
 
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio
 import Data.PQueue.Prio.Max.Internals (Down(..))
-
-import Prelude hiding (null, foldr, foldl, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter)
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)

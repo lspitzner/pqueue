@@ -116,18 +116,12 @@ module Data.PQueue.Prio.Min (
   )
   where
 
-import Control.Applicative (Applicative, pure, (<*>), (<$>))
+import CustomPrelude
 
 import qualified Data.List as List
-import qualified Data.Foldable as Fold(Foldable(..))
-import Data.Monoid (Monoid(mempty, mappend, mconcat))
-import Data.Traversable (Traversable(traverse))
-import Data.Foldable (Foldable)
-import Data.Maybe (fromMaybe)
+import Data.Foldable (Foldable(foldr, foldl))
 
 import Data.PQueue.Prio.Internals
-
-import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)

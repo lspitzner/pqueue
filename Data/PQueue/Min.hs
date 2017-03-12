@@ -83,11 +83,9 @@ module Data.PQueue.Min (
   keysQueue,
   seqSpine) where
 
-import Prelude hiding (null, foldr, foldl, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
+import CustomPrelude
 
-import Data.Monoid (Monoid(mempty, mappend, mconcat))
 import Data.Foldable (foldl, foldr, foldl')
-import Data.Maybe (fromMaybe)
 
 import qualified Data.List as List
 

@@ -31,18 +31,16 @@ module Data.PQueue.Internals (
   seqSpine
   ) where
 
+import CustomPrelude
+import Data.Foldable (Foldable (foldr, foldl))
+
 import Control.DeepSeq (NFData(rnf), deepseq)
 
-import Data.Functor ((<$>))
-import Data.Foldable (Foldable (foldr, foldl))
-import Data.Monoid (mappend)
 import qualified Data.PQueue.Prio.Internals as Prio
 
 #ifdef __GLASGOW_HASKELL__
 import Data.Data
 #endif
-
-import Prelude hiding (foldl, foldr, null)
 
 -- | A priority queue with elements of type @a@.  Supports extracting the minimum element.
 data MinQueue a = Empty | MinQueue {-# UNPACK #-} !Int a !(BinomHeap a)

@@ -116,15 +116,11 @@ module Data.PQueue.Prio.Max (
   )
   where
 
-import Control.Applicative (Applicative, (<$>))
-import Data.Monoid (Monoid(mempty, mappend, mconcat))
-import Data.Traversable (Traversable(traverse))
+import CustomPrelude
+
 import Data.Foldable (Foldable, foldr, foldl)
-import Data.Maybe (fromMaybe)
+
 import Data.PQueue.Prio.Max.Internals
-
-import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null, foldr, foldl)
-
 import qualified Data.PQueue.Prio.Min as Q
 
 #ifdef __GLASGOW_HASKELL__
