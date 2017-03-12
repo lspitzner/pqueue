@@ -44,11 +44,16 @@ Library {
     -fdicts-strict
     -Wall
   }
- if impl(ghc>=7.8) {
-  ghc-options: {
-    -fno-warn-inline-rule-shadowing
+  if impl(ghc>=7.8) {
+    ghc-options: {
+      -fno-warn-inline-rule-shadowing
+    }
   }
- }
+  if impl(ghc>=7.10) {
+    ghc-options: {
+      -fno-warn-unused-imports
+    }
+  }
 }
 
 Test-Suite test
@@ -61,6 +66,11 @@ Test-Suite test
   if impl(ghc>=7.8) {
     ghc-options: {
       -fno-warn-inline-rule-shadowing
+    }
+  }
+  if impl(ghc>=7.10) {
+    ghc-options: {
+      -fno-warn-unused-imports
     }
   }
   If impl(ghc)
