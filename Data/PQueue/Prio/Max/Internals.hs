@@ -3,6 +3,7 @@
 module Data.PQueue.Prio.Max.Internals where
 
 import CustomPrelude
+import Prelude()
 
 import Data.Foldable (Foldable(foldr, foldl))
 

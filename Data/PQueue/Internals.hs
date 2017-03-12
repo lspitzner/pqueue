@@ -32,6 +32,8 @@ module Data.PQueue.Internals (
   ) where
 
 import CustomPrelude
+import Prelude()
+
 import Data.Foldable (Foldable (foldr, foldl))
 
 import Control.DeepSeq (NFData(rnf), deepseq)

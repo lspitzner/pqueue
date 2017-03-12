@@ -117,6 +117,7 @@ module Data.PQueue.Prio.Max (
   where
 
 import CustomPrelude
+import Prelude()
 
 import Data.Foldable (Foldable, foldr, foldl)
 

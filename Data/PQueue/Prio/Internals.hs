@@ -33,6 +33,7 @@ module Data.PQueue.Prio.Internals (
   ) where
 
 import CustomPrelude
+import Prelude()
 
 import Data.Foldable (foldr)
 

@@ -117,6 +117,7 @@ module Data.PQueue.Prio.Min (
   where
 
 import CustomPrelude
+import Prelude()
 
 import qualified Data.List as List
 import Data.Foldable (Foldable(foldr, foldl))

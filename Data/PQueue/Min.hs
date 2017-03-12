@@ -84,6 +84,7 @@ module Data.PQueue.Min (
   seqSpine) where
 
 import CustomPrelude
+import Prelude()
 
 import Data.Foldable (foldl, foldr, foldl')
 

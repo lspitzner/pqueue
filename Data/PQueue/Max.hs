@@ -84,6 +84,7 @@ module Data.PQueue.Max (
   seqSpine) where
 
 import CustomPrelude
+import Prelude()
 
 import Control.DeepSeq (NFData(rnf))
 
