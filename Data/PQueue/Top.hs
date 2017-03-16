@@ -10,42 +10,52 @@ import qualified Data.Foldable as Fold
 import Data.Data (Data, Typeable)
 #endif
 
-class Top top where
-  switch :: f Min -> f Max -> f top
+-- class First first where
+--   switch :: f Min -> f Max -> f first
 
-newtype Wrap top a = Wrap {unwrap :: a}
+class First first where
+  switch :: a -> a -> TaggedF first a
+
+newtype TaggedF first a = TaggedF {unTaggedF :: a}
   deriving (Data, Typeable)
 
 data Min = Min
 data Max = Max
 
-instance Top Min where switch f _ = f
-instance Top Max where switch _ f = f
+-- instance First Min where switch f _ = f
+-- instance First Max where switch _ f = f
 
+instance First Min where switch f _ = TaggedF f
+instance First Max where switch _ f = TaggedF f
 
-instance (Top top, Eq a) => Eq (Wrap top a) where
-  Wrap x == Wrap y  =  x==y
+instance (First first, Eq a) => Eq (TaggedF first a) where
+  TaggedF x == TaggedF y  =  x==y
 
-newtype
-  Compare a top = Compare {runCompare :: Wrap top a -> Wrap top a -> Ordering}
+-- newtype
+--   Compare a first = Compare {runCompare :: TaggedF first a -> TaggedF first a -> Ordering}
 
-instance (Top top, Ord a) => Ord (Wrap top a) where
-  compare =
-    runCompare $
-    switch
-      (Compare $ \(Wrap x) (Wrap y) -> compare x y)
-      (Compare $ \(Wrap x) (Wrap y) -> compare y x)
+instance (First first, Ord a) => Ord (TaggedF first a) where
+  compare x y = unTaggedF $ switch compare (flip compare) <*> x <*> y
+    -- runCompare $
+    -- switch
+    --   (Compare $ \(TaggedF x) (TaggedF y) -> compare x y)
+    --   (Compare $ \(TaggedF x) (TaggedF y) -> compare y x)
 
-instance NFData a => NFData (Wrap top a) where
-  rnf (Wrap a) = rnf a
+instance NFData a => NFData (TaggedF first a) where
+  rnf (TaggedF a) = rnf a
 
-instance Functor (Wrap top) where
-  fmap f (Wrap a) = Wrap (f a)
+instance Functor (TaggedF first) where
+  fmap f (TaggedF a) = TaggedF (f a)
 
-instance Fold.Foldable (Wrap top) where
-  foldMap f (Wrap a) = f a
-  foldr f z (Wrap a) = a `f` z
-  foldl f z (Wrap a) = z `f` a
+instance Applicative (TaggedF s) where
+  pure = TaggedF
+  TaggedF f <*> TaggedF x = TaggedF (f x)
+  _ *> n = n
 
-instance Trav.Traversable (Wrap top) where
-  traverse f (Wrap a) = fmap Wrap $ f a
+instance Fold.Foldable (TaggedF first) where
+  foldMap f (TaggedF a) = f a
+  foldr f z (TaggedF a) = a `f` z
+  foldl f z (TaggedF a) = z `f` a
+
+instance Trav.Traversable (TaggedF first) where
+  traverse f (TaggedF a) = fmap TaggedF $ f a

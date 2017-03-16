@@ -107,7 +107,7 @@ build f = f (:) []
 #endif
 
 -- | A priority queue with elements of type @a@.  Supports extracting the maximum element.
--- Implemented as a wrapper around 'Min.MinQueue'.
+-- Implemented as a TaggedFper around 'Min.MinQueue'.
 newtype MaxQueue a = MaxQ (Min.MinQueue (Down a))
 # if __GLASGOW_HASKELL__
   deriving (Eq, Ord, Data, Typeable)
@@ -157,7 +157,7 @@ size (MaxQ q) = Min.size q
 findMax :: MaxQueue a -> a
 findMax = fromMaybe (error "Error: findMax called on empty queue") . getMax
 
--- | /O(1)/.  The top (maximum) element of the queue, if there is one.
+-- | /O(1)/.  The first (maximum) element of the queue, if there is one.
 getMax :: MaxQueue a -> Maybe a
 getMax (MaxQ q) = unDown <$> Min.getMin q
 
@@ -169,14 +169,14 @@ deleteMax (MaxQ q) = MaxQ (Min.deleteMin q)
 deleteFindMax :: Ord a => MaxQueue a -> (a, MaxQueue a)
 deleteFindMax = fromMaybe (error "Error: deleteFindMax called on empty queue") . maxView
 
--- | /O(log n)/.  Extract the top (maximum) element of the sequence, if there is one.
+-- | /O(log n)/.  Extract the first (maximum) element of the sequence, if there is one.
 maxView :: Ord a => MaxQueue a -> Maybe (a, MaxQueue a)
 maxView (MaxQ q) = case Min.minView q of
   Nothing -> Nothing
   Just (Down x, q')
           -> Just (x, MaxQ q')
 
--- | /O(log n)/.  Delete the top (maximum) element of the sequence, if there is one.
+-- | /O(log n)/.  Delete the first (maximum) element of the sequence, if there is one.
 delete :: Ord a => MaxQueue a -> Maybe (MaxQueue a)
 delete = fmap snd . maxView
 
