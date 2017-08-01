@@ -1,5 +1,9 @@
 # Revision history for pqueue
 
+## 1.3.2.3  -- 2017-08-01
+
+  * Maintenance release for ghc-8.2
+
 ## 1.3.2.2  -- 2017-03-12
 
   * Add test-suite from darcs repository for pqueue-1.0.1.
