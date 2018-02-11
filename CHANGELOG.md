@@ -1,5 +1,16 @@
 # Revision history for pqueue
 
+## 1.4.1.1  -- 2018-02-11
+
+  * Remove/Replace buggy insertBehind implementation.
+
+    The existing implementation did not always insert behind. As a fix,
+    the function was removed from Data.PQueue.Max/Min and was rewritten
+    with a O(n) complexity (!) for Data.PQueue.Prio.Max/Min.
+
+  * Adapt for ghc-8.4, based on the ghc-8.4.1-alpha1 release
+  * Drop support for ghc<7.4
+
 ## 1.3.2.3  -- 2017-08-01
 
   * Maintenance release for ghc-8.2
