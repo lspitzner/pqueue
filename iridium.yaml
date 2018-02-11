@@ -56,10 +56,6 @@ checks:
     # config above.
     compilers:
       - compiler: ghc
-        version: 7.0.4
-      - compiler: ghc
-        version: 7.2.2
-      - compiler: ghc
         version: 7.4.2
       - compiler: ghc
         version: 7.6.3
@@ -71,6 +67,8 @@ checks:
         version: 8.0.2
       - compiler: ghc
         version: 8.2.1
+      - compiler: ghc
+        version: 8.4.0.a1
   documentation:
     enabled: True
 

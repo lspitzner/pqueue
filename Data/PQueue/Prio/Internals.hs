@@ -36,7 +36,7 @@ import Control.Applicative (Applicative(..), (<$>))
 import Control.Applicative.Identity (Identity(Identity, runIdentity))
 import Control.DeepSeq (NFData(rnf), deepseq)
 
-import Data.Monoid (Monoid (..))
+import Data.Monoid ((<>))
 
 import Prelude hiding (null)
 
@@ -104,10 +104,6 @@ eqExtract k10 a10 ts10 k20 a20 ts20 =
              -> eqExtract k1 a1 ts1' k2 a2 ts2'
     (No, No) -> True
     _        -> False
-
-(<>) :: Monoid m => m -> m -> m
-(<>) = mappend
-infixr 6 <>
 
 instance (Ord k, Ord a) => Ord (MinPQueue k a) where
   MinPQ _n1 k10 a10 ts10 `compare` MinPQ _n2 k20 a20 ts20 =

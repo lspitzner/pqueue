@@ -125,6 +125,10 @@ import Data.Traversable (Traversable(traverse))
 import Data.Foldable (Foldable)
 import Data.Maybe (fromMaybe)
 
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup((<>)))
+#endif
+
 import Data.PQueue.Prio.Internals
 
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
@@ -145,6 +149,11 @@ uncurry' :: (a -> b -> c) -> (a, b) -> c
 uncurry' f (a, b) = f a b
 
 infixr 8 .:
+
+#if MIN_VERSION_base(4,9,0)
+instance Ord k => Semigroup (MinPQueue k a) where
+  (<>) = union
+#endif
 
 instance Ord k => Monoid (MinPQueue k a) where
   mempty = empty

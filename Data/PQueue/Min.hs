@@ -88,6 +88,10 @@ import Data.Monoid (Monoid(mempty, mappend, mconcat))
 import Data.Foldable (foldl, foldr, foldl')
 import Data.Maybe (fromMaybe)
 
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup((<>)))
+#endif
+
 import qualified Data.List as List
 
 import Data.PQueue.Internals
@@ -120,6 +124,11 @@ instance Read a => Read (MinQueue a) where
     ("fromAscList",s) <- lex r
     (xs,t) <- reads s
     return (fromAscList xs,t)
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance Ord a => Semigroup (MinQueue a) where
+  (<>) = union
 #endif
 
 instance Ord a => Monoid (MinQueue a) where

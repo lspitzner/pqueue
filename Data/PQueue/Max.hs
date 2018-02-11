@@ -89,6 +89,10 @@ import Data.Monoid (Monoid(mempty, mappend))
 import Data.Maybe (fromMaybe)
 import Data.Foldable (foldl, foldr)
 
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup((<>)))
+#endif
+
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio
 import Data.PQueue.Prio.Max.Internals (Down(..))
@@ -134,6 +138,11 @@ instance Read a => Read (MaxQueue a) where
     ("fromDescList",s) <- lex r
     (xs,t) <- reads s
     return (fromDescList xs,t)
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance Ord a => Semigroup (MaxQueue a) where
+  (<>) = union
 #endif
 
 instance Ord a => Monoid (MaxQueue a) where

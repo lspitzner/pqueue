@@ -123,6 +123,10 @@ import Data.Foldable (Foldable, foldr, foldl)
 import Data.Maybe (fromMaybe)
 import Data.PQueue.Prio.Max.Internals
 
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup((<>)))
+#endif
+
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null, foldr, foldl)
 
 import qualified Data.PQueue.Prio.Min as Q
@@ -137,6 +141,11 @@ build f = f (:) []
 
 first' :: (a -> b) -> (a, c) -> (b, c)
 first' f (a, c) = (f a, c)
+
+#if MIN_VERSION_base(4,9,0)
+instance Ord k => Semigroup (MaxPQueue k a) where
+  (<>) = union
+#endif
 
 instance Ord k => Monoid (MaxPQueue k a) where
   mempty = empty
