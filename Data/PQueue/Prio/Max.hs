@@ -185,8 +185,10 @@ singleton k a = MaxPQ (Q.singleton (Down k) a)
 insert :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
 insert k a (MaxPQ q) = MaxPQ (Q.insert (Down k) a q)
 
--- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element into the priority queue,
---   putting it behind elements that compare equal to the inserted one.
+-- | /O(n)/ (an earlier implementation had /O(1)/ but was buggy).
+--   Insert an element with the specified key into the priority queue,
+--   putting it behind elements whos key compares equal to the
+--   inserted one.
 insertBehind :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
 insertBehind k a (MaxPQ q) = MaxPQ (Q.insertBehind (Down k) a q)
 

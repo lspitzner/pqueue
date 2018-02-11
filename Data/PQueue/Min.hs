@@ -41,7 +41,6 @@ module Data.PQueue.Min (
   -- * Construction operations
   singleton,
   insert,
-  insertBehind,
   union,
   unions,
   -- * Subsets

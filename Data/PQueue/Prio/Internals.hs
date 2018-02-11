@@ -153,12 +153,20 @@ singleton k a = MinPQ 1 k a Nil
 insert :: Ord k => k -> a -> MinPQueue k a -> MinPQueue k a
 insert = insert' (<=)
 
--- | Amortized /O(1)/, worst-case /O(log n)/.  Insert an element
---   with the specified key into the priority queue,
+-- | /O(n)/ (an earlier implementation had /O(1)/ but was buggy).
+--   Insert an element with the specified key into the priority queue,
 --   putting it behind elements whos key compares equal to the
 --   inserted one.
 insertBehind :: Ord k => k -> a -> MinPQueue k a -> MinPQueue k a
-insertBehind = insert' (<)
+insertBehind k v q =
+  let (smaller, larger) = spanKey (<= k) q
+  in  foldr (uncurry insert) (insert k v larger) smaller
+
+spanKey :: Ord k => (k -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
+spanKey p q = case minViewWithKey q of
+  Just (t@(k, _), q') | p k ->
+    let (kas, q'') = spanKey p q' in (t : kas, q'')
+  _ -> ([], q)
 
 -- | Internal helper method, using a specific comparator function.
 insert' :: CompF k -> k -> a -> MinPQueue k a -> MinPQueue k a

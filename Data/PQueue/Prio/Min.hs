@@ -307,8 +307,8 @@ spanWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueu
 -- | Equivalent to @'spanWithKey' (\ k a -> 'not' (p k a)) q@.
 breakWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 spanWithKey p q = case minViewWithKey q of
-  Just ((k, a), q')
-    | p k a -> let (kas, q'') = spanWithKey p q' in ((k, a):kas, q'')
+  Just (t@(k, a), q')
+    | p k a -> let (kas, q'') = spanWithKey p q' in (t:kas, q'')
   _         -> ([], q)
 breakWithKey p = spanWithKey (not .: p)
 
