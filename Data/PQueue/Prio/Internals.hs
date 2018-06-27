@@ -151,7 +151,7 @@ insert = insert' (<=)
 
 -- | /O(n)/ (an earlier implementation had /O(1)/ but was buggy).
 --   Insert an element with the specified key into the priority queue,
---   putting it behind elements whos key compares equal to the
+--   putting it behind elements whose key compares equal to the
 --   inserted one.
 insertBehind :: Ord k => k -> a -> MinPQueue k a -> MinPQueue k a
 insertBehind k v q =
