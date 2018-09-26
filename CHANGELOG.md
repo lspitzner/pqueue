@@ -1,5 +1,10 @@
 # Revision history for pqueue
 
+## 1.4.1.2  -- 2018-09-26
+
+  * Maintenance release for ghc-8.6
+  * Drop support for ghc<7.10
+
 ## 1.4.1.1  -- 2018-02-11
 
   * Remove/Replace buggy insertBehind implementation.

@@ -56,19 +56,15 @@ checks:
     # config above.
     compilers:
       - compiler: ghc
-        version: 7.4.2
-      - compiler: ghc
-        version: 7.6.3
-      - compiler: ghc
-        version: 7.8.4
-      - compiler: ghc
         version: 7.10.3
       - compiler: ghc
         version: 8.0.2
       - compiler: ghc
-        version: 8.2.1
+        version: 8.2.2
       - compiler: ghc
-        version: 8.4.0.a1
+        version: 8.4.3
+      - compiler: ghc
+        version: 8.6.1
   documentation:
     enabled: True
 
