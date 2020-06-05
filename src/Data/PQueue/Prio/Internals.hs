@@ -412,6 +412,9 @@ foldlWithKeyU :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU _ z Empty = z
 foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\ k a z -> f z k a) (const id) ts (f z0 k0 a0)
 
+-- | /O(n)/.  An unordered traversal over a priority queue, in no particular order.
+-- While there is no guarantee in which order the elements are traversed, the resulting
+-- priority queue will be perfectly valid.
 traverseWithKeyU :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKeyU _ Empty = pure Empty
 traverseWithKeyU f (MinPQ n k a ts) = MinPQ n k <$> f k a <*> traverseForest f (const (pure Zero)) ts
