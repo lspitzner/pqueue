@@ -1,5 +1,10 @@
 # Revision history for pqueue
 
+## 1.4.1.3  -- 2020-06-06
+
+  * Maintenance release
+  * Add missing documentation
+
 ## 1.4.1.2  -- 2018-09-26
 
   * Maintenance release for ghc-8.6
