@@ -1,4 +1,10 @@
+# Cabal
 dist
 .cabal-sandbox/
 cabal.sandbox.config
 dist-newstyle
+
+# Stack
+stack.yaml
+stack.yaml.lock
+.stack-work/

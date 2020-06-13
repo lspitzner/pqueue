@@ -4,7 +4,7 @@ import Control.Applicative
 
 import Prelude
 
-newtype Identity a = Identity {runIdentity :: a}
+newtype Identity a = Identity { runIdentity :: a }
 
 instance Functor Identity where
   fmap f (Identity x) = Identity (f x)
