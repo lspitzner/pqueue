@@ -3,6 +3,7 @@ dist
 .cabal-sandbox/
 cabal.sandbox.config
 dist-newstyle
+/ci-out/
 
 # Stack
 stack.yaml
