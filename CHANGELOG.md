@@ -4,6 +4,7 @@
 
   * Maintenance release
   * Add missing documentation
+  * Add nix-expressions for testing against different compilers/package sets
 
 ## 1.4.1.2  -- 2018-09-26
 
