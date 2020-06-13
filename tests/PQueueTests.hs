@@ -133,6 +133,7 @@ main = do
   check validFoldl
   check validFoldlU
   check validFoldrU
+  putStrLn "all tests passed"
 
 isPass :: Result -> Bool
 isPass Success{} = True
