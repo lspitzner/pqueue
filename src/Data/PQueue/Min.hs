@@ -268,10 +268,10 @@ foldlDesc = foldrAsc . flip
 {-# INLINE fromList #-}
 -- | /O(n)/. Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MinQueue a
-fromList = foldr insert empty
+fromList = foldl' (flip insert) empty
 
 {-# RULES
-  "fromList" fromList = foldr insert empty;
+  "fromList" fromList = foldl' (flip insert) empty;
   "fromAscList" fromAscList = foldr insertMinQ empty;
   #-}
 
