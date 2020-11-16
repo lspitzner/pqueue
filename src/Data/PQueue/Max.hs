@@ -16,8 +16,6 @@
 -- some operations. These bounds hold even in a persistent (shared) setting.
 --
 -- This implementation is based on a binomial heap augmented with a global root.
--- The spine of the heap is maintained lazily. To force the spine of the heap,
--- use 'seqSpine'.
 --
 -- This implementation does not guarantee stable behavior.
 --
@@ -335,12 +333,18 @@ fromDescList = MaxQ . Min.fromAscList . map Down
 {-# INLINE fromList #-}
 -- | /O(n log n)/. Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MaxQueue a
-fromList = foldr insert empty
+fromList = MaxQ . Min.fromList . map Down
 
 -- | /O(n)/. Constructs a priority queue from the keys of a 'Prio.MaxPQueue'.
 keysQueue :: Prio.MaxPQueue k a -> MaxQueue k
 keysQueue (Prio.MaxPQ q) = MaxQ (Min.keysQueue q)
 
--- | /O(log n)/. Forces the spine of the heap.
+-- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
+--
+-- Note: The spine of a 'MaxQueue' is stored somewhat lazily. Most operations
+-- take great care to prevent chains of thunks from accumulating along the
+-- spine to the detriment of performance. However, 'mapU' can leave expensive
+-- thunks in the structure and repeated applications of that function can
+-- create thunk chains.
 seqSpine :: MaxQueue a -> b -> b
 seqSpine (MaxQ q) = Min.seqSpine q

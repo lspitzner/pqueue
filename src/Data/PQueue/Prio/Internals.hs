@@ -26,6 +26,9 @@ module Data.PQueue.Prio.Internals (
   foldrWithKey,
   foldlWithKey,
   insertMin,
+  insertMin',
+  insertMax',
+  fromList,
   foldrWithKeyU,
   foldlWithKeyU,
   traverseWithKeyU,
@@ -35,6 +38,7 @@ module Data.PQueue.Prio.Internals (
 
 import Control.Applicative.Identity (Identity(Identity, runIdentity))
 import Control.DeepSeq (NFData(rnf), deepseq)
+import Data.List (foldl')
 
 import Data.Monoid ((<>))
 
@@ -69,7 +73,7 @@ infixr 8 .:
 
 -- | A priority queue where values of type @a@ are annotated with keys of type @k@.
 -- The queue supports extracting the element with minimum key.
-data MinPQueue k a = Empty | MinPQ {-# UNPACK #-} !Int k a (BinomHeap k a)
+data MinPQueue k a = Empty | MinPQ {-# UNPACK #-} !Int !k a !(BinomHeap k a)
 #if __GLASGOW_HASKELL__
   deriving (Typeable)
 #endif
@@ -80,9 +84,9 @@ data BinomForest rk k a =
   Cons {-# UNPACK #-} !(BinomTree rk k a) (BinomForest (Succ rk) k a)
 type BinomHeap = BinomForest Zero
 
-data BinomTree rk k a = BinomTree k a (rk k a)
+data BinomTree rk k a = BinomTree !k a !(rk k a)
 data Zero k a = Zero
-data Succ rk k a = Succ {-# UNPACK #-} !(BinomTree rk k a) (rk k a)
+data Succ rk k a = Succ {-# UNPACK #-} !(BinomTree rk k a) !(rk k a)
 
 type CompF a = a -> a -> Bool
 
@@ -160,7 +164,7 @@ spanKey p q = case minViewWithKey q of
 insert' :: CompF k -> k -> a -> MinPQueue k a -> MinPQueue k a
 insert' _ k a Empty = singleton k a
 insert' le k a (MinPQ n k' a' ts)
-  | k `le` k' = MinPQ (n + 1) k  a  (incr le (tip k' a') ts)
+  | k `le` k' = MinPQ (n + 1) k  a  (incrMin (tip k' a') ts)
   | otherwise = MinPQ (n + 1) k' a' (incr le (tip k  a ) ts)
 
 -- | Amortized /O(log(min(n1, n2)))/, worst-case /O(log(max(n1, n2)))/. Returns the union
@@ -251,6 +255,48 @@ insertMin :: k -> a -> MinPQueue k a -> MinPQueue k a
 insertMin k a Empty = MinPQ 1 k a Nil
 insertMin k a (MinPQ n k' a' ts) = MinPQ (n + 1) k a (incrMin (tip k' a') ts)
 
+-- | Equivalent to 'insert', save the assumption that this key is @<=@
+-- every other key in the map. /The precondition is not checked./ Additionally,
+-- this eagerly constructs the new portion of the spine.
+insertMin' :: k -> a -> MinPQueue k a -> MinPQueue k a
+insertMin' k a Empty = MinPQ 1 k a Nil
+insertMin' k a (MinPQ n k' a' ts) = MinPQ (n + 1) k a (incrMin' (tip k' a') ts)
+
+-- | Inserts an entry with key @>=@ every key in the map. Assumes and preserves
+-- an extra invariant: the roots of the binomial trees are decreasing along
+-- the spine.
+insertMax' :: k -> a -> MinPQueue k a -> MinPQueue k a
+insertMax' k a Empty = MinPQ 1 k a Nil
+insertMax' k a (MinPQ n k' a' ts) = MinPQ (n + 1) k' a' (incrMax' (tip k a) ts)
+
+{-# INLINE fromList #-}
+-- | /O(n)/. Constructs a priority queue from an unordered list.
+fromList :: Ord k => [(k, a)] -> MinPQueue k a
+-- We build a forest first and then extract its minimum at the end.
+-- Why not just build the 'MinQueue' directly? This way saves us one
+-- comparison per element.
+fromList xs = case extractForest (<=) (fromListHeap (<=) xs) of
+  No -> Empty
+  -- Should we track the size as we go instead? That saves O(log n)
+  -- at the end, but it needs an extra register all along the way.
+  -- The nodes should probably all be in L1 cache already thanks to the
+  -- extractHeap.
+  Yes (Extract k v ~Zero f) -> MinPQ (sizeHeap f + 1) k v f
+
+{-# INLINE fromListHeap #-}
+fromListHeap :: CompF k -> [(k, a)] -> BinomHeap k a
+fromListHeap le xs = foldl' go Nil xs
+  where
+    go fr (k, a) = incr' le (tip k a) fr
+
+sizeHeap :: BinomHeap k a -> Int
+sizeHeap = go 0 1
+  where
+    go :: Int -> Int -> BinomForest rk k a -> Int
+    go acc rk Nil = rk `seq` acc
+    go acc rk (Skip f) = go acc (2 * rk) f
+    go acc rk (Cons _t f) = go (acc + rk) (2 * rk) f
+
 -- | /O(1)/. Returns a binomial tree of rank zero containing this
 -- key and value.
 tip :: k -> a -> BinomTree Zero k a
@@ -265,10 +311,10 @@ meld le t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
 -- | Takes the union of two binomial forests, starting at the same rank. Analogous to binary addition.
 mergeForest :: CompF k -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
 mergeForest le f1 f2 = case (f1, f2) of
-  (Skip ts1, Skip ts2)       -> Skip (mergeForest le ts1 ts2)
-  (Skip ts1, Cons t2 ts2)    -> Cons t2 (mergeForest le ts1 ts2)
-  (Cons t1 ts1, Skip ts2)    -> Cons t1 (mergeForest le ts1 ts2)
-  (Cons t1 ts1, Cons t2 ts2) -> Skip (carryForest le (meld le t1 t2) ts1 ts2)
+  (Skip ts1, Skip ts2)       -> Skip $! mergeForest le ts1 ts2
+  (Skip ts1, Cons t2 ts2)    -> Cons t2 $! mergeForest le ts1 ts2
+  (Cons t1 ts1, Skip ts2)    -> Cons t1 $! mergeForest le ts1 ts2
+  (Cons t1 ts1, Cons t2 ts2) -> Skip $! carryForest le (meld le t1 t2) ts1 ts2
   (Nil, _)                   -> f2
   (_, Nil)                   -> f1
 
@@ -276,10 +322,13 @@ mergeForest le f1 f2 = case (f1, f2) of
 -- Analogous to binary addition when a digit has been carried.
 carryForest :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
 carryForest le t0 f1 f2 = t0 `seq` case (f1, f2) of
-  (Cons t1 ts1, Cons t2 ts2) -> Cons t0 (carryMeld t1 t2 ts1 ts2)
-  (Cons t1 ts1, Skip ts2)    -> Skip (carryMeld t0 t1 ts1 ts2)
-  (Skip ts1, Cons t2 ts2)    -> Skip (carryMeld t0 t2 ts1 ts2)
-  (Skip ts1, Skip ts2)       -> Cons t0 (mergeForest le ts1 ts2)
+  (Cons t1 ts1, Cons t2 ts2) -> Cons t0 $! carryMeld t1 t2 ts1 ts2
+  (Cons t1 ts1, Skip ts2)    -> Skip $! carryMeld t0 t1 ts1 ts2
+  (Skip ts1, Cons t2 ts2)    -> Skip $! carryMeld t0 t2 ts1 ts2
+  (Skip ts1, Skip ts2)       -> Cons t0 $! mergeForest le ts1 ts2
+  -- Why do these use incr and not incr'? We want the merge to take
+  -- O(log(min(|f1|, |f2|))) amortized time. If we performed this final
+  -- increment eagerly, that would degrade to O(log(max(|f1|, |f2|))) time.
   (Nil, _)                   -> incr le t0 f2
   (_, Nil)                   -> incr le t0 f1
   where  carryMeld = carryForest le .: meld le
@@ -289,7 +338,15 @@ incr :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
 incr le t ts = t `seq` case ts of
   Nil         -> Cons t Nil
   Skip ts'    -> Cons t ts'
-  Cons t' ts' -> Skip (incr le (meld le t t') ts')
+  Cons t' ts' -> ts' `seq` Skip (incr le (meld le t t') ts')
+
+-- | Inserts a binomial tree into a binomial forest. Analogous to binary incrementation.
+-- Forces the rebuilt portion of the spine.
+incr' :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
+incr' le t ts = t `seq` case ts of
+  Nil         -> Cons t Nil
+  Skip ts'    -> Cons t ts'
+  Cons t' ts' -> Skip $! incr' le (meld le t t') ts'
 
 -- | Inserts a binomial tree into a binomial forest. Assumes that the root of this tree
 -- is less than all other roots. Analogous to binary incrementation. Equivalent to
@@ -298,7 +355,23 @@ incrMin :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
 incrMin t@(BinomTree k a ts) tss = case tss of
   Nil          -> Cons t Nil
   Skip tss'    -> Cons t tss'
-  Cons t' tss' -> Skip (incrMin (BinomTree k a (Succ t' ts)) tss')
+  Cons t' tss' -> tss' `seq` Skip (incrMin (BinomTree k a (Succ t' ts)) tss')
+
+-- | Inserts a binomial tree into a binomial forest. Assumes that the root of this tree
+-- is less than all other roots. Analogous to binary incrementation. Equivalent to
+-- @'incr'' (\_ _ -> True)@. Forces the rebuilt portion of the spine.
+incrMin' :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
+incrMin' t@(BinomTree k a ts) tss = case tss of
+  Nil          -> Cons t Nil
+  Skip tss'    -> Cons t tss'
+  Cons t' tss' -> Skip $! incrMin' (BinomTree k a (Succ t' ts)) tss'
+
+-- | See 'insertMax'' for invariant info.
+incrMax' :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
+incrMax' t tss = t `seq` case tss of
+  Nil          -> Cons t Nil
+  Skip tss'    -> Cons t tss'
+  Cons (BinomTree k a ts) tss' -> Skip $! incrMax' (BinomTree k a (Succ t ts)) tss'
 
 extractHeap :: CompF k -> Int -> BinomHeap k a -> MinPQueue k a
 extractHeap le n ts = n `seq` case extractForest le ts of
@@ -330,29 +403,51 @@ extractHeap le n ts = n `seq` case extractForest le ts of
 --     Note that @forest@ is lazy, so if we discover a smaller key
 --     than @minKey@ later, we haven't wasted significant work.
 
-data Extract rk k a = Extract k a (rk k a) (BinomForest rk k a)
+data Extract rk k a = Extract !k a !(rk k a) !(BinomForest rk k a)
 data MExtract rk k a = No | Yes {-# UNPACK #-} !(Extract rk k a)
 
-incrExtract :: CompF k -> Maybe (BinomTree rk k a) -> Extract (Succ rk) k a -> Extract rk k a
-incrExtract _ Nothing (Extract k a (Succ t ts) tss)
-  = Extract k a ts (Cons t tss)
-incrExtract le (Just t) (Extract k a (Succ t' ts) tss)
-  = Extract k a ts (Skip (incr le (meld le t t') tss))
+incrExtract :: Extract (Succ rk) k a -> Extract rk k a
+incrExtract (Extract minKey minVal (Succ kChild kChildren) ts)
+  = Extract minKey minVal kChildren (Cons kChild ts)
+
+-- Why are we so lazy here? The idea, right or not, is to avoid a potentially
+-- expensive second pass to propagate carries. Instead, carry propagation gets
+-- fused (operationally) with successive operations. If the next operation is
+-- union or minView, this doesn't save anything, but if some insertions follow,
+-- it might be faster this way.
+incrExtract' :: CompF k -> BinomTree rk k a -> Extract (Succ rk) k a -> Extract rk k a
+incrExtract' le t (Extract minKey minVal (Succ kChild kChildren) ts)
+  = Extract minKey minVal kChildren (Skip $ incr le (t `cat` kChild) ts)
+  where
+    cat = meld le
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
 -- amortized /O(1)/ time, so applying it from the beginning takes /O(log n)/ time.
 extractForest :: CompF k -> BinomForest rk k a -> MExtract rk k a
-extractForest _ Nil = No
-extractForest le (Skip tss) = case extractForest le tss of
-  No     -> No
-  Yes ex -> Yes (incrExtract le Nothing ex)
-extractForest le (Cons t@(BinomTree k a0 ts) tss) = Yes $ case extractForest le tss of
-  Yes ex@(Extract k' _ _ _)
-    | k' <? k  -> incrExtract le (Just t) ex
-  _            -> Extract k a0 ts (Skip tss)
+extractForest le0 = start le0
   where
-    a <? b = not (b `le` a)
+    start :: CompF k -> BinomForest rk k a -> MExtract rk k a
+    start _le Nil = No
+    start le (Skip f) = case start le f of
+      No     -> No
+      Yes ex -> Yes (incrExtract ex)
+    start le (Cons t@(BinomTree k v ts) f) = Yes $ case go le k f of
+      No -> Extract k v ts (Skip f)
+      Yes ex -> incrExtract' le t ex
+
+    go :: CompF k -> k -> BinomForest rk k a -> MExtract rk k a
+    go _le _min_above Nil = _min_above `seq` No
+    go le min_above (Skip f) = case go le min_above f of
+      No -> No
+      Yes ex -> Yes (incrExtract ex)
+    go le min_above (Cons t@(BinomTree k v ts) f)
+      | min_above `le` k = case go le min_above f of
+          No -> No
+          Yes ex -> Yes (incrExtract' le t ex)
+      | otherwise = case go le k f of
+          No -> Yes (Extract k v ts (Skip f))
+          Yes ex -> Yes (incrExtract' le t ex)
 
 extract :: (Ord k) => BinomForest rk k a -> MExtract rk k a
 extract = extractForest (<=)
@@ -456,7 +551,13 @@ mapKeysMonoF f fCh ts0 = case ts0 of
     fCh' (Succ (BinomTree k a ts) tss) =
       Succ (BinomTree (f k) a (fCh ts)) (fCh tss)
 
--- | /O(log n)/. Analogous to @deepseq@ in the @deepseq@ package, but only forces the spine of the binomial heap.
+-- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
+--
+-- Note: The spine of a 'MinPQueue' is stored somewhat lazily.  Most operations
+-- take great care to prevent chains of thunks from accumulating along the
+-- spine to the detriment of performance. However, 'mapKeysMonotonic' can leave
+-- expensive thunks in the structure and repeated applications of that function
+-- can create thunk chains.
 seqSpine :: MinPQueue k a -> b -> b
 seqSpine Empty z0 = z0
 seqSpine (MinPQ _ _ _ ts0) z0 = ts0 `seqSpineF` z0 where
