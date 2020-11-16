@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, StandaloneDeriving #-}
+-- {-# options_ghc -ddump-simpl #-}
 
 module Data.PQueue.Internals (
   MinQueue (..),
@@ -139,13 +140,25 @@ cmpExtract (x1,q1) (x2,q2) =
 --
 -- is a type constructor that takes an element type and returns the type of binomial trees
 -- of rank @3@.
-data BinomForest rk a = Nil | Skip (BinomForest (Succ rk) a) |
-  Cons {-# UNPACK #-} !(BinomTree rk a) (BinomForest (Succ rk) a)
+--
+-- The Skip constructor must be lazy to obtain the desired amortized bounds.
+-- The forest field of the Succ constructor /could/ be made strict, but that
+-- would be worse for heavily persistent use and not obviously better
+-- otherwise.
+--
+-- Debit invariant:
+--
+-- The next-pointer of a Skip node is allowed 1 debit. No other debits are
+-- allowed in the structure.
+data BinomForest rk a
+   = Nil
+   | Skip (BinomForest (Succ rk) a)
+   | Cons {-# UNPACK #-} !(BinomTree rk a) (BinomForest (Succ rk) a)
 
-data BinomTree rk a = BinomTree a (rk a)
+data BinomTree rk a = BinomTree !a !(rk a)
 
 -- | If |rk| corresponds to rank @k@, then |'Succ' rk| corresponds to rank @k+1@.
-data Succ rk a = Succ {-# UNPACK #-} !(BinomTree rk a) (rk a)
+data Succ rk a = Succ {-# UNPACK #-} !(BinomTree rk a) !(rk a)
 
 -- | Type corresponding to the Zero rank.
 data Zero a = Zero
@@ -257,8 +270,8 @@ union' le (MinQueue n1 x1 f1) (MinQueue n2 x2 f2)
 -- | Takes a size and a binomial forest and produces a priority queue with a distinguished global root.
 extractHeap :: Ord a => BinomHeap a -> Maybe (a, BinomHeap a)
 extractHeap ts = case extractBin (<=) ts of
-  Yes (Extract x _ ts') -> Just (x, ts')
-  _                     -> Nothing
+  Yes (Extract x ~Zero ts') -> Just (x, ts')
+  No                    -> Nothing
 
 -- | A specialized type intended to organize the return of extract-min queries
 -- from a binomial forest. We walk all the way through the forest, and then
@@ -280,9 +293,7 @@ extractHeap ts = case extractBin (<=) ts of
 --     reconstruction of the binomial forest without @minRoot@. It is
 --     the union of all old roots with rank @>= rk@ (except @minRoot@),
 --     with the set of all children of @minRoot@ with rank @>= rk@.
---     Note that @forest@ is lazy, so if we discover a smaller key
---     than @minKey@ later, we haven't wasted significant work.
-data Extract rk a = Extract a (rk a) (BinomForest rk a)
+data Extract rk a = Extract a !(rk a) !(BinomForest rk a)
 data MExtract rk a = No | Yes {-# UNPACK #-} !(Extract rk a)
 
 incrExtract :: Extract (Succ rk) a -> Extract rk a
@@ -291,7 +302,7 @@ incrExtract (Extract minKey (Succ kChild kChildren) ts)
 
 incrExtract' :: LEq a -> BinomTree rk a -> Extract (Succ rk) a -> Extract rk a
 incrExtract' le t (Extract minKey (Succ kChild kChildren) ts)
-  = Extract minKey kChildren (Skip (incr le (t `cat` kChild) ts))
+  = Extract minKey kChildren (Skip $! incr le (t `cat` kChild) ts)
   where
     cat = joinBin le
 
@@ -299,15 +310,29 @@ incrExtract' le t (Extract minKey (Succ kChild kChildren) ts)
 -- Returns its progress. Each successive application of @extractBin@ takes
 -- amortized /O(1)/ time, so applying it from the beginning takes /O(log n)/ time.
 extractBin :: LEq a -> BinomForest rk a -> MExtract rk a
-extractBin _ Nil = No
-extractBin le (Skip f) = case extractBin le f of
-  Yes ex -> Yes (incrExtract ex)
-  No     -> No
-extractBin le (Cons t@(BinomTree x ts) f) = Yes $ case extractBin le f of
-  Yes ex@(Extract minKey _ _)
-    | minKey `lt` x -> incrExtract' le t ex
-  _                 -> Extract x ts (Skip f)
-  where a `lt` b = not (b `le` a)
+extractBin le0 = start le0
+  where
+    start :: LEq a -> BinomForest rk a -> MExtract rk a
+    start _le Nil = No
+    start le (Skip f) = case start le f of
+      Yes ex -> Yes (incrExtract ex)
+      No     -> No
+    start le (Cons t@(BinomTree x ts) f) = Yes $ case go le x f of
+      Yes ex -> incrExtract' le t ex
+      No -> Extract x ts (Skip f)
+
+    go :: LEq a -> a -> BinomForest rk a -> MExtract rk a
+    go _le _min_above Nil = _min_above `seq` No
+    go le min_above (Skip f) = case go le min_above f of
+      Yes ex -> Yes (incrExtract ex)
+      No -> No
+    go le min_above (Cons t@(BinomTree x ts) f)
+      | min_above `le` x = case go le min_above f of
+          No -> No
+          Yes ex -> Yes (incrExtract' le t ex)
+      | otherwise = case go le x f of
+          No -> Yes (Extract x ts (Skip f))
+          Yes ex -> Yes (incrExtract' le t ex)
 
 mapMaybeQueue :: (a -> Maybe b) -> LEq b -> (rk a -> MinQueue b) -> MinQueue b -> BinomForest rk a -> MinQueue b
 mapMaybeQueue f le fCh q0 forest = q0 `seq` case forest of
@@ -353,11 +378,11 @@ insertMin (BinomTree x ts) (Cons t' f) = Skip (insertMin (BinomTree x (Succ t' t
 -- from the beginning costs /O(log n)/.
 merge :: LEq a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
 merge le f1 f2 = case (f1, f2) of
-  (Skip f1', Skip f2')    -> Skip (merge le f1' f2')
-  (Skip f1', Cons t2 f2') -> Cons t2 (merge le f1' f2')
-  (Cons t1 f1', Skip f2') -> Cons t1 (merge le f1' f2')
+  (Skip f1', Skip f2')    -> Skip $! merge le f1' f2'
+  (Skip f1', Cons t2 f2') -> Cons t2 $! merge le f1' f2'
+  (Cons t1 f1', Skip f2') -> Cons t1 $! merge le f1' f2'
   (Cons t1 f1', Cons t2 f2')
-        -> Skip (carry le (t1 `cat` t2) f1' f2')
+        -> Skip $! carry le (t1 `cat` t2) f1' f2'
   (Nil, _)                -> f2
   (_, Nil)                -> f1
   where  cat = joinBin le
@@ -367,11 +392,11 @@ merge le f1 f2 = case (f1, f2) of
 -- Each call to this function takes /O(1)/ time, so in total, it costs /O(log n)/.
 carry :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
 carry le t0 f1 f2 = t0 `seq` case (f1, f2) of
-  (Skip f1', Skip f2')    -> Cons t0 (merge le f1' f2')
-  (Skip f1', Cons t2 f2') -> Skip (mergeCarry t0 t2 f1' f2')
-  (Cons t1 f1', Skip f2') -> Skip (mergeCarry t0 t1 f1' f2')
+  (Skip f1', Skip f2')    -> Cons t0 $! merge le f1' f2'
+  (Skip f1', Cons t2 f2') -> Skip $! mergeCarry t0 t2 f1' f2'
+  (Cons t1 f1', Skip f2') -> Skip $! mergeCarry t0 t1 f1' f2'
   (Cons t1 f1', Cons t2 f2')
-        -> Cons t0 (mergeCarry t1 t2 f1' f2')
+        -> Cons t0 $! mergeCarry t1 t2 f1' f2'
   (Nil, _f2)              -> incr le t0 f2
   (_f1, Nil)              -> incr le t0 f1
   where  cat = joinBin le
@@ -384,8 +409,19 @@ incr :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a
 incr le t f0 = t `seq` case f0 of
   Nil  -> Cons t Nil
   Skip f     -> Cons t f
-  Cons t' f' -> Skip (incr le (t `cat` t') f')
-  where  cat = joinBin le
+  Cons t' f' -> f' `seq` Skip (incr le (t `cat` t') f')
+      -- Question: should we force t `cat` t' here? We're allowed to;
+      -- it's not obviously good or obviously bad.
+    where
+      cat = joinBin le
+
+-- Amortization: In the Skip case, we perform O(1) unshared work and pay a
+-- debit. In the Cons case, there are no debits on f', so we can force it for
+-- free. We perform O(1) unshared work, and by induction suspend O(1) amortized
+-- work. Another way to look at this: We have a string of Conses followed by
+-- a Skip or Nil. We change all the Conses to Skips, and change the Skip to
+-- a Cons or the Nil to a Cons Nil. Processing each Cons takes O(1) time, which
+-- we account for by placing debits below the new Skips.
 
 -- | The carrying operation: takes two binomial heaps of the same rank @k@
 -- and returns one of rank @k+1@. Takes /O(1)/ time.
@@ -409,8 +445,8 @@ instance Functor rk => Functor (BinomForest rk) where
   fmap f (Cons t ts) = Cons (fmap f t) (fmap f ts)
 
 instance Foldable Zero where
-  foldr _ z _ = z
-  foldl _ z _ = z
+  foldr _ z ~Zero = z
+  foldl _ z ~Zero = z
 
 instance Foldable rk => Foldable (Succ rk) where
   foldr f z (Succ t ts) = foldr f (foldr f z ts) t
