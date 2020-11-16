@@ -155,6 +155,11 @@ data BinomForest rk a
    | Skip (BinomForest (Succ rk) a)
    | Cons {-# UNPACK #-} !(BinomTree rk a) (BinomForest (Succ rk) a)
 
+-- The BinomTree and Succ constructors are entirely strict, primarily because
+-- that makes it easier to make sure everything is as strict as it should
+-- be. The downside is that this slows down `mapMonotonic`. If that's important,
+-- we can do all the forcing manually; it will be a pain.
+
 data BinomTree rk a = BinomTree !a !(rk a)
 
 -- | If |rk| corresponds to rank @k@, then |'Succ' rk| corresponds to rank @k+1@.
@@ -371,7 +376,7 @@ insertMinQ x (MinQueue n x' f) = MinQueue (n + 1) x (insertMin (tip x') f)
 insertMin :: BinomTree rk a -> BinomForest rk a -> BinomForest rk a
 insertMin t Nil = Cons t Nil
 insertMin t (Skip f) = Cons t f
-insertMin (BinomTree x ts) (Cons t' f) = Skip (insertMin (BinomTree x (Succ t' ts)) f)
+insertMin (BinomTree x ts) (Cons t' f) = f `seq` Skip (insertMin (BinomTree x (Succ t' ts)) f)
 
 -- | Given two binomial forests starting at rank @rk@, takes their union.
 -- Each successive application of this function costs /O(1)/, so applying it

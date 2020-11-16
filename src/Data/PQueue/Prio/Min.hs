@@ -319,7 +319,8 @@ breakWithKey p = spanWithKey (not .: p)
 
 -- | /O(n)/. Build a priority queue from the list of (key, value) pairs.
 fromList :: Ord k => [(k, a)] -> MinPQueue k a
-fromList = foldr (uncurry' insert) empty
+fromList = List.foldl' (flip (uncurry' insert)) empty
+{-# INLINE fromList #-}
 
 -- | /O(n)/. Build a priority queue from an ascending list of (key, value) pairs. /The precondition is not checked./
 fromAscList :: [(k, a)] -> MinPQueue k a
@@ -330,8 +331,6 @@ fromDescList :: [(k, a)] -> MinPQueue k a
 fromDescList = List.foldl' (\q (k, a) -> insertMin k a q) empty
 
 {-# RULES
-  "fromList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) .
-    fromList (build g) = g (uncurry' insert) empty;
   "fromAscList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) .
     fromAscList (build g) = g (uncurry' insertMin) empty;
   #-}

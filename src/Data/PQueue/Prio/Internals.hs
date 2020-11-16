@@ -69,7 +69,7 @@ infixr 8 .:
 
 -- | A priority queue where values of type @a@ are annotated with keys of type @k@.
 -- The queue supports extracting the element with minimum key.
-data MinPQueue k a = Empty | MinPQ {-# UNPACK #-} !Int k a (BinomHeap k a)
+data MinPQueue k a = Empty | MinPQ {-# UNPACK #-} !Int !k a !(BinomHeap k a)
 #if __GLASGOW_HASKELL__
   deriving (Typeable)
 #endif
@@ -80,9 +80,9 @@ data BinomForest rk k a =
   Cons {-# UNPACK #-} !(BinomTree rk k a) (BinomForest (Succ rk) k a)
 type BinomHeap = BinomForest Zero
 
-data BinomTree rk k a = BinomTree k a (rk k a)
+data BinomTree rk k a = BinomTree !k a !(rk k a)
 data Zero k a = Zero
-data Succ rk k a = Succ {-# UNPACK #-} !(BinomTree rk k a) (rk k a)
+data Succ rk k a = Succ {-# UNPACK #-} !(BinomTree rk k a) !(rk k a)
 
 type CompF a = a -> a -> Bool
 
@@ -265,10 +265,10 @@ meld le t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
 -- | Takes the union of two binomial forests, starting at the same rank. Analogous to binary addition.
 mergeForest :: CompF k -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
 mergeForest le f1 f2 = case (f1, f2) of
-  (Skip ts1, Skip ts2)       -> Skip (mergeForest le ts1 ts2)
-  (Skip ts1, Cons t2 ts2)    -> Cons t2 (mergeForest le ts1 ts2)
-  (Cons t1 ts1, Skip ts2)    -> Cons t1 (mergeForest le ts1 ts2)
-  (Cons t1 ts1, Cons t2 ts2) -> Skip (carryForest le (meld le t1 t2) ts1 ts2)
+  (Skip ts1, Skip ts2)       -> Skip $! mergeForest le ts1 ts2
+  (Skip ts1, Cons t2 ts2)    -> Cons t2 $! mergeForest le ts1 ts2
+  (Cons t1 ts1, Skip ts2)    -> Cons t1 $! mergeForest le ts1 ts2
+  (Cons t1 ts1, Cons t2 ts2) -> Skip $! carryForest le (meld le t1 t2) ts1 ts2
   (Nil, _)                   -> f2
   (_, Nil)                   -> f1
 
@@ -276,10 +276,10 @@ mergeForest le f1 f2 = case (f1, f2) of
 -- Analogous to binary addition when a digit has been carried.
 carryForest :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
 carryForest le t0 f1 f2 = t0 `seq` case (f1, f2) of
-  (Cons t1 ts1, Cons t2 ts2) -> Cons t0 (carryMeld t1 t2 ts1 ts2)
-  (Cons t1 ts1, Skip ts2)    -> Skip (carryMeld t0 t1 ts1 ts2)
-  (Skip ts1, Cons t2 ts2)    -> Skip (carryMeld t0 t2 ts1 ts2)
-  (Skip ts1, Skip ts2)       -> Cons t0 (mergeForest le ts1 ts2)
+  (Cons t1 ts1, Cons t2 ts2) -> Cons t0 $! carryMeld t1 t2 ts1 ts2
+  (Cons t1 ts1, Skip ts2)    -> Skip $! carryMeld t0 t1 ts1 ts2
+  (Skip ts1, Cons t2 ts2)    -> Skip $! carryMeld t0 t2 ts1 ts2
+  (Skip ts1, Skip ts2)       -> Cons t0 $! mergeForest le ts1 ts2
   (Nil, _)                   -> incr le t0 f2
   (_, Nil)                   -> incr le t0 f1
   where  carryMeld = carryForest le .: meld le
@@ -289,7 +289,7 @@ incr :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
 incr le t ts = t `seq` case ts of
   Nil         -> Cons t Nil
   Skip ts'    -> Cons t ts'
-  Cons t' ts' -> Skip (incr le (meld le t t') ts')
+  Cons t' ts' -> ts' `seq` Skip (incr le (meld le t t') ts')
 
 -- | Inserts a binomial tree into a binomial forest. Assumes that the root of this tree
 -- is less than all other roots. Analogous to binary incrementation. Equivalent to
@@ -298,7 +298,7 @@ incrMin :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
 incrMin t@(BinomTree k a ts) tss = case tss of
   Nil          -> Cons t Nil
   Skip tss'    -> Cons t tss'
-  Cons t' tss' -> Skip (incrMin (BinomTree k a (Succ t' ts)) tss')
+  Cons t' tss' -> tss' `seq` Skip (incrMin (BinomTree k a (Succ t' ts)) tss')
 
 extractHeap :: CompF k -> Int -> BinomHeap k a -> MinPQueue k a
 extractHeap le n ts = n `seq` case extractForest le ts of
@@ -330,29 +330,46 @@ extractHeap le n ts = n `seq` case extractForest le ts of
 --     Note that @forest@ is lazy, so if we discover a smaller key
 --     than @minKey@ later, we haven't wasted significant work.
 
-data Extract rk k a = Extract k a (rk k a) (BinomForest rk k a)
+data Extract rk k a = Extract !k a !(rk k a) !(BinomForest rk k a)
 data MExtract rk k a = No | Yes {-# UNPACK #-} !(Extract rk k a)
 
-incrExtract :: CompF k -> Maybe (BinomTree rk k a) -> Extract (Succ rk) k a -> Extract rk k a
-incrExtract _ Nothing (Extract k a (Succ t ts) tss)
-  = Extract k a ts (Cons t tss)
-incrExtract le (Just t) (Extract k a (Succ t' ts) tss)
-  = Extract k a ts (Skip (incr le (meld le t t') tss))
+incrExtract :: Extract (Succ rk) k a -> Extract rk k a
+incrExtract (Extract minKey minVal (Succ kChild kChildren) ts)
+  = Extract minKey minVal kChildren (Cons kChild ts)
+
+incrExtract' :: CompF k -> BinomTree rk k a -> Extract (Succ rk) k a -> Extract rk k a
+incrExtract' le t (Extract minKey minVal (Succ kChild kChildren) ts)
+  = Extract minKey minVal kChildren (Skip $! incr le (t `cat` kChild) ts)
+  where
+    cat = meld le
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
 -- amortized /O(1)/ time, so applying it from the beginning takes /O(log n)/ time.
 extractForest :: CompF k -> BinomForest rk k a -> MExtract rk k a
-extractForest _ Nil = No
-extractForest le (Skip tss) = case extractForest le tss of
-  No     -> No
-  Yes ex -> Yes (incrExtract le Nothing ex)
-extractForest le (Cons t@(BinomTree k a0 ts) tss) = Yes $ case extractForest le tss of
-  Yes ex@(Extract k' _ _ _)
-    | k' <? k  -> incrExtract le (Just t) ex
-  _            -> Extract k a0 ts (Skip tss)
+extractForest le0 = start le0
   where
-    a <? b = not (b `le` a)
+    start :: CompF k -> BinomForest rk k a -> MExtract rk k a
+    start _le Nil = No
+    start le (Skip f) = case start le f of
+      Yes ex -> Yes (incrExtract ex)
+      No     -> No
+    start le (Cons t@(BinomTree k v ts) f) = Yes $ case go le k f of
+      Yes ex -> incrExtract' le t ex
+      No -> Extract k v ts (Skip f)
+
+    go :: CompF k -> k -> BinomForest rk k a -> MExtract rk k a
+    go _le _min_above Nil = _min_above `seq` No
+    go le min_above (Skip f) = case go le min_above f of
+      Yes ex -> Yes (incrExtract ex)
+      No -> No
+    go le min_above (Cons t@(BinomTree k v ts) f)
+      | min_above `le` k = case go le min_above f of
+          No -> No
+          Yes ex -> Yes (incrExtract' le t ex)
+      | otherwise = case go le k f of
+          No -> Yes (Extract k v ts (Skip f))
+          Yes ex -> Yes (incrExtract' le t ex)
 
 extract :: (Ord k) => BinomForest rk k a -> MExtract rk k a
 extract = extractForest (<=)

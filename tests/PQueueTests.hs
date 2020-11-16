@@ -1,20 +1,26 @@
 module Main (main) where
 
 import qualified Data.PQueue.Prio.Max as PMax ()
-import qualified Data.PQueue.Prio.Min as PMin ()
+import qualified Data.PQueue.Prio.Min as PMin
 import qualified Data.PQueue.Max as Max ()
 import qualified Data.PQueue.Min as Min
 
 import Test.QuickCheck
+import Test.QuickCheck.Poly (OrdA)
 
 import System.Exit
 
 import qualified Data.List as List
+import Data.Function (on)
 import Control.Arrow (second)
 
 
 validMinToAscList :: [Int] -> Bool
 validMinToAscList xs = Min.toAscList (Min.fromList xs) == List.sort xs
+
+validMinPrioToAscList :: [(Int,OrdA)] -> Bool
+validMinPrioToAscList xs =
+  List.concatMap List.sort (List.groupBy ((==) `on` fst) (PMin.toAscList (PMin.fromList xs))) == List.sort xs
 
 validMinToDescList :: [Int] -> Bool
 validMinToDescList xs = Min.toDescList (Min.fromList xs) == List.sortBy (flip compare) xs
@@ -111,6 +117,7 @@ validFoldrU xs = Min.foldrU (+) 0 q == List.sum xs
 main :: IO ()
 main = do
   check validMinToAscList
+  check validMinPrioToAscList
   check validMinToDescList
   check validMinUnfoldr
   check validMinToList
