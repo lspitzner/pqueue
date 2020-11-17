@@ -426,7 +426,9 @@ incr le t f0 = t `seq` case f0 of
 -- work. Another way to look at this: We have a string of Conses followed by
 -- a Skip or Nil. We change all the Conses to Skips, and change the Skip to
 -- a Cons or the Nil to a Cons Nil. Processing each Cons takes O(1) time, which
--- we account for by placing debits below the new Skips.
+-- we account for by placing debits below the new Skips. Note: this increment
+-- pattern is exactly the same as the one for Hinze-Paterson 2–3 finger trees,
+-- and the amortization argument works just the same.
 
 -- | The carrying operation: takes two binomial heaps of the same rank @k@
 -- and returns one of rank @k+1@. Takes /O(1)/ time.
