@@ -335,7 +335,7 @@ fromDescList = MaxQ . Min.fromAscList . map Down
 {-# INLINE fromList #-}
 -- | /O(n log n)/. Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MaxQueue a
-fromList = foldr insert empty
+fromList = MaxQ . Min.fromList . map Down
 
 -- | /O(n)/. Constructs a priority queue from the keys of a 'Prio.MaxPQueue'.
 keysQueue :: Prio.MaxPQueue k a -> MaxQueue k
