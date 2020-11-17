@@ -298,7 +298,7 @@ extractHeap ts = case extractBin (<=) ts of
 --     reconstruction of the binomial forest without @minRoot@. It is
 --     the union of all old roots with rank @>= rk@ (except @minRoot@),
 --     with the set of all children of @minRoot@ with rank @>= rk@.
-data Extract rk a = Extract a !(rk a) !(BinomForest rk a)
+data Extract rk a = Extract !a !(rk a) !(BinomForest rk a)
 data MExtract rk a = No | Yes {-# UNPACK #-} !(Extract rk a)
 
 incrExtract :: Extract (Succ rk) a -> Extract rk a
