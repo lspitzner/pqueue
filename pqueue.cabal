@@ -43,6 +43,10 @@ library
     default-extensions: DeriveDataTypeable
   }
   ghc-options: {
+    -- We currently need -fspec-constr to get GHC to compile conversions
+    -- from lists well. We could (and probably should) write those a
+    -- bit differently so we won't need it.
+    -fspec-constr
     -fdicts-strict
     -Wall
     -fno-warn-inline-rule-shadowing

@@ -34,8 +34,19 @@ validMinToList xs = List.sort (Min.toList (Min.fromList xs)) == List.sort xs
 validMinFromAscList :: [Int] -> Bool
 validMinFromAscList xs = Min.fromAscList (List.sort xs) == Min.fromList xs
 
+validMinPrioFromAscList :: [(Int, OrdA)] -> Bool
+validMinPrioFromAscList xs =
+  List.concatMap List.sort (List.groupBy ((==) `on` fst) (PMin.toAscList (PMin.fromAscList sorted))) == sorted
+  where sorted = List.sort xs
+
 validMinFromDescList :: [Int] -> Bool
 validMinFromDescList xs = Min.fromDescList (List.sortBy (flip compare) xs) == Min.fromList xs
+
+validMinPrioFromDescList :: [(Int, OrdA)] -> Property
+validMinPrioFromDescList xs =
+  List.concatMap List.sort (List.groupBy ((==) `on` fst) (PMin.toAscList (PMin.fromDescList sorted))) === reverse sorted
+  where sorted = bsort xs
+        bsort = List.sortBy (flip compare)
 
 validMinUnion :: [Int] -> [Int] -> Bool
 validMinUnion xs1 xs2 = Min.union (Min.fromList xs1) (Min.fromList xs2) == Min.fromList (xs1 ++ xs2)
@@ -122,7 +133,9 @@ main = do
   check validMinUnfoldr
   check validMinToList
   check validMinFromAscList
+  check validMinPrioFromAscList
   check validMinFromDescList
+  check validMinPrioFromDescList
   check validMinUnion
   check validMinMapMonotonic
   check validMinPartition

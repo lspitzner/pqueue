@@ -265,24 +265,22 @@ foldrDesc = foldlAsc . flip
 foldlDesc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
 foldlDesc = foldrAsc . flip
 
-{-# INLINE fromList #-}
--- | /O(n)/. Constructs a priority queue from an unordered list.
-fromList :: Ord a => [a] -> MinQueue a
-fromList = foldl' (flip insert) empty
-
-{-# RULES
-  "fromList" fromList = foldl' (flip insert) empty;
-  "fromAscList" fromAscList = foldr insertMinQ empty;
-  #-}
-
 {-# INLINE fromAscList #-}
 -- | /O(n)/. Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
+--
+-- Performance note: Code using this function in a performance-sensitive context
+-- with an argument that is a "good producer" for list fusion should be compiled
+-- with @-fspec-constr@ or @-O2@. For example, @fromAscList . map f@ needs one
+-- of these options for best results.
 fromAscList :: [a] -> MinQueue a
-fromAscList = foldr insertMinQ empty
+-- We apply an explicit argument to get foldl' to inline.
+fromAscList xs = foldl' (flip insertMaxQ') empty xs
 
+{-# INLINE fromDescList #-}
 -- | /O(n)/. Constructs a priority queue from an descending list. /Warning/: Does not check the precondition.
 fromDescList :: [a] -> MinQueue a
-fromDescList = foldl' (flip insertMinQ) empty
+-- We apply an explicit argument to get foldl' to inline.
+fromDescList xs = foldl' (flip insertMinQ') empty xs
 
 -- | Maps a function over the elements of the queue, ignoring order. This function is only safe if the function is monotonic.
 -- This function /does not/ check the precondition.

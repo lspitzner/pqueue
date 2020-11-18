@@ -26,6 +26,9 @@ module Data.PQueue.Prio.Internals (
   foldrWithKey,
   foldlWithKey,
   insertMin,
+  insertMin',
+  insertMax',
+  fromList,
   foldrWithKeyU,
   foldlWithKeyU,
   traverseWithKeyU,
@@ -35,6 +38,7 @@ module Data.PQueue.Prio.Internals (
 
 import Control.Applicative.Identity (Identity(Identity, runIdentity))
 import Control.DeepSeq (NFData(rnf), deepseq)
+import Data.List (foldl')
 
 import Data.Monoid ((<>))
 
@@ -251,6 +255,48 @@ insertMin :: k -> a -> MinPQueue k a -> MinPQueue k a
 insertMin k a Empty = MinPQ 1 k a Nil
 insertMin k a (MinPQ n k' a' ts) = MinPQ (n + 1) k a (incrMin (tip k' a') ts)
 
+-- | Equivalent to 'insert', save the assumption that this key is @<=@
+-- every other key in the map. /The precondition is not checked./ Additionally,
+-- this eagerly constructs the new portion of the spine.
+insertMin' :: k -> a -> MinPQueue k a -> MinPQueue k a
+insertMin' k a Empty = MinPQ 1 k a Nil
+insertMin' k a (MinPQ n k' a' ts) = MinPQ (n + 1) k a (incrMin' (tip k' a') ts)
+
+-- | Inserts an entry with key @>=@ every key in the map. Assumes and preserves
+-- an extra invariant: the roots of the binomial trees are decreasing along
+-- the spine.
+insertMax' :: k -> a -> MinPQueue k a -> MinPQueue k a
+insertMax' k a Empty = MinPQ 1 k a Nil
+insertMax' k a (MinPQ n k' a' ts) = MinPQ (n + 1) k' a' (incrMax' (tip k a) ts)
+
+{-# INLINE fromList #-}
+-- | /O(n)/. Constructs a priority queue from an unordered list.
+fromList :: Ord k => [(k, a)] -> MinPQueue k a
+-- We build a forest first and then extract its minimum at the end.
+-- Why not just build the 'MinQueue' directly? This way saves us one
+-- comparison per element.
+fromList xs = case extractForest (<=) (fromListHeap (<=) xs) of
+  No -> Empty
+  -- Should we track the size as we go instead? That saves O(log n)
+  -- at the end, but it needs an extra register all along the way.
+  -- The nodes should probably all be in L1 cache already thanks to the
+  -- extractHeap.
+  Yes (Extract k v ~Zero f) -> MinPQ (sizeHeap f + 1) k v f
+
+{-# INLINE fromListHeap #-}
+fromListHeap :: CompF k -> [(k, a)] -> BinomHeap k a
+fromListHeap le xs = foldl' go Nil xs
+  where
+    go fr (k, a) = incr' le (tip k a) fr
+
+sizeHeap :: BinomHeap k a -> Int
+sizeHeap = go 0 1
+  where
+    go :: Int -> Int -> BinomForest rk k a -> Int
+    go acc rk Nil = rk `seq` acc
+    go acc rk (Skip f) = go acc (2 * rk) f
+    go acc rk (Cons _t f) = go (acc + rk) (2 * rk) f
+
 -- | /O(1)/. Returns a binomial tree of rank zero containing this
 -- key and value.
 tip :: k -> a -> BinomTree Zero k a
@@ -291,6 +337,14 @@ incr le t ts = t `seq` case ts of
   Skip ts'    -> Cons t ts'
   Cons t' ts' -> ts' `seq` Skip (incr le (meld le t t') ts')
 
+-- | Inserts a binomial tree into a binomial forest. Analogous to binary incrementation.
+-- Forces the rebuilt portion of the spine.
+incr' :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
+incr' le t ts = t `seq` case ts of
+  Nil         -> Cons t Nil
+  Skip ts'    -> Cons t ts'
+  Cons t' ts' -> Skip $! incr' le (meld le t t') ts'
+
 -- | Inserts a binomial tree into a binomial forest. Assumes that the root of this tree
 -- is less than all other roots. Analogous to binary incrementation. Equivalent to
 -- @'incr' (\_ _ -> True)@.
@@ -299,6 +353,22 @@ incrMin t@(BinomTree k a ts) tss = case tss of
   Nil          -> Cons t Nil
   Skip tss'    -> Cons t tss'
   Cons t' tss' -> tss' `seq` Skip (incrMin (BinomTree k a (Succ t' ts)) tss')
+
+-- | Inserts a binomial tree into a binomial forest. Assumes that the root of this tree
+-- is less than all other roots. Analogous to binary incrementation. Equivalent to
+-- @'incr'' (\_ _ -> True)@. Forces the rebuilt portion of the spine.
+incrMin' :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
+incrMin' t@(BinomTree k a ts) tss = case tss of
+  Nil          -> Cons t Nil
+  Skip tss'    -> Cons t tss'
+  Cons t' tss' -> Skip $! incrMin' (BinomTree k a (Succ t' ts)) tss'
+
+-- | See 'insertMax'' for invariant info.
+incrMax' :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
+incrMax' t tss = t `seq` case tss of
+  Nil          -> Cons t Nil
+  Skip tss'    -> Cons t tss'
+  Cons (BinomTree k a ts) tss' -> Skip $! incrMax' (BinomTree k a (Succ t ts)) tss'
 
 extractHeap :: CompF k -> Int -> BinomHeap k a -> MinPQueue k a
 extractHeap le n ts = n `seq` case extractForest le ts of

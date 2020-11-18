@@ -176,7 +176,7 @@ instance (Read k, Read a) => Read (MinPQueue k a) where
 
 -- | The union of a list of queues: (@'unions' == 'List.foldl' 'union' 'empty'@).
 unions :: Ord k => [MinPQueue k a] -> MinPQueue k a
-unions = List.foldl union empty
+unions = List.foldl' union empty
 
 -- | /O(1)/. The minimal (key, element) in the queue. Calls 'error' if empty.
 findMin :: MinPQueue k a -> (k, a)
@@ -317,23 +317,15 @@ spanWithKey p q = case minViewWithKey q of
 breakWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 breakWithKey p = spanWithKey (not .: p)
 
--- | /O(n)/. Build a priority queue from the list of (key, value) pairs.
-fromList :: Ord k => [(k, a)] -> MinPQueue k a
-fromList = List.foldl' (flip (uncurry' insert)) empty
-{-# INLINE fromList #-}
-
 -- | /O(n)/. Build a priority queue from an ascending list of (key, value) pairs. /The precondition is not checked./
 fromAscList :: [(k, a)] -> MinPQueue k a
-fromAscList = foldr (uncurry' insertMin) empty
+{-# INLINE fromAscList #-}
+fromAscList xs = List.foldl' (\q (k, a) -> insertMax' k a q) empty xs
 
 -- | /O(n)/. Build a priority queue from a descending list of (key, value) pairs. /The precondition is not checked./
 fromDescList :: [(k, a)] -> MinPQueue k a
-fromDescList = List.foldl' (\q (k, a) -> insertMin k a q) empty
-
-{-# RULES
-  "fromAscList/build" forall (g :: forall b . ((k, a) -> b -> b) -> b -> b) .
-    fromAscList (build g) = g (uncurry' insertMin) empty;
-  #-}
+{-# INLINE fromDescList #-}
+fromDescList xs = List.foldl' (\q (k, a) -> insertMin' k a q) empty xs
 
 {-# INLINE keys #-}
 -- | /O(n log n)/. Return all keys of the queue in ascending order.

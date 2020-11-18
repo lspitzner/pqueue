@@ -23,6 +23,9 @@ module Data.PQueue.Internals (
   foldrAsc,
   foldlAsc,
   insertMinQ,
+  insertMinQ',
+  insertMaxQ',
+  fromList,
 --   mapU,
   foldrU,
   foldlU,
@@ -33,6 +36,7 @@ module Data.PQueue.Internals (
 
 import Control.DeepSeq (NFData(rnf), deepseq)
 
+import Data.List (foldl')
 import qualified Data.PQueue.Prio.Internals as Prio
 
 #ifdef __GLASGOW_HASKELL__
@@ -42,7 +46,7 @@ import Data.Data
 import Prelude hiding (null)
 
 -- | A priority queue with elements of type @a@. Supports extracting the minimum element.
-data MinQueue a = Empty | MinQueue {-# UNPACK #-} !Int a !(BinomHeap a)
+data MinQueue a = Empty | MinQueue {-# UNPACK #-} !Int !a !(BinomHeap a)
 #if __GLASGOW_HASKELL__>=707
   deriving Typeable
 #else
@@ -378,6 +382,67 @@ insertMin t Nil = Cons t Nil
 insertMin t (Skip f) = Cons t f
 insertMin (BinomTree x ts) (Cons t' f) = f `seq` Skip (insertMin (BinomTree x (Succ t' ts)) f)
 
+-- | @insertMaxQ' x h@ assumes that @x@ compares as less
+-- than or equal to every element of @h@.
+insertMinQ' :: a -> MinQueue a -> MinQueue a
+insertMinQ' x Empty = singleton x
+insertMinQ' x (MinQueue n x' f) = MinQueue (n + 1) x (insertMin' (tip x') f)
+
+-- | @insertMin' t f@ assumes that the root of @t@ compares as less than
+-- every other root in @f@, and merges accordingly. It eagerly evaluates
+-- the modified portion of the structure.
+insertMin' :: BinomTree rk a -> BinomForest rk a -> BinomForest rk a
+insertMin' t Nil = Cons t Nil
+insertMin' t (Skip f) = Cons t f
+insertMin' (BinomTree x ts) (Cons t' f) = Skip $! insertMin' (BinomTree x (Succ t' ts)) f
+
+-- | @insertMaxQ' x h@ assumes that @x@ compares as greater
+-- than or equal to every element of @h@. It also assumes,
+-- and preserves, an extra invariant. See 'insertMax' for details.
+-- tldr: this function can be used safely to build a queue from an
+-- ascending list/array/whatever, but that's about it.
+insertMaxQ' :: a -> MinQueue a -> MinQueue a
+insertMaxQ' x Empty = singleton x
+insertMaxQ' x (MinQueue n x' f) = MinQueue (n + 1) x' (insertMax' (tip x) f)
+
+-- | @insertMax' t f@ assumes that the root of @t@ compares as greater
+-- than or equal to every root in @f@, and further assumes that the roots
+-- in @f@ occur in descending order. It produces a forest whose roots are
+-- again in descending order. Note: the whole modified portien of the spine
+-- is forced.
+insertMax' :: BinomTree rk a -> BinomForest rk a -> BinomForest rk a
+insertMax' t Nil = Cons t Nil
+insertMax' t (Skip f) = Cons t f
+insertMax' t (Cons (BinomTree x ts) f) = Skip $! insertMax' (BinomTree x (Succ t ts)) f
+
+{-# INLINABLE fromList #-}
+-- | /O(n)/. Constructs a priority queue from an unordered list.
+fromList :: Ord a => [a] -> MinQueue a
+-- We build a forest first and then extract its minimum at the end.
+-- Why not just build the 'MinQueue' directly? This way saves us one
+-- comparison per element.
+fromList xs = case extractHeap (fromListHeap (<=) xs) of
+  Nothing -> Empty
+  -- Should we track the size as we go instead? That saves O(log n)
+  -- at the end, but it needs an extra register all along the way.
+  -- The nodes should probably all be in L1 cache already thanks to the
+  -- extractHeap.
+  Just (m, f) -> MinQueue (sizeHeap f + 1) m f
+
+{-# INLINE fromListHeap #-}
+fromListHeap :: LEq a -> [a] -> BinomHeap a
+fromListHeap le xs = foldl' go Nil xs
+  where
+    go fr x = incr' le (tip x) fr
+
+sizeHeap :: BinomHeap a -> Int
+sizeHeap = go 0 1
+  where
+    go :: Int -> Int -> BinomForest rk a -> Int
+    go acc rk Nil = rk `seq` acc
+    go acc rk (Skip f) = go acc (2 * rk) f
+    go acc rk (Cons _t f) = go (acc + rk) (2 * rk) f
+
 -- | Given two binomial forests starting at rank @rk@, takes their union.
 -- Each successive application of this function costs /O(1)/, so applying it
 -- from the beginning costs /O(log n)/.
@@ -415,6 +480,18 @@ incr le t f0 = t `seq` case f0 of
   Nil  -> Cons t Nil
   Skip f     -> Cons t f
   Cons t' f' -> f' `seq` Skip (incr le (t `cat` t') f')
+      -- Question: should we force t `cat` t' here? We're allowed to;
+      -- it's not obviously good or obviously bad.
+    where
+      cat = joinBin le
+
+-- | A version of 'incr' that constructs the spine eagerly. This is
+-- intended for implementing @fromList@.
+incr' :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a
+incr' le t f0 = t `seq` case f0 of
+  Nil  -> Cons t Nil
+  Skip f     -> Cons t f
+  Cons t' f' -> Skip $! incr' le (t `cat` t') f'
       -- Question: should we force t `cat` t' here? We're allowed to;
       -- it's not obviously good or obviously bad.
     where
