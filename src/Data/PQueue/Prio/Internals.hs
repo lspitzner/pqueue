@@ -326,6 +326,9 @@ carryForest le t0 f1 f2 = t0 `seq` case (f1, f2) of
   (Cons t1 ts1, Skip ts2)    -> Skip $! carryMeld t0 t1 ts1 ts2
   (Skip ts1, Cons t2 ts2)    -> Skip $! carryMeld t0 t2 ts1 ts2
   (Skip ts1, Skip ts2)       -> Cons t0 $! mergeForest le ts1 ts2
+  -- Why do these use incr and not incr'? We want the merge to take
+  -- O(log(min(|f1|, |f2|))) time. If we performed this final increment
+  -- eagerly, that would degrade to O(log(max(|f1|, |f2|))) time.
   (Nil, _)                   -> incr le t0 f2
   (_, Nil)                   -> incr le t0 f1
   where  carryMeld = carryForest le .: meld le

@@ -467,6 +467,9 @@ carry le t0 f1 f2 = t0 `seq` case (f1, f2) of
   (Cons t1 f1', Skip f2') -> Skip $! mergeCarry t0 t1 f1' f2'
   (Cons t1 f1', Cons t2 f2')
         -> Cons t0 $! mergeCarry t1 t2 f1' f2'
+  -- Why do these use incr and not incr'? We want the merge to take
+  -- O(log(min(|f1|, |f2|))) time. If we performed this final increment
+  -- eagerly, that would degrade to O(log(max(|f1|, |f2|))) time.
   (Nil, _f2)              -> incr le t0 f2
   (_f1, Nil)              -> incr le t0 f1
   where  cat = joinBin le
