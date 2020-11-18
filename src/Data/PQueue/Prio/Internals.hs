@@ -164,7 +164,7 @@ spanKey p q = case minViewWithKey q of
 insert' :: CompF k -> k -> a -> MinPQueue k a -> MinPQueue k a
 insert' _ k a Empty = singleton k a
 insert' le k a (MinPQ n k' a' ts)
-  | k `le` k' = MinPQ (n + 1) k  a  (incr le (tip k' a') ts)
+  | k `le` k' = MinPQ (n + 1) k  a  (incrMin (tip k' a') ts)
   | otherwise = MinPQ (n + 1) k' a' (incr le (tip k  a ) ts)
 
 -- | Amortized /O(log(min(n1, n2)))/, worst-case /O(log(max(n1, n2)))/. Returns the union

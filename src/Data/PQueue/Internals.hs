@@ -265,7 +265,7 @@ foldlUnfold f z0 suc s0 = unf z0 s0 where
 insert' :: LEq a -> a -> MinQueue a -> MinQueue a
 insert' _ x Empty = singleton x
 insert' le x (MinQueue n x' ts)
-  | x `le` x' = MinQueue (n + 1) x (incr le (tip x') ts)
+  | x `le` x' = MinQueue (n + 1) x (insertMin (tip x') ts)
   | otherwise = MinQueue (n + 1) x' (incr le (tip x) ts)
 
 {-# INLINE union' #-}
