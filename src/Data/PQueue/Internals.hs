@@ -311,7 +311,7 @@ incrExtract (Extract minKey (Succ kChild kChildren) ts)
 
 incrExtract' :: LEq a -> BinomTree rk a -> Extract (Succ rk) a -> Extract rk a
 incrExtract' le t (Extract minKey (Succ kChild kChildren) ts)
-  = Extract minKey kChildren (Skip $! incr' le (t `cat` kChild) ts)
+  = Extract minKey kChildren (Skip $ incr le (t `cat` kChild) ts)
   where
     cat = joinBin le
 

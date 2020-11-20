@@ -412,7 +412,7 @@ incrExtract (Extract minKey minVal (Succ kChild kChildren) ts)
 
 incrExtract' :: CompF k -> BinomTree rk k a -> Extract (Succ rk) k a -> Extract rk k a
 incrExtract' le t (Extract minKey minVal (Succ kChild kChildren) ts)
-  = Extract minKey minVal kChildren (Skip $! incr' le (t `cat` kChild) ts)
+  = Extract minKey minVal kChildren (Skip $ incr le (t `cat` kChild) ts)
   where
     cat = meld le
 
