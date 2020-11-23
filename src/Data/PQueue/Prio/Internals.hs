@@ -327,8 +327,8 @@ carryForest le t0 f1 f2 = t0 `seq` case (f1, f2) of
   (Skip ts1, Cons t2 ts2)    -> Skip $! carryMeld t0 t2 ts1 ts2
   (Skip ts1, Skip ts2)       -> Cons t0 $! mergeForest le ts1 ts2
   -- Why do these use incr and not incr'? We want the merge to take
-  -- O(log(min(|f1|, |f2|))) time. If we performed this final increment
-  -- eagerly, that would degrade to O(log(max(|f1|, |f2|))) time.
+  -- O(log(min(|f1|, |f2|))) amortized time. If we performed this final
+  -- increment eagerly, that would degrade to O(log(max(|f1|, |f2|))) time.
   (Nil, _)                   -> incr le t0 f2
   (_, Nil)                   -> incr le t0 f1
   where  carryMeld = carryForest le .: meld le
@@ -551,7 +551,13 @@ mapKeysMonoF f fCh ts0 = case ts0 of
     fCh' (Succ (BinomTree k a ts) tss) =
       Succ (BinomTree (f k) a (fCh ts)) (fCh tss)
 
--- | /O(log n)/. Analogous to @deepseq@ in the @deepseq@ package, but only forces the spine of the binomial heap.
+-- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
+--
+-- Note: The spine of a 'MinPQueue' is stored somewhat lazily.  Most operations
+-- take great care to prevent chains of thunks from accumulating along the
+-- spine to the detriment of performance. However, 'mapKeysMonotonic' can leave
+-- expensive thunks in the structure and repeated applications of that function
+-- can create thunk chains.
 seqSpine :: MinPQueue k a -> b -> b
 seqSpine Empty z0 = z0
 seqSpine (MinPQ _ _ _ ts0) z0 = ts0 `seqSpineF` z0 where

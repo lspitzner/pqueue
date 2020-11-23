@@ -18,8 +18,6 @@
 -- bound is also specified; these bounds do not hold in a persistent context.
 --
 -- This implementation is based on a binomial heap augmented with a global root.
--- The spine of the heap is maintained lazily. To force the spine of the heap,
--- use 'seqSpine'.
 --
 -- We do not guarantee stable behavior.
 -- Ties are broken arbitrarily -- that is, if @k1 <= k2@ and @k2 <= k1@, then there
@@ -471,6 +469,12 @@ assocsU = toListU
 toListU :: MaxPQueue k a -> [(k, a)]
 toListU (MaxPQ q) = fmap (first' unDown) (Q.toListU q)
 
--- | /O(log n)/. Analogous to @deepseq@ in the @deepseq@ package, but only forces the spine of the binomial heap.
+-- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
+--
+-- Note: The spine of a 'MinPQueue' is stored somewhat lazily. Most operations
+-- take great care to prevent chains of thunks from accumulating along the
+-- spine to the detriment of performance. However, 'mapKeysMonotonic' can leave
+-- expensive thunks in the structure and repeated applications of that function
+-- can create thunk chains.
 seqSpine :: MaxPQueue k a -> b -> b
 seqSpine (MaxPQ q) = Q.seqSpine q

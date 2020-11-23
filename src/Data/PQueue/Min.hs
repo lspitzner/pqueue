@@ -17,8 +17,6 @@
 -- some operations. These bounds hold even in a persistent (shared) setting.
 --
 -- This implementation is based on a binomial heap augmented with a global root.
--- The spine of the heap is maintained lazily. To force the spine of the heap,
--- use 'seqSpine'.
 --
 -- This implementation does not guarantee stable behavior.
 --

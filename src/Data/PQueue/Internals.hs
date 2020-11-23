@@ -467,7 +467,7 @@ carry le t0 f1 f2 = t0 `seq` case (f1, f2) of
   (Cons t1 f1', Skip f2') -> Skip $! mergeCarry t0 t1 f1' f2'
   (Cons t1 f1', Cons t2 f2')
         -> Cons t0 $! mergeCarry t1 t2 f1' f2'
-  -- Why do these use incr and not incr'? We want the merge to take
+  -- Why do these use incr and not incr'? We want the merge to take amortized
   -- O(log(min(|f1|, |f2|))) time. If we performed this final increment
   -- eagerly, that would degrade to O(log(max(|f1|, |f2|))) time.
   (Nil, _f2)              -> incr le t0 f2
@@ -583,7 +583,13 @@ foldlU f z (MinQueue _ x ts) = foldl f (z `f` x) ts
 -- traverseU _ Empty = pure Empty
 -- traverseU f (MinQueue n x ts) = MinQueue n <$> f x <*> traverse f ts
 
--- | Forces the spine of the priority queue.
+-- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
+--
+-- Note: The spine of a 'MinPQueue' is stored somewhat lazily. Most operations
+-- take great care to prevent chains of thunks from accumulating along the
+-- spine to the detriment of performance. However, @mapU@ can leave
+-- expensive thunks in the structure and repeated applications of that function
+-- can create thunk chains.
 seqSpine :: MinQueue a -> b -> b
 seqSpine Empty z = z
 seqSpine (MinQueue _ _ ts) z = seqSpineF ts z

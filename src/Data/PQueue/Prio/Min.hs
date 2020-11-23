@@ -18,8 +18,6 @@
 -- bound is also specified; these bounds do not hold in a persistent context.
 --
 -- This implementation is based on a binomial heap augmented with a global root.
--- The spine of the heap is maintained lazily. To force the spine of the heap,
--- use 'seqSpine'.
 --
 -- We do not guarantee stable behavior.
 -- Ties are broken arbitrarily -- that is, if @k1 <= k2@ and @k2 <= k1@, then there
