@@ -33,7 +33,6 @@ module Data.PQueue.Prio.Internals (
   mapForest
   ) where
 
-import Control.Applicative (Applicative(..), (<$>))
 import Control.Applicative.Identity (Identity(Identity, runIdentity))
 import Control.DeepSeq (NFData(rnf), deepseq)
 

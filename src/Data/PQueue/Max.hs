@@ -84,10 +84,7 @@ module Data.PQueue.Max (
 
 import Control.DeepSeq (NFData(rnf))
 
-import Data.Functor ((<$>))
-import Data.Monoid (Monoid(mempty, mappend))
 import Data.Maybe (fromMaybe)
-import Data.Foldable (foldl, foldr)
 
 #if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup((<>)))
@@ -97,7 +94,7 @@ import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio
 import Data.PQueue.Prio.Max.Internals (Down(..))
 
-import Prelude hiding (null, foldr, foldl, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter)
+import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter)
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
