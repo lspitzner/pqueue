@@ -1,5 +1,10 @@
 # Revision history for pqueue
 
+## 1.4.1.4  -- 2021-12-04
+
+  * Maintenance release for ghc-9.0 & ghc-9.2 support
+  * Change nix-setup to use the seaaye tool
+
 ## 1.4.1.3  -- 2020-06-06
 
   * Maintenance release
