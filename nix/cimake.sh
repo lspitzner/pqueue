@@ -40,7 +40,6 @@ export NIX_CONFIG=$(cat \
       resolver = "stackage";
       stackFile = "stack-8.10.yaml";
       ghc-ver = "ghc8107";
-      enabled = false;
     };
   };
   module-flags = [
