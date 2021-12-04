@@ -58,8 +58,8 @@ test-Suite test
   default-language:
     Haskell2010
   type: exitcode-stdio-1.0
-  main-Is: PQueueTests.hs
-  build-Depends:
+  main-is: PQueueTests.hs
+  build-depends:
   { base >= 4.8 && < 4.16
   , deepseq >= 1.3 && < 1.5
   , QuickCheck >= 2.5 && < 3
