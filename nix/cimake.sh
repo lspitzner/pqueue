@@ -31,6 +31,11 @@ export NIX_CONFIG=$(cat \
       index-state = "2021-07-01T00:00:00Z";
       ghc-ver = "ghc901";
     };
+    hackage-9-02 = {
+      resolver = "hackage";
+      index-state = "2021-11-01T00:00:00Z";
+      ghc-ver = "ghc921";
+    };
     stackage-8-06 = {
       resolver = "stackage";
       stackFile = "stack-8.6.yaml";
