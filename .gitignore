@@ -9,3 +9,10 @@ dist-newstyle
 stack.yaml
 stack.yaml.lock
 .stack-work/
+
+# nix/seaaye
+/nix/seaaye
+/nix/seaaye-cache
+/nix/gcroots
+/nix/ci-out
+/nix/local-config.nix
