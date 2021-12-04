@@ -35,7 +35,6 @@ export NIX_CONFIG=$(cat \
       resolver = "stackage";
       stackFile = "stack-8.8.yaml";
       ghc-ver = "ghc884";
-      enabled = false;
     };
     stackage-8-10 = {
       resolver = "stackage";
