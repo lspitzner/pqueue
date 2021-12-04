@@ -116,13 +116,7 @@ module Data.PQueue.Prio.Min (
   )
   where
 
-import Control.Applicative (Applicative, pure, (<*>), (<$>))
-
 import qualified Data.List as List
-import qualified Data.Foldable as Fold(Foldable(..))
-import Data.Monoid (Monoid(mempty, mappend, mconcat))
-import Data.Traversable (Traversable(traverse))
-import Data.Foldable (Foldable)
 import Data.Maybe (fromMaybe)
 
 #if MIN_VERSION_base(4,9,0)
