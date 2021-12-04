@@ -1,36 +1,13 @@
 
-This nix setup expects the iohk haskell-nix overlay to be available/included
-when importing `<nixpkgs>`. Also, you might need a specific commit if you
-want to test against all supported ghcs (8.4 - 8.10, currently).
+This project uses the https://github.com/lspitzner/seaaye tool to build via
+nix. Please refer to its documentation for detailed help.
 
-Note that ghc-8.4 is _not_ in the iohk cachix cache, so for the time being
-you will have to recompile that compiler locally (!) if you want to run the
-full "CI" build. You can of course disable 8.4 and test on >=8.6.
+For basic usage, running `./nix/cimake.sh shell` should drop you in a nix-shell
+to start developing/maintaining. `./nix/cimake.sh ci` will run a full check
+against multiple targets, but that _will_ need to compile certain ghcs
+that are not available in iohk's binary caches.
 
-# Useful commands:
+Speaking of which, as seaaye is using iohk's "haskell.nix" toolkit, you
+probably want to set up the relevant binary caches for your nix installation.
 
-~~~~.sh
-# enter a shell for a specific build-plan
-# (cabal-solved with ghc-8.4 in this case)
-nix-shell nix/all.nix -A '"hackage-8.4".shell'
-# run tests against ghcs 8.4 through 8.10, both against hackage and stackage package sets
-nix/ci.sh
-~~~~
-
-
-# Files in this directory:
-
-all.nix          - main entrypoint into this package's nix world
-via-hackage.nix  - how to build this via cabal-solved package-set
-via-stackage.nix - how to build via stackage-based package set
-nixpkgs.nix      - optional - if you want to use a custom nixpkgs channel
-                   (the replacement needs to have haskell-nix overlay _and_
-                   the cabal-check feature enabled though!)
-local-extra-deps.nix - optional - for defining local addition deps for
-                   dev testing
-
-(plus some currently unused:)
-
-materialized  - materializations of cabal-solved build-plans
-plan.nix      - manual materialization of unsolved build-plan (used with
-                stackage snapshot to build package set)
+See https://input-output-hk.github.io/haskell.nix/iohk-nix/
