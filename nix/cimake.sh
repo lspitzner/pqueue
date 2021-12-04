@@ -5,7 +5,7 @@ set -e
 ###############################
 # START OF PER-PROJECT SETTINGS
 ###############################
-SEAAYE_VERSION=02d9df90256974d5a0fb9adfcb5dcfd25ce6c709
+SEAAYE_VERSION=b69ce658984a20499e91f167bda6cbde945bc8c1
 export NIX_CONFIG=$(cat \
 <<EOF
 { package-name = "pqueue";
