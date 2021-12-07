@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Data.PQueue.Prio.Internals (
   MinPQueue(..),
@@ -25,30 +26,50 @@ module Data.PQueue.Prio.Internals (
   mapEitherWithKey,
   foldrWithKey,
   foldlWithKey,
+  foldrU,
+  toAscList,
+  toDescList,
+  toListU,
   insertMin,
   insertMin',
   insertMax',
   fromList,
+  fromAscList,
   foldrWithKeyU,
   foldlWithKeyU,
+  traverseWithKey,
+  mapMWithKey,
   traverseWithKeyU,
   seqSpine,
-  mapForest
+  mapForest,
+  unions
   ) where
 
 import Control.Applicative.Identity (Identity(Identity, runIdentity))
 import Control.Applicative (liftA2, liftA3)
 import Control.DeepSeq (NFData(rnf), deepseq)
-import Data.List (foldl')
+import qualified Data.List as List
 
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup((<>)))
+#else
 import Data.Monoid ((<>))
+#endif
 
-import Prelude hiding (null)
+import Prelude hiding (null, map)
+#ifdef __GLASGOW_HASKELL__
+import Data.Data
+import GHC.Exts (build)
+import Text.Read (Lexeme(Ident), lexP, parens, prec,
+  readPrec, readListPrec, readListPrecDefault)
+#endif
+
+#ifndef __GLASGOW_HASKELL__
+build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
+build f = f (:) []
+#endif
 
 #if __GLASGOW_HASKELL__
-
-import Data.Data
-
 instance (Data k, Data a, Ord k) => Data (MinPQueue k a) where
   gfoldl f z m = z fromList `f` foldrWithKey (curry (:)) [] m
   toConstr _   = fromListConstr
@@ -66,6 +87,42 @@ fromListConstr :: Constr
 fromListConstr = mkConstr queueDataType "fromList" [] Prefix
 
 #endif
+
+#if MIN_VERSION_base(4,9,0)
+instance Ord k => Semigroup (MinPQueue k a) where
+  (<>) = union
+#endif
+
+instance Ord k => Monoid (MinPQueue k a) where
+  mempty = empty
+#if !MIN_VERSION_base(4,11,0)
+  mappend = union
+#endif
+  mconcat = unions
+
+instance (Ord k, Show k, Show a) => Show (MinPQueue k a) where
+  showsPrec p xs = showParen (p > 10) $
+    showString "fromAscList " . shows (toAscList xs)
+
+instance (Read k, Read a) => Read (MinPQueue k a) where
+#ifdef __GLASGOW_HASKELL__
+  readPrec = parens $ prec 10 $ do
+    Ident "fromAscList" <- lexP
+    xs <- readPrec
+    return (fromAscList xs)
+
+  readListPrec = readListPrecDefault
+#else
+  readsPrec p = readParen (p > 10) $ \r -> do
+    ("fromAscList",s) <- lex r
+    (xs,t) <- reads s
+    return (fromAscList xs,t)
+#endif
+
+-- | The union of a list of queues: (@'unions' == 'List.foldl' 'union' 'empty'@).
+unions :: Ord k => [MinPQueue k a] -> MinPQueue k a
+unions = List.foldl' union empty
+
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (f .: g) x y = f (g x y)
@@ -253,6 +310,36 @@ foldlWithKey f z0 (MinPQ _ k0 a0 ts0) = foldF (f z0 k0 a0) ts0 where
     Yes (Extract k a _ ts') -> foldF (f z k a) ts'
     _                       -> z
 
+{-# INLINABLE [1] toAscList #-}
+-- | /O(n log n)/. Return all (key, value) pairs in ascending order by key.
+toAscList :: Ord k => MinPQueue k a -> [(k, a)]
+toAscList = foldrWithKey (curry (:)) []
+
+{-# INLINABLE [1] toDescList #-}
+-- | /O(n log n)/. Return all (key, value) pairs in descending order by key.
+toDescList :: Ord k => MinPQueue k a -> [(k, a)]
+toDescList = foldlWithKey (\z k a -> (k, a) : z) []
+
+-- | /O(n)/. Build a priority queue from an ascending list of (key, value) pairs. /The precondition is not checked./
+fromAscList :: [(k, a)] -> MinPQueue k a
+{-# INLINE fromAscList #-}
+fromAscList xs = List.foldl' (\q (k, a) -> insertMax' k a q) empty xs
+
+{-# RULES
+  "toAscList" toAscList = \q -> build (\c n -> foldrWithKey (curry c) n q);
+  "toDescList" toDescList = \q -> build (\c n -> foldlWithKey (\z k a -> (k, a) `c` z) n q);
+  "toListU" toListU = \q -> build (\c n -> foldrWithKeyU (curry c) n q);
+  #-}
+
+{-# NOINLINE toListU #-}
+-- | /O(n)/. Returns all (key, value) pairs in the queue in no particular order.
+toListU :: MinPQueue k a -> [(k, a)]
+toListU = foldrWithKeyU (curry (:)) []
+
+-- | /O(n)/. An unordered right fold over the elements of the queue, in no particular order.
+foldrU :: (a -> b -> b) -> b -> MinPQueue k a -> b
+foldrU = foldrWithKeyU . const
+
 -- | Equivalent to 'insert', save the assumption that this key is @<=@
 -- every other key in the map. /The precondition is not checked./
 insertMin :: k -> a -> MinPQueue k a -> MinPQueue k a
@@ -289,7 +376,7 @@ fromList xs = case extractForest (<=) (fromListHeap (<=) xs) of
 
 {-# INLINE fromListHeap #-}
 fromListHeap :: CompF k -> [(k, a)] -> BinomHeap k a
-fromListHeap le xs = foldl' go Nil xs
+fromListHeap le xs = List.foldl' go Nil xs
   where
     go fr (k, a) = incr' le (tip k a) fr
 
@@ -503,6 +590,35 @@ foldlWithKeyU :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU _ z Empty = z
 foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\k a z -> f z k a) (const id) ts (f z0 k0 a0)
 
+-- | /O(n)/. Map a function over all values in the queue.
+map :: (a -> b) -> MinPQueue k a -> MinPQueue k b
+map = mapWithKey . const
+
+-- | /O(n log n)/. Traverses the elements of the queue in ascending order by key.
+-- (@'traverseWithKey' f q == 'fromAscList' <$> 'traverse' ('uncurry' f) ('toAscList' q)@)
+--
+-- If you do not care about the /order/ of the traversal, consider using 'traverseWithKeyU'.
+--
+-- If you are working in a strict monad, consider using 'mapMWithKey'.
+traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
+traverseWithKey f q = case minViewWithKey q of
+  Nothing      -> pure empty
+  Just ((k, a), q')  -> liftA2 (insertMin k) (f k a) (traverseWithKey f q')
+
+-- | A strictly accumulating version of 'traverseWithKey'. This works well in
+-- 'IO' and strict @State@, and is likely what you want for other "strict" monads,
+-- where @⊥ >>= pure () = ⊥@.
+mapMWithKey :: (Ord k, Monad m) => (k -> a -> m b) -> MinPQueue k a -> m (MinPQueue k b)
+mapMWithKey f = go empty
+  where
+    go !acc q =
+      case minViewWithKey q of
+        Nothing           -> pure acc
+        Just ((k, a), q') -> do
+          b <- f k a
+          let !acc' = insertMax' k b acc
+          go acc' q'
+
 -- | /O(n)/. An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
@@ -591,3 +707,19 @@ instance (NFData k, NFData a, NFRank rk) => NFData (BinomForest rk k a) where
 instance (NFData k, NFData a) => NFData (MinPQueue k a) where
   rnf Empty = ()
   rnf (MinPQ _ k a ts) = k `deepseq` a `deepseq` rnf ts
+
+instance Functor (MinPQueue k) where
+  fmap = map
+
+instance Ord k => Foldable (MinPQueue k) where
+  foldr   = foldrWithKey . const
+  foldl f = foldlWithKey (const . f)
+  length = size
+  null = null
+
+-- | Traverses in ascending order. 'mapM' is strictly accumulating like
+-- 'mapMWithKey'.
+instance Ord k => Traversable (MinPQueue k) where
+  traverse = traverseWithKey . const
+  mapM = mapMWithKey . const
+  sequence = mapM id

@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -95,45 +94,10 @@ import Data.PQueue.Internals
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
-import Text.Read (Lexeme(Ident), lexP, parens, prec,
-  readPrec, readListPrec, readListPrecDefault)
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
 #endif
-
--- instance
-
-instance (Ord a, Show a) => Show (MinQueue a) where
-  showsPrec p xs = showParen (p > 10) $
-    showString "fromAscList " . shows (toAscList xs)
-
-instance Read a => Read (MinQueue a) where
-#ifdef __GLASGOW_HASKELL__
-  readPrec = parens $ prec 10 $ do
-    Ident "fromAscList" <- lexP
-    xs <- readPrec
-    return (fromAscList xs)
-
-  readListPrec = readListPrecDefault
-#else
-  readsPrec p = readParen (p > 10) $ \r -> do
-    ("fromAscList",s) <- lex r
-    (xs,t) <- reads s
-    return (fromAscList xs,t)
-#endif
-
-#if MIN_VERSION_base(4,9,0)
-instance Ord a => Semigroup (MinQueue a) where
-  (<>) = union
-#endif
-
-instance Ord a => Monoid (MinQueue a) where
-  mempty = empty
-#if !MIN_VERSION_base(4,11,0)
-  mappend = union
-#endif
-  mconcat = unions
 
 -- | /O(1)/. Returns the minimum element. Throws an error on an empty queue.
 findMin :: MinQueue a -> a
@@ -148,10 +112,6 @@ deleteMin q = case minView q of
 -- | /O(log n)/. Extracts the minimum element. Throws an error on an empty queue.
 deleteFindMin :: Ord a => MinQueue a -> (a, MinQueue a)
 deleteFindMin = fromMaybe (error "Error: deleteFindMin called on empty queue") . minView
-
--- | Takes the union of a list of priority queues. Equivalent to @'foldl' 'union' 'empty'@.
-unions :: Ord a => [MinQueue a] -> MinQueue a
-unions = foldl union empty
 
 -- | /O(k log n)/. Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th smallest
 -- element in the queue. Equivalent to @toAscList queue !! k@.
@@ -232,26 +192,6 @@ partition p = mapEither (\x -> if p x then Left x else Right x)
 map :: Ord b => (a -> b) -> MinQueue a -> MinQueue b
 map f = foldrU (insert . f) empty
 
-{-# INLINABLE [1] toAscList #-}
--- | /O(n log n)/. Extracts the elements of the priority queue in ascending order.
-toAscList :: Ord a => MinQueue a -> [a]
-toAscList queue = foldrAsc (:) [] queue
-
-{-# INLINABLE toAscListApp #-}
-toAscListApp :: Ord a => MinQueue a -> [a] -> [a]
-toAscListApp Empty app = app
-toAscListApp (MinQueue _ x ts) app = x : foldrUnfold (:) app extractHeap ts
-
-{-# INLINABLE [1] toDescList #-}
--- | /O(n log n)/. Extracts the elements of the priority queue in descending order.
-toDescList :: Ord a => MinQueue a -> [a]
-toDescList queue = foldrDesc (:) [] queue
-
-{-# INLINABLE toDescListApp #-}
-toDescListApp :: Ord a => MinQueue a -> [a] -> [a]
-toDescListApp Empty app = app
-toDescListApp (MinQueue _ x ts) app = foldlUnfold (flip (:)) (x : app) extractHeap ts
-
 {-# INLINE toList #-}
 -- | /O(n log n)/. Returns the elements of the priority queue in ascending order. Equivalent to 'toAscList'.
 --
@@ -259,34 +199,10 @@ toDescListApp (MinQueue _ x ts) app = foldlUnfold (flip (:)) (x : app) extractHe
 toList :: Ord a => MinQueue a -> [a]
 toList = toAscList
 
-{-# RULES
-"toAscList" [~1] forall q. toAscList q = build (\c nil -> foldrAsc c nil q)
-"toDescList" [~1] forall q. toDescList q = build (\c nil -> foldrDesc c nil q)
-"ascList" [1] forall q add. foldrAsc (:) add q = toAscListApp q add
-"descList" [1] forall q add. foldrDesc (:) add q = toDescListApp q add
- #-}
-
--- | /O(n log n)/. Performs a right fold on the elements of a priority queue in descending order.
--- @foldrDesc f z q == foldlAsc (flip f) z q@.
-foldrDesc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
-foldrDesc = foldlAsc . flip
-{-# INLINE [0] foldrDesc #-}
-
 -- | /O(n log n)/. Performs a left fold on the elements of a priority queue in descending order.
 -- @foldlDesc f z q == foldrAsc (flip f) z q@.
 foldlDesc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
 foldlDesc = foldrAsc . flip
-
-{-# INLINE fromAscList #-}
--- | /O(n)/. Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
---
--- Performance note: Code using this function in a performance-sensitive context
--- with an argument that is a "good producer" for list fusion should be compiled
--- with @-fspec-constr@ or @-O2@. For example, @fromAscList . map f@ needs one
--- of these options for best results.
-fromAscList :: [a] -> MinQueue a
--- We apply an explicit argument to get foldl' to inline.
-fromAscList xs = foldl' (flip insertMaxQ') empty xs
 
 {-# INLINE fromDescList #-}
 -- | /O(n)/. Constructs a priority queue from an descending list. /Warning/: Does not check the precondition.
@@ -294,26 +210,6 @@ fromDescList :: [a] -> MinQueue a
 -- We apply an explicit argument to get foldl' to inline.
 fromDescList xs = foldl' (flip insertMinQ') empty xs
 
--- | Maps a function over the elements of the queue, ignoring order. This function is only safe if the function is monotonic.
--- This function /does not/ check the precondition.
-mapU :: (a -> b) -> MinQueue a -> MinQueue b
-mapU = mapMonotonic
-
 -- | Equivalent to 'toListU'.
 elemsU :: MinQueue a -> [a]
 elemsU = toListU
-
-{-# NOINLINE toListU #-}
--- | /O(n)/. Returns the elements of the queue, in no particular order.
-toListU :: MinQueue a -> [a]
-toListU q = foldrU (:) [] q
-
-{-# NOINLINE toListUApp #-}
-toListUApp :: MinQueue a -> [a] -> [a]
-toListUApp Empty app = app
-toListUApp (MinQueue _ x ts) app = x : foldr (:) app ts
-
-{-# RULES
-"toListU/build" [~1] forall q. toListU q = build (\c n -> foldrU c n q)
-"toListU" [1] forall q app. foldrU (:) app q = toListUApp q app
-  #-}
