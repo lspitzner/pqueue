@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -63,6 +64,7 @@ module Data.PQueue.Prio.Max (
   foldlWithKey,
   -- ** Traverse
   traverseWithKey,
+  mapMWithKey,
   -- * Subsets
   -- ** Indexed
   take,
@@ -179,8 +181,12 @@ instance Ord k => Foldable (MaxPQueue k) where
   length = size
   null = null
 
+-- | Traverses in descending order. 'mapM' is strictly accumulating like
+-- 'mapMWithKey'.
 instance Ord k => Traversable (MaxPQueue k) where
   traverse f (MaxPQ q) = MaxPQ <$> traverse f q
+  mapM = mapMWithKey . const
+  sequence = mapM id
 
 -- | /O(1)/. Returns the empty priority queue.
 empty :: MaxPQueue k a
@@ -305,8 +311,24 @@ foldlWithKey f z0 (MaxPQ q) = Q.foldlWithKey (\z -> f z . unDown) z0 q
 -- (@'traverseWithKey' f q == 'fromDescList' <$> 'traverse' ('uncurry' f) ('toDescList' q)@)
 --
 -- If you do not care about the /order/ of the traversal, consider using 'traverseWithKeyU'.
+--
+-- If you are working in a strict monad, consider using 'mapMWithKey'.
 traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
 traverseWithKey f (MaxPQ q) = MaxPQ <$> Q.traverseWithKey (f . unDown) q
+
+-- | A strictly accumulating version of 'traverseWithKey'. This works well in
+-- 'IO' and strict @State@, and is likely what you want for other "strict" monads,
+-- where @⊥ >>= pure () = ⊥@.
+mapMWithKey :: (Ord k, Monad m) => (k -> a -> m b) -> MaxPQueue k a -> m (MaxPQueue k b)
+mapMWithKey f = go empty
+  where
+    go !acc q =
+      case maxViewWithKey q of
+        Nothing           -> pure acc
+        Just ((k, a), q') -> do
+          b <- f k a
+          let !acc' = insertMin' k b acc
+          go acc' q'
 
 -- | /O(k log n)/. Takes the first @k@ (key, value) pairs in the queue, or the first @n@ if @k >= n@.
 -- (@'take' k q == 'List.take' k ('toDescList' q)@)

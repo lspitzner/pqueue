@@ -1,12 +1,13 @@
 module Main (main) where
 
-import qualified Data.PQueue.Prio.Max as PMax ()
+import qualified Data.PQueue.Prio.Max as PMax
 import qualified Data.PQueue.Prio.Min as PMin
 import qualified Data.PQueue.Max as Max ()
 import qualified Data.PQueue.Min as Min
 
 import Test.QuickCheck
-import Test.QuickCheck.Poly (OrdA)
+import Test.QuickCheck.Poly (OrdA, B, C)
+import Test.QuickCheck.Function (Fun, applyFun2)
 
 import System.Exit
 
@@ -125,6 +126,26 @@ validFoldrU :: [Int] -> Bool
 validFoldrU xs = Min.foldrU (+) 0 q == List.sum xs
   where q = Min.fromList xs
 
+validTraverseWithKey :: Fun (OrdA, B) [C] -> Short (OrdA, B) -> Property
+validTraverseWithKey f (Short xs) =
+  PMin.traverseWithKey (applyFun2 f) q === PMin.mapMWithKey (applyFun2 f) q
+  where
+    q = PMin.fromList xs
+
+validTraverseWithKeyMax :: Fun (OrdA, B) [C] -> Short (OrdA, B) -> Property
+validTraverseWithKeyMax f (Short xs) =
+  PMax.traverseWithKey (applyFun2 f) q === PMax.mapMWithKey (applyFun2 f) q
+  where
+    q = PMax.fromList xs
+
+-- Lists of between 0 and 3 elements
+newtype Short a = Short [a]
+  deriving Show
+instance Arbitrary a => Arbitrary (Short a) where
+  arbitrary = do
+    n <- frequency [(1, pure 0), (5, pure 1), (4, pure 2), (3, pure 3)]
+    Short <$> vectorOf n arbitrary
+
 main :: IO ()
 main = do
   check validMinToAscList
@@ -153,6 +174,8 @@ main = do
   check validFoldl
   check validFoldlU
   check validFoldrU
+  check validTraverseWithKey
+  check validTraverseWithKeyMax
   putStrLn "all tests passed"
 
 isPass :: Result -> Bool

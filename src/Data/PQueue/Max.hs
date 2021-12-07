@@ -108,7 +108,7 @@ build f = f (:) []
 -- Implemented as a wrapper around 'Min.MinQueue'.
 newtype MaxQueue a = MaxQ (Min.MinQueue (Down a))
 # if __GLASGOW_HASKELL__
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data)
 # else
   deriving (Eq, Ord)
 # endif

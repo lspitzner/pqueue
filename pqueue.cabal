@@ -42,6 +42,10 @@ library
   if impl(ghc) {
     default-extensions: DeriveDataTypeable
   }
+  other-extensions:
+      BangPatterns
+    , CPP
+    , StandaloneDeriving
   ghc-options: {
     -- We currently need -fspec-constr to get GHC to compile conversions
     -- from lists well. We could (and probably should) write those a

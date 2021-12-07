@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -63,6 +64,7 @@ module Data.PQueue.Prio.Min (
   foldlWithKey,
   -- ** Traverse
   traverseWithKey,
+  mapMWithKey,
   -- * Subsets
   -- ** Indexed
   take,
@@ -219,10 +221,26 @@ mapKeys f q = fromList [(f k, a) | (k, a) <- toListU q]
 -- (@'traverseWithKey' f q == 'fromAscList' <$> 'traverse' ('uncurry' f) ('toAscList' q)@)
 --
 -- If you do not care about the /order/ of the traversal, consider using 'traverseWithKeyU'.
+--
+-- If you are working in a strict monad, consider using 'mapMWithKey'.
 traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKey f q = case minViewWithKey q of
   Nothing      -> pure empty
   Just ((k, a), q')  -> liftA2 (insertMin k) (f k a) (traverseWithKey f q')
+
+-- | A strictly accumulating version of 'traverseWithKey'. This works well in
+-- 'IO' and strict @State@, and is likely what you want for other "strict" monads,
+-- where @⊥ >>= pure () = ⊥@.
+mapMWithKey :: (Ord k, Monad m) => (k -> a -> m b) -> MinPQueue k a -> m (MinPQueue k b)
+mapMWithKey f = go empty
+  where
+    go !acc q =
+      case minViewWithKey q of
+        Nothing           -> pure acc
+        Just ((k, a), q') -> do
+          b <- f k a
+          let !acc' = insertMax' k b acc
+          go acc' q'
 
 -- | /O(n)/. Map values and collect the 'Just' results.
 mapMaybe :: Ord k => (a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
@@ -409,5 +427,9 @@ instance Ord k => Foldable (MinPQueue k) where
   length = size
   null = null
 
+-- | Traverses in ascending order. 'mapM' is strictly accumulating like
+-- 'mapMWithKey'.
 instance Ord k => Traversable (MinPQueue k) where
   traverse = traverseWithKey . const
+  mapM = mapMWithKey . const
+  sequence = mapM id
