@@ -114,6 +114,7 @@ module Data.PQueue.Prio.Min (
   )
   where
 
+import Control.Applicative (liftA2)
 import qualified Data.List as List
 import Data.Maybe (fromMaybe)
 
@@ -221,7 +222,7 @@ mapKeys f q = fromList [(f k, a) | (k, a) <- toListU q]
 traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKey f q = case minViewWithKey q of
   Nothing      -> pure empty
-  Just ((k, a), q')  -> insertMin k <$> f k a <*> traverseWithKey f q'
+  Just ((k, a), q')  -> liftA2 (insertMin k) (f k a) (traverseWithKey f q')
 
 -- | /O(n)/. Map values and collect the 'Just' results.
 mapMaybe :: Ord k => (a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
@@ -405,6 +406,8 @@ instance Functor (MinPQueue k) where
 instance Ord k => Foldable (MinPQueue k) where
   foldr   = foldrWithKey . const
   foldl f = foldlWithKey (const . f)
+  length = size
+  null = null
 
 instance Ord k => Traversable (MinPQueue k) where
   traverse = traverseWithKey . const
