@@ -37,6 +37,7 @@ module Data.PQueue.Prio.Internals (
   ) where
 
 import Control.Applicative.Identity (Identity(Identity, runIdentity))
+import Control.Applicative (liftA2, liftA3)
 import Control.DeepSeq (NFData(rnf), deepseq)
 import Data.List (foldl')
 
@@ -504,7 +505,7 @@ foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\k a z -> f z k a) (cons
 -- priority queue will be perfectly valid.
 traverseWithKeyU :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKeyU _ Empty = pure Empty
-traverseWithKeyU f (MinPQ n k a ts) = MinPQ n k <$> f k a <*> traverseForest f (const (pure Zero)) ts
+traverseWithKeyU f (MinPQ n k a ts) = liftA2 (MinPQ n k) (f k a) (traverseForest f (const (pure Zero)) ts)
 
 {-# SPECIALIZE traverseForest :: (k -> a -> Identity b) -> (rk k a -> Identity (rk k b)) -> BinomForest rk k a ->
   Identity (BinomForest rk k b) #-}
@@ -513,7 +514,7 @@ traverseForest f fCh ts0 = case ts0 of
   Nil       -> pure Nil
   Skip ts'  -> Skip <$> traverseForest f fCh' ts'
   Cons (BinomTree k a ts) tss
-    -> Cons <$> (BinomTree k <$> f k a <*> fCh ts) <*> traverseForest f fCh' tss
+    -> liftA3 (\p q -> Cons (BinomTree k p q)) (f k a) (fCh ts) (traverseForest f fCh' tss)
   where
     fCh' (Succ (BinomTree k a ts) tss)
       = Succ <$> (BinomTree k <$> f k a <*> fCh ts) <*> fCh tss

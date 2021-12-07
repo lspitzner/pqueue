@@ -114,6 +114,7 @@ module Data.PQueue.Prio.Max (
   )
   where
 
+import Control.Applicative (liftA2)
 import Data.Maybe (fromMaybe)
 import Data.PQueue.Prio.Max.Internals
 
@@ -122,6 +123,7 @@ import Data.Semigroup (Semigroup((<>)))
 #endif
 
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
+import qualified Data.Foldable as F
 
 import qualified Data.PQueue.Prio.Min as Q
 
@@ -171,6 +173,9 @@ instance Functor (MaxPQueue k) where
 instance Ord k => Foldable (MaxPQueue k) where
   foldr f z (MaxPQ q) = foldr f z q
   foldl f z (MaxPQ q) = foldl f z q
+
+  length = size
+  null = null
 
 instance Ord k => Traversable (MaxPQueue k) where
   traverse f (MaxPQ q) = MaxPQ <$> traverse f q
