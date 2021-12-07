@@ -22,30 +22,47 @@ module Data.PQueue.Internals (
   mapMonotonic,
   foldrAsc,
   foldlAsc,
+  foldrDesc,
   foldrUnfold,
   foldlUnfold,
   insertMinQ,
   insertMinQ',
   insertMaxQ',
+  toAscList,
+  toDescList,
+  toListU,
   fromList,
---   mapU,
+  mapU,
+  fromAscList,
   foldrU,
   foldlU,
 --   traverseU,
   keysQueue,
-  seqSpine
+  seqSpine,
+  unions
   ) where
 
 import Control.DeepSeq (NFData(rnf), deepseq)
 import Data.Foldable (foldl')
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup((<>)))
+#endif
 
 import qualified Data.PQueue.Prio.Internals as Prio
 
 #ifdef __GLASGOW_HASKELL__
 import Data.Data
+import Text.Read (Lexeme(Ident), lexP, parens, prec,
+  readPrec, readListPrec, readListPrecDefault)
+import GHC.Exts (build)
 #endif
 
 import Prelude hiding (null)
+
+#ifndef __GLASGOW_HASKELL__
+build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
+build f = f (:) []
+#endif
 
 -- | A priority queue with elements of type @a@. Supports extracting the minimum element.
 data MinQueue a = Empty | MinQueue {-# UNPACK #-} !Int !a !(BinomHeap a)
@@ -212,6 +229,10 @@ insert = insert' (<=)
 union :: Ord a => MinQueue a -> MinQueue a -> MinQueue a
 union = union' (<=)
 
+-- | Takes the union of a list of priority queues. Equivalent to @'foldl'' 'union' 'empty'@.
+unions :: Ord a => [MinQueue a] -> MinQueue a
+unions = foldl' union empty
+
 -- | /O(n)/. Map elements and collect the 'Just' results.
 mapMaybe :: Ord b => (a -> Maybe b) -> MinQueue a -> MinQueue b
 mapMaybe _ Empty = Empty
@@ -238,6 +259,12 @@ foldrAsc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
 foldrAsc _ z Empty = z
 foldrAsc f z (MinQueue _ x ts) = x `f` foldrUnfold f z extractHeap ts
 
+-- | /O(n log n)/. Performs a right fold on the elements of a priority queue in descending order.
+-- @foldrDesc f z q == foldlAsc (flip f) z q@.
+foldrDesc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
+foldrDesc = foldlAsc . flip
+{-# INLINE [0] foldrDesc #-}
+
 {-# INLINE foldrUnfold #-}
 -- | Equivalent to @foldr f z (unfoldr suc s0)@.
 foldrUnfold :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
@@ -259,6 +286,44 @@ foldlUnfold f z0 suc s0 = unf z0 s0 where
   unf z s = case suc s of
     Nothing      -> z
     Just (x, s') -> unf (z `f` x) s'
+
+{-# INLINABLE [1] toAscList #-}
+-- | /O(n log n)/. Extracts the elements of the priority queue in ascending order.
+toAscList :: Ord a => MinQueue a -> [a]
+toAscList queue = foldrAsc (:) [] queue
+
+{-# INLINABLE toAscListApp #-}
+toAscListApp :: Ord a => MinQueue a -> [a] -> [a]
+toAscListApp Empty app = app
+toAscListApp (MinQueue _ x ts) app = x : foldrUnfold (:) app extractHeap ts
+
+{-# INLINABLE [1] toDescList #-}
+-- | /O(n log n)/. Extracts the elements of the priority queue in descending order.
+toDescList :: Ord a => MinQueue a -> [a]
+toDescList queue = foldrDesc (:) [] queue
+
+{-# INLINABLE toDescListApp #-}
+toDescListApp :: Ord a => MinQueue a -> [a] -> [a]
+toDescListApp Empty app = app
+toDescListApp (MinQueue _ x ts) app = foldlUnfold (flip (:)) (x : app) extractHeap ts
+
+{-# RULES
+"toAscList" [~1] forall q. toAscList q = build (\c nil -> foldrAsc c nil q)
+"toDescList" [~1] forall q. toDescList q = build (\c nil -> foldrDesc c nil q)
+"ascList" [1] forall q add. foldrAsc (:) add q = toAscListApp q add
+"descList" [1] forall q add. foldrDesc (:) add q = toDescListApp q add
+ #-}
+
+{-# INLINE fromAscList #-}
+-- | /O(n)/. Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
+--
+-- Performance note: Code using this function in a performance-sensitive context
+-- with an argument that is a "good producer" for list fusion should be compiled
+-- with @-fspec-constr@ or @-O2@. For example, @fromAscList . map f@ needs one
+-- of these options for best results.
+fromAscList :: [a] -> MinQueue a
+-- We apply an explicit argument to get foldl' to inline.
+fromAscList xs = foldl' (flip insertMaxQ') empty xs
 
 insert' :: LEq a -> a -> MinQueue a -> MinQueue a
 insert' _ x Empty = singleton x
@@ -374,7 +439,7 @@ insertMinQ x Empty = singleton x
 insertMinQ x (MinQueue n x' f) = MinQueue (n + 1) x (insertMin (tip x') f)
 
 -- | @insertMin t f@ assumes that the root of @t@ compares as less than
--- every other root in @f@, and merges accordingly.
+-- or equal to every other root in @f@, and merges accordingly.
 insertMin :: BinomTree rk a -> BinomForest rk a -> BinomForest rk a
 insertMin t Nil = Cons t Nil
 insertMin t (Skip f) = Cons t f
@@ -590,6 +655,21 @@ foldlU :: (b -> a -> b) -> b -> MinQueue a -> b
 foldlU _ z Empty = z
 foldlU f z (MinQueue _ x ts) = foldl f (z `f` x) ts
 
+{-# NOINLINE toListU #-}
+-- | /O(n)/. Returns the elements of the queue, in no particular order.
+toListU :: MinQueue a -> [a]
+toListU q = foldrU (:) [] q
+
+{-# NOINLINE toListUApp #-}
+toListUApp :: MinQueue a -> [a] -> [a]
+toListUApp Empty app = app
+toListUApp (MinQueue _ x ts) app = x : foldr (:) app ts
+
+{-# RULES
+"toListU/build" [~1] forall q. toListU q = build (\c n -> foldrU c n q)
+"toListU" [1] forall q app. foldrU (:) app q = toListUApp q app
+  #-}
+
 -- traverseU :: Applicative f => (a -> f b) -> MinQueue a -> f (MinQueue b)
 -- traverseU _ Empty = pure Empty
 -- traverseU f (MinQueue n x ts) = MinQueue n <$> f x <*> traverse f ts
@@ -643,3 +723,34 @@ instance (NFData a, NFRank rk) => NFData (BinomForest rk a) where
 instance NFData a => NFData (MinQueue a) where
   rnf Empty             = ()
   rnf (MinQueue _ x ts) = x `deepseq` rnf ts
+
+instance (Ord a, Show a) => Show (MinQueue a) where
+  showsPrec p xs = showParen (p > 10) $
+    showString "fromAscList " . shows (toAscList xs)
+
+instance Read a => Read (MinQueue a) where
+#ifdef __GLASGOW_HASKELL__
+  readPrec = parens $ prec 10 $ do
+    Ident "fromAscList" <- lexP
+    xs <- readPrec
+    return (fromAscList xs)
+
+  readListPrec = readListPrecDefault
+#else
+  readsPrec p = readParen (p > 10) $ \r -> do
+    ("fromAscList",s) <- lex r
+    (xs,t) <- reads s
+    return (fromAscList xs,t)
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance Ord a => Semigroup (MinQueue a) where
+  (<>) = union
+#endif
+
+instance Ord a => Monoid (MinQueue a) where
+  mempty = empty
+#if !MIN_VERSION_base(4,11,0)
+  mappend = union
+#endif
+  mconcat = unions

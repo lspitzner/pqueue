@@ -36,6 +36,7 @@ library
   other-modules:
     Data.PQueue.Prio.Internals
     Data.PQueue.Internals
+    Data.PQueue.Internals.Down
     Data.PQueue.Prio.Max.Internals
     Control.Applicative.Identity
   if impl(ghc) {
@@ -73,7 +74,6 @@ test-Suite test
   }
   ghc-options: {
     -Wall
-    -fno-warn-inline-rule-shadowing
   }
   if impl(ghc >= 8.0) {
     ghc-options: {

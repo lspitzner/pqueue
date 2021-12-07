@@ -90,7 +90,7 @@ import Data.Semigroup (Semigroup((<>)))
 
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio
-import Data.PQueue.Prio.Max.Internals (Down(..))
+import Data.PQueue.Internals.Down (Down(..))
 
 import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter)
 
