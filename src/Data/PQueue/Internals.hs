@@ -494,8 +494,6 @@ incr' le t f0 = t `seq` case f0 of
   Nil  -> Cons t Nil
   Skip f     -> Cons t f
   Cons t' f' -> Skip $! incr' le (t `cat` t') f'
-      -- Question: should we force t `cat` t' here? We're allowed to;
-      -- it's not obviously good or obviously bad.
     where
       cat = joinBin le
 
