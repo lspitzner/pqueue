@@ -54,7 +54,7 @@ data MinQueue a = Empty | MinQueue {-# UNPACK #-} !Int !a !(BinomHeap a)
 instance (Ord a, Data a) => Data (MinQueue a) where
   gfoldl f z q = case minView q of
     Nothing      -> z Empty
-    Just (x, q') -> z insertMinQ `f` x `f` q'
+    Just (x, q') -> z insert `f` x `f` q'
 
   gunfold k z c = case constrIndex c of
     1 -> z Empty
