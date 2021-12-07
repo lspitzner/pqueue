@@ -75,9 +75,6 @@ infixr 8 .:
 -- | A priority queue where values of type @a@ are annotated with keys of type @k@.
 -- The queue supports extracting the element with minimum key.
 data MinPQueue k a = Empty | MinPQ {-# UNPACK #-} !Int !k a !(BinomHeap k a)
-#if __GLASGOW_HASKELL__
-  deriving (Typeable)
-#endif
 
 data BinomForest rk k a =
   Nil |

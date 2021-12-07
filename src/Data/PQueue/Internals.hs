@@ -49,12 +49,6 @@ import Prelude hiding (null)
 
 -- | A priority queue with elements of type @a@. Supports extracting the minimum element.
 data MinQueue a = Empty | MinQueue {-# UNPACK #-} !Int !a !(BinomHeap a)
-#if __GLASGOW_HASKELL__>=707
-  deriving Typeable
-#else
-#include "Typeable.h"
-INSTANCE_TYPEABLE1(MinQueue,minQTC,"MinQueue")
-#endif
 
 #ifdef __GLASGOW_HASKELL__
 instance (Ord a, Data a) => Data (MinQueue a) where
