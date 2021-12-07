@@ -149,7 +149,9 @@ instance Ord k => Semigroup (MinPQueue k a) where
 
 instance Ord k => Monoid (MinPQueue k a) where
   mempty = empty
+#if !MIN_VERSION_base(4,11,0)
   mappend = union
+#endif
   mconcat = unions
 
 instance (Ord k, Show k, Show a) => Show (MinPQueue k a) where

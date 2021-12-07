@@ -130,7 +130,9 @@ instance Ord a => Semigroup (MinQueue a) where
 
 instance Ord a => Monoid (MinQueue a) where
   mempty = empty
+#if !MIN_VERSION_base(4,11,0)
   mappend = union
+#endif
   mconcat = unions
 
 -- | /O(1)/. Returns the minimum element. Throws an error on an empty queue.

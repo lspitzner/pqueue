@@ -142,7 +142,10 @@ instance Ord a => Semigroup (MaxQueue a) where
 
 instance Ord a => Monoid (MaxQueue a) where
   mempty = empty
+#if !MIN_VERSION_base(4,11,0)
   mappend = union
+#endif
+  mconcat = unions
 
 -- | /O(1)/. The empty priority queue.
 empty :: MaxQueue a
