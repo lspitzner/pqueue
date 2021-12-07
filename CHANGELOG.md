@@ -1,5 +1,13 @@
 # Revision history for pqueue
 
+## 1.4.2
+
+  * Large performance improvements, especially when there are many insertions
+    and/or merges in a row. Insertion, deletion, and merge are now *worst case*
+    logarithmic, while maintaining their previous amortized bounds. (#26)
+
+  * New `mapMWithKey` functions optimized for working in strict monads. (#46)
+
 ## 1.4.1.4  -- 2021-12-04
 
   * Maintenance release for ghc-9.0 & ghc-9.2 support
