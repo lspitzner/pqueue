@@ -232,15 +232,25 @@ partition p = mapEither (\x -> if p x then Left x else Right x)
 map :: Ord b => (a -> b) -> MinQueue a -> MinQueue b
 map f = foldrU (insert . f) empty
 
-{-# INLINE toAscList #-}
+{-# INLINABLE [1] toAscList #-}
 -- | /O(n log n)/. Extracts the elements of the priority queue in ascending order.
 toAscList :: Ord a => MinQueue a -> [a]
-toAscList queue = build (\c nil -> foldrAsc c nil queue)
+toAscList queue = foldrAsc (:) [] queue
 
-{-# INLINE toDescList #-}
+{-# INLINABLE toAscListApp #-}
+toAscListApp :: Ord a => MinQueue a -> [a] -> [a]
+toAscListApp Empty app = app
+toAscListApp (MinQueue _ x ts) app = x : foldrUnfold (:) app extractHeap ts
+
+{-# INLINABLE [1] toDescList #-}
 -- | /O(n log n)/. Extracts the elements of the priority queue in descending order.
 toDescList :: Ord a => MinQueue a -> [a]
-toDescList queue = build (\c nil -> foldrDesc c nil queue)
+toDescList queue = foldrDesc (:) [] queue
+
+{-# INLINABLE toDescListApp #-}
+toDescListApp :: Ord a => MinQueue a -> [a] -> [a]
+toDescListApp Empty app = app
+toDescListApp (MinQueue _ x ts) app = foldlUnfold (flip (:)) (x : app) extractHeap ts
 
 {-# INLINE toList #-}
 -- | /O(n log n)/. Returns the elements of the priority queue in ascending order. Equivalent to 'toAscList'.
@@ -250,17 +260,19 @@ toList :: Ord a => MinQueue a -> [a]
 toList = toAscList
 
 {-# RULES
-  "toAscList" forall q . toAscList q = build (\c nil -> foldrAsc c nil q);
-    -- inlining doesn't seem to be working out =/
-  "toDescList" forall q . toDescList q = build (\c nil -> foldrDesc c nil q);
-  #-}
+"toAscList" [~1] forall q. toAscList q = build (\c nil -> foldrAsc c nil q)
+"toDescList" [~1] forall q. toDescList q = build (\c nil -> foldrDesc c nil q)
+"ascList" [1] forall q add. foldrAsc (:) add q = toAscListApp q add
+"descList" [1] forall q add. foldrDesc (:) add q = toDescListApp q add
+ #-}
 
--- | /O(n log n)/. Performs a right-fold on the elements of a priority queue in descending order.
+-- | /O(n log n)/. Performs a right fold on the elements of a priority queue in descending order.
 -- @foldrDesc f z q == foldlAsc (flip f) z q@.
 foldrDesc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
 foldrDesc = foldlAsc . flip
+{-# INLINE [0] foldrDesc #-}
 
--- | /O(n log n)/. Performs a left-fold on the elements of a priority queue in descending order.
+-- | /O(n log n)/. Performs a left fold on the elements of a priority queue in descending order.
 -- @foldlDesc f z q == foldrAsc (flip f) z q@.
 foldlDesc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
 foldlDesc = foldrAsc . flip
@@ -287,16 +299,21 @@ fromDescList xs = foldl' (flip insertMinQ') empty xs
 mapU :: (a -> b) -> MinQueue a -> MinQueue b
 mapU = mapMonotonic
 
-{-# INLINE elemsU #-}
 -- | Equivalent to 'toListU'.
 elemsU :: MinQueue a -> [a]
 elemsU = toListU
 
+{-# NOINLINE toListU #-}
 -- | /O(n)/. Returns the elements of the queue, in no particular order.
 toListU :: MinQueue a -> [a]
-toListU q = build (\c n -> foldrU c n q)
+toListU q = foldrU (:) [] q
+
+{-# NOINLINE toListUApp #-}
+toListUApp :: MinQueue a -> [a] -> [a]
+toListUApp Empty app = app
+toListUApp (MinQueue _ x ts) app = x : foldr (:) app ts
 
 {-# RULES
-  "foldr/toListU" forall f z q . foldr f z (toListU q) = foldrU f z q;
-  "foldl/toListU" forall f z q . foldl f z (toListU q) = foldlU f z q;
+"toListU/build" [~1] forall q. toListU q = build (\c n -> foldrU c n q)
+"toListU" [1] forall q app. foldrU (:) app q = toListUApp q app
   #-}
