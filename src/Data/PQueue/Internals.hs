@@ -379,6 +379,7 @@ insertMinQ x (MinQueue n x' f) = MinQueue (n + 1) x (insertMin (tip x') f)
 insertMin :: BinomTree rk a -> BinomForest rk a -> BinomForest rk a
 insertMin t Nil = Cons t Nil
 insertMin t (Skip f) = Cons t f
+-- See Note [Force on cascade]
 insertMin (BinomTree x ts) (Cons t' f) = f `seq` Skip (insertMin (BinomTree x (Succ t' ts)) f)
 
 -- | @insertMinQ' x h@ assumes that @x@ compares as less
@@ -478,14 +479,37 @@ carry le t0 f1 f2 = t0 `seq` case (f1, f2) of
 -- of the trees in the binomial forest as binary digits, this corresponds
 -- to adding a power of 2. This costs amortized /O(1)/ time.
 incr :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a
+-- See Note [Amortization]
 incr le t f0 = t `seq` case f0 of
   Nil  -> Cons t Nil
   Skip f     -> Cons t f
   Cons t' f' -> f' `seq` Skip (incr le (t `cat` t') f')
+      -- See Note [Force on cascade]
+
       -- Question: should we force t `cat` t' here? We're allowed to;
       -- it's not obviously good or obviously bad.
     where
       cat = joinBin le
+
+-- Note [Amortization]
+--
+-- In the Skip case, we perform O(1) unshared work and pay a
+-- debit. In the Cons case, there are no debits on f', so we can force it for
+-- free. We perform O(1) unshared work, and by induction suspend O(1) amortized
+-- work. Another way to look at this: We have a string of Conses followed by
+-- a Skip or Nil. We change all the Conses to Skips, and change the Skip to
+-- a Cons or the Nil to a Cons Nil. Processing each Cons takes O(1) time, which
+-- we account for by placing debits below the new Skips. Note: this increment
+-- pattern is exactly the same as the one for Hinze-Paterson 2–3 finger trees,
+-- and the amortization argument works just the same.
+
+-- Note [Force on cascade]
+--
+-- As Hinze and Patterson noticed in a similar structure, whenever we cascade
+-- past a Cons on insertion, we should force its child. If we don't, then
+-- multiple insertions in a row will form a chain of thunks just under the root
+-- of the structure, which degrades the worst-case bound for deletion from
+-- logarithmic to linear and leads to poor real-world performance.
 
 -- | A version of 'incr' that constructs the spine eagerly. This is
 -- intended for implementing @fromList@.
@@ -496,16 +520,6 @@ incr' le t f0 = t `seq` case f0 of
   Cons t' f' -> Skip $! incr' le (t `cat` t') f'
     where
       cat = joinBin le
-
--- Amortization: In the Skip case, we perform O(1) unshared work and pay a
--- debit. In the Cons case, there are no debits on f', so we can force it for
--- free. We perform O(1) unshared work, and by induction suspend O(1) amortized
--- work. Another way to look at this: We have a string of Conses followed by
--- a Skip or Nil. We change all the Conses to Skips, and change the Skip to
--- a Cons or the Nil to a Cons Nil. Processing each Cons takes O(1) time, which
--- we account for by placing debits below the new Skips. Note: this increment
--- pattern is exactly the same as the one for Hinze-Paterson 2–3 finger trees,
--- and the amortization argument works just the same.
 
 -- | The carrying operation: takes two binomial heaps of the same rank @k@
 -- and returns one of rank @k+1@. Takes /O(1)/ time.
