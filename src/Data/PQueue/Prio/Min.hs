@@ -337,10 +337,12 @@ keys = List.map fst . toAscList
 elems :: Ord k => MinPQueue k a -> [a]
 elems = List.map snd . toAscList
 
+{-# INLINABLE [1] toAscList #-}
 -- | /O(n log n)/. Return all (key, value) pairs in ascending order by key.
 toAscList :: Ord k => MinPQueue k a -> [(k, a)]
 toAscList = foldrWithKey (curry (:)) []
 
+{-# INLINABLE [1] toDescList #-}
 -- | /O(n log n)/. Return all (key, value) pairs in descending order by key.
 toDescList :: Ord k => MinPQueue k a -> [(k, a)]
 toDescList = foldlWithKey (\z k a -> (k, a) : z) []
@@ -378,6 +380,7 @@ elemsU = List.map snd . toListU
 assocsU :: MinPQueue k a -> [(k, a)]
 assocsU = toListU
 
+{-# NOINLINE toListU #-}
 -- | /O(n)/. Returns all (key, value) pairs in the queue in no particular order.
 toListU :: MinPQueue k a -> [(k, a)]
 toListU = foldrWithKeyU (curry (:)) []

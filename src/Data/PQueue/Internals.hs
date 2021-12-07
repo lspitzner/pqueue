@@ -9,6 +9,7 @@ module Data.PQueue.Internals (
   Zero(..),
   LEq,
   empty,
+  extractHeap,
   null,
   size,
   getMin,
@@ -21,6 +22,8 @@ module Data.PQueue.Internals (
   mapMonotonic,
   foldrAsc,
   foldlAsc,
+  foldrUnfold,
+  foldlUnfold,
   insertMinQ,
   insertMinQ',
   insertMaxQ',
@@ -234,8 +237,9 @@ mapEither f (MinQueue _ x ts) = case (mapEitherQueue f (<=) (<=) (const (Empty, 
 mapMonotonic :: (a -> b) -> MinQueue a -> MinQueue b
 mapMonotonic = mapU
 
-{-# INLINE foldrAsc #-}
--- | /O(n log n)/. Performs a right-fold on the elements of a priority queue in ascending order.
+{-# INLINABLE [0] foldrAsc #-}
+-- | /O(n log n)/. Performs a right fold on the elements of a priority queue in
+-- ascending order.
 foldrAsc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
 foldrAsc _ z Empty = z
 foldrAsc f z (MinQueue _ x ts) = x `f` foldrUnfold f z extractHeap ts
@@ -248,7 +252,8 @@ foldrUnfold f z suc s0 = unf s0 where
     Nothing      -> z
     Just (x, s') -> x `f` unf s'
 
--- | /O(n log n)/. Performs a left-fold on the elements of a priority queue in ascending order.
+-- | /O(n log n)/. Performs a left fold on the elements of a priority queue in
+-- ascending order.
 foldlAsc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
 foldlAsc _ z Empty             = z
 foldlAsc f z (MinQueue _ x ts) = foldlUnfold f (z `f` x) extractHeap ts
@@ -580,6 +585,7 @@ mapU :: (a -> b) -> MinQueue a -> MinQueue b
 mapU _ Empty = Empty
 mapU f (MinQueue n x ts) = MinQueue n (f x) (f <$> ts)
 
+{-# NOINLINE [0] foldrU #-}
 -- | /O(n)/. Unordered right fold on a priority queue.
 foldrU :: (a -> b -> b) -> b -> MinQueue a -> b
 foldrU _ z Empty = z
