@@ -2,11 +2,14 @@
 
 ## 1.4.2
 
-  * Large performance improvements, especially when there are many insertions
-    and/or merges in a row. Insertion, deletion, and merge are now *worst case*
-    logarithmic, while maintaining their previous amortized bounds. (#26)
+  * Overall performance has improved greatly, especially when there are many
+    insertions and/or merges in a row. Insertion, deletion, and merge are now
+    *worst case* logarithmic, while maintaining their previous amortized
+    bounds. (#26)
 
-  * New `mapMWithKey` functions optimized for working in strict monads. (#46)
+  * New `mapMWithKey` functions optimized for working in strict monads. These
+    are used to implement the `mapM` and `sequence` methods of `Traversable`.
+    (#46)
 
 ## 1.4.1.4  -- 2021-12-04
 
