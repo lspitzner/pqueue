@@ -145,7 +145,7 @@ cmpExtract (x1,q1) (x2,q2) =
 -- of rank @3@.
 --
 -- The Skip constructor must be lazy to obtain the desired amortized bounds.
--- The forest field of the Succ constructor /could/ be made strict, but that
+-- The forest field of the Cons constructor /could/ be made strict, but that
 -- would be worse for heavily persistent use and not obviously better
 -- otherwise.
 --
