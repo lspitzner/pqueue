@@ -50,11 +50,20 @@ import Prelude hiding (null)
 import Data.Data
 
 instance (Data k, Data a, Ord k) => Data (MinPQueue k a) where
-  gfoldl f z m = z (foldr (uncurry' insertMin) empty) `f` foldrWithKey (curry (:)) [] m
-  toConstr _   = error "toConstr"
-  gunfold _ _  = error "gunfold"
-  dataTypeOf _ = mkNoRepType "Data.PQueue.Prio.Min.MinPQueue"
+  gfoldl f z m = z fromList `f` foldrWithKey (curry (:)) [] m
+  toConstr _   = fromListConstr
+  gunfold k z c  = case constrIndex c of
+    1 -> k (z fromList)
+    _ -> error "gunfold"
+  dataTypeOf _ = queueDataType
+  dataCast1 f  = gcast1 f
   dataCast2 f  = gcast2 f
+
+queueDataType :: DataType
+queueDataType = mkDataType "Data.PQueue.Prio.Min.MinPQueue" [fromListConstr]
+
+fromListConstr :: Constr
+fromListConstr = mkConstr queueDataType "fromList" [] Prefix
 
 #endif
 
@@ -66,9 +75,6 @@ first' f (a, c) = (f a, c)
 
 second' :: (b -> c) -> (a, b) -> (a, c)
 second' f (a, b) = (a, f b)
-
-uncurry' :: (a -> b -> c) -> (a, b) -> c
-uncurry' f (a, b) = f a b
 
 infixr 8 .:
 
