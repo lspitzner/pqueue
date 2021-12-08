@@ -103,7 +103,7 @@ import qualified Data.PQueue.Prio.Internals as PrioInternals
 import Control.DeepSeq (NFData(rnf))
 
 #if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
+import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
 
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
@@ -141,6 +141,7 @@ first' f (a, c) = (f a, c)
 #if MIN_VERSION_base(4,9,0)
 instance Ord k => Semigroup (MaxPQueue k a) where
   (<>) = union
+  stimes = stimesMonoid
 #endif
 
 instance Ord k => Monoid (MaxPQueue k a) where

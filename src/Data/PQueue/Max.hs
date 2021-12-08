@@ -85,7 +85,7 @@ import Control.DeepSeq (NFData(rnf))
 import Data.Maybe (fromMaybe)
 
 #if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
+import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
 
 import qualified Data.PQueue.Min as Min
@@ -138,6 +138,7 @@ instance Read a => Read (MaxQueue a) where
 #if MIN_VERSION_base(4,9,0)
 instance Ord a => Semigroup (MaxQueue a) where
   (<>) = union
+  stimes = stimesMonoid
 #endif
 
 instance Ord a => Monoid (MaxQueue a) where

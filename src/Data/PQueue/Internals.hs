@@ -45,7 +45,7 @@ module Data.PQueue.Internals (
 import Control.DeepSeq (NFData(rnf), deepseq)
 import Data.Foldable (foldl')
 #if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
+import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
 
 import qualified Data.PQueue.Prio.Internals as Prio
@@ -746,6 +746,7 @@ instance Read a => Read (MinQueue a) where
 #if MIN_VERSION_base(4,9,0)
 instance Ord a => Semigroup (MinQueue a) where
   (<>) = union
+  stimes = stimesMonoid
 #endif
 
 instance Ord a => Monoid (MinQueue a) where
