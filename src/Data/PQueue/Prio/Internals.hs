@@ -51,7 +51,7 @@ import Control.DeepSeq (NFData(rnf), deepseq)
 import qualified Data.List as List
 
 #if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
+import Data.Semigroup (Semigroup(..), stimesMonoid)
 #else
 import Data.Monoid ((<>))
 #endif
@@ -91,6 +91,7 @@ fromListConstr = mkConstr queueDataType "fromList" [] Prefix
 #if MIN_VERSION_base(4,9,0)
 instance Ord k => Semigroup (MinPQueue k a) where
   (<>) = union
+  stimes = stimesMonoid
 #endif
 
 instance Ord k => Monoid (MinPQueue k a) where
