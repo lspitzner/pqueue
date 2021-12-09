@@ -91,6 +91,7 @@ import Data.Semigroup (Semigroup((<>)))
 import qualified Data.List as List
 
 import Data.PQueue.Internals
+import qualified Data.PQueue.Prio.Internals as Prio
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
@@ -213,3 +214,16 @@ fromDescList xs = foldl' (flip insertMinQ') empty xs
 -- | Equivalent to 'toListU'.
 elemsU :: MinQueue a -> [a]
 elemsU = toListU
+
+-- | Constructs a priority queue out of the keys of the specified 'Prio.MinPQueue'.
+keysQueue :: Prio.MinPQueue k a -> MinQueue k
+keysQueue Prio.Empty = Empty
+keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (keysF (const Zero) ts)
+
+keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
+keysF f ts0 = case ts0 of
+  Prio.Nil       -> Nil
+  Prio.Skip ts'  -> Skip (keysF f' ts')
+  Prio.Cons (Prio.BinomTree k _ ts) ts'
+    -> Cons (BinomTree k (f ts)) (keysF f' ts')
+  where  f' (Prio.Succ (Prio.BinomTree k _ ts) tss) = Succ (BinomTree k (f ts)) (f tss)
