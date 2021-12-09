@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Data.PQueue.Internals (
   MinQueue (..),
@@ -34,8 +36,10 @@ module Data.PQueue.Internals (
   fromList,
   mapU,
   fromAscList,
+  foldMapU,
   foldrU,
   foldlU,
+  foldlU',
 --   traverseU,
   seqSpine,
   unions
@@ -47,6 +51,7 @@ import Data.Foldable (foldl')
 import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
 
+import Data.PQueue.Internals.Foldable
 #ifdef __GLASGOW_HASKELL__
 import Data.Data
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
@@ -603,6 +608,63 @@ instance Functor rk => Functor (BinomForest rk) where
   fmap f (Skip ts) = Skip (fmap f ts)
   fmap f (Cons t ts) = Cons (fmap f t) (fmap f ts)
 
+instance Foldr Zero where
+  foldr_ _ z ~Zero = z
+
+instance Foldl Zero where
+  foldl_ _ z ~Zero = z
+
+instance Foldl' Zero where
+  foldl'_ _ z ~Zero = z
+
+instance FoldMap Zero where
+  foldMap_ _ ~Zero = mempty
+
+instance Foldr rk => Foldr (Succ rk) where
+  foldr_ f z (Succ t ts) = foldr_ f (foldr_ f z ts) t
+
+instance Foldl rk => Foldl (Succ rk) where
+  foldl_ f z (Succ t ts) = foldl_ f (foldl_ f z t) ts
+
+instance Foldl' rk => Foldl' (Succ rk) where
+  foldl'_ f !z (Succ t ts) = foldl'_ f (foldl'_ f z t) ts
+
+instance FoldMap rk => FoldMap (Succ rk) where
+  foldMap_ f (Succ t ts) = foldMap_ f t `mappend` foldMap_ f ts
+
+instance Foldr rk => Foldr (BinomTree rk) where
+  foldr_ f z (BinomTree x ts) = x `f` foldr_ f z ts
+
+instance Foldl rk => Foldl (BinomTree rk) where
+  foldl_ f z (BinomTree x ts) = foldl_ f (z `f` x) ts
+
+instance Foldl' rk => Foldl' (BinomTree rk) where
+  foldl'_ f !z (BinomTree x ts) = foldl'_ f (z `f` x) ts
+
+instance FoldMap rk => FoldMap (BinomTree rk) where
+  foldMap_ f (BinomTree x ts) = f x `mappend` foldMap_ f ts
+
+instance Foldr rk => Foldr (BinomForest rk) where
+  foldr_ _ z Nil          = z
+  foldr_ f z (Skip tss)   = foldr_ f z tss
+  foldr_ f z (Cons t tss) = foldr_ f (foldr_ f z tss) t
+
+instance Foldl rk => Foldl (BinomForest rk) where
+  foldl_ _ z Nil          = z
+  foldl_ f z (Skip tss)   = foldl_ f z tss
+  foldl_ f z (Cons t tss) = foldl_ f (foldl_ f z t) tss
+
+instance Foldl' rk => Foldl' (BinomForest rk) where
+  foldl'_ _ !z Nil          = z
+  foldl'_ f !z (Skip tss)   = foldl'_ f z tss
+  foldl'_ f !z (Cons t tss) = foldl'_ f (foldl'_ f z t) tss
+
+instance FoldMap rk => FoldMap (BinomForest rk) where
+  foldMap_ _ Nil = mempty
+  foldMap_ f (Skip tss)   = foldMap_ f tss
+  foldMap_ f (Cons t tss) = foldMap_ f t `mappend` foldMap_ f tss
+
+{-
 instance Foldable Zero where
   foldr _ z ~Zero = z
   foldl _ z ~Zero = z
@@ -622,6 +684,7 @@ instance Foldable rk => Foldable (BinomForest rk) where
   foldl _ z Nil          = z
   foldl f z (Skip tss)   = foldl f z tss
   foldl f z (Cons t tss) = foldl f (foldl f z t) tss
+-}
 
 -- instance Traversable Zero where
 --   traverse _ _ = pure Zero
@@ -645,12 +708,28 @@ mapU f (MinQueue n x ts) = MinQueue n (f x) (f <$> ts)
 -- | /O(n)/. Unordered right fold on a priority queue.
 foldrU :: (a -> b -> b) -> b -> MinQueue a -> b
 foldrU _ z Empty = z
-foldrU f z (MinQueue _ x ts) = x `f` foldr f z ts
+foldrU f z (MinQueue _ x ts) = x `f` foldr_ f z ts
 
--- | /O(n)/. Unordered left fold on a priority queue.
+-- | /O(n)/. Unordered left fold on a priority queue. This is rarely
+-- what you want; 'foldrU' and 'foldlU'' are more likely to perform
+-- well.
 foldlU :: (b -> a -> b) -> b -> MinQueue a -> b
 foldlU _ z Empty = z
-foldlU f z (MinQueue _ x ts) = foldl f (z `f` x) ts
+foldlU f z (MinQueue _ x ts) = foldl_ f (z `f` x) ts
+
+-- | /O(n)/. Unordered strict left fold on a priority queue.
+--
+-- @since 1.4.2
+foldlU' :: (b -> a -> b) -> b -> MinQueue a -> b
+foldlU' _ z Empty = z
+foldlU' f z (MinQueue _ x ts) = foldl'_ f (z `f` x) ts
+
+-- | /O(n)/. Unordered monoidal fold on a priority queue.
+--
+-- @since 1.4.2
+foldMapU :: Monoid m => (a -> m) -> MinQueue a -> m
+foldMapU _ Empty = mempty
+foldMapU f (MinQueue _ x ts) = f x `mappend` foldMap_ f ts
 
 {-# NOINLINE toListU #-}
 -- | /O(n)/. Returns the elements of the queue, in no particular order.
@@ -660,7 +739,7 @@ toListU q = foldrU (:) [] q
 {-# NOINLINE toListUApp #-}
 toListUApp :: MinQueue a -> [a] -> [a]
 toListUApp Empty app = app
-toListUApp (MinQueue _ x ts) app = x : foldr (:) app ts
+toListUApp (MinQueue _ x ts) app = x : foldr_ (:) app ts
 
 {-# RULES
 "toListU/build" [~1] forall q. toListU q = build (\c n -> foldrU c n q)

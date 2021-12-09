@@ -74,6 +74,8 @@ module Data.PQueue.Max (
   mapU,
   foldrU,
   foldlU,
+  foldlU',
+  foldMapU,
   elemsU,
   toListU,
   -- * Miscellaneous operations
@@ -87,6 +89,8 @@ import Data.Maybe (fromMaybe)
 #if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
+
+import Data.Foldable (foldl')
 
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio
@@ -273,9 +277,17 @@ mapU f (MaxQ q) = MaxQ (Min.mapU (\(Down a) -> Down (f a)) q)
 foldrU :: (a -> b -> b) -> b -> MaxQueue a -> b
 foldrU f z (MaxQ q) = Min.foldrU (flip (foldr f)) z q
 
+-- | /O(n)/. Unordered monoidal fold on a priority queue.
+foldMapU :: Monoid m => (a -> m) -> MaxQueue a -> m
+foldMapU f (MaxQ q) = Min.foldMapU (f . unDown) q
+
 -- | /O(n)/. Unordered left fold on a priority queue.
 foldlU :: (b -> a -> b) -> b -> MaxQueue a -> b
 foldlU f z (MaxQ q) = Min.foldlU (foldl f) z q
+
+-- | /O(n)/. Unordered strict left fold on a priority queue.
+foldlU' :: (b -> a -> b) -> b -> MaxQueue a -> b
+foldlU' f z (MaxQ q) = Min.foldlU' (foldl' f) z q
 
 {-# INLINE elemsU #-}
 -- | Equivalent to 'toListU'.

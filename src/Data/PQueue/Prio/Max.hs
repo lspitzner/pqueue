@@ -99,8 +99,10 @@ module Data.PQueue.Prio.Max (
   -- * Unordered operations
   foldrU,
   foldrWithKeyU,
+  foldMapWithKeyU,
   foldlU,
   foldlWithKeyU,
+  foldlWithKeyU',
   traverseU,
   traverseWithKeyU,
   keysU,

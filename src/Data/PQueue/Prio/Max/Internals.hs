@@ -82,9 +82,12 @@ module Data.PQueue.Prio.Max.Internals (
   toList,
   -- * Unordered operations
   foldrU,
+  foldMapWithKeyU,
   foldrWithKeyU,
   foldlU,
+  foldlU',
   foldlWithKeyU,
+  foldlWithKeyU',
   traverseU,
   traverseWithKeyU,
   keysU,
@@ -464,13 +467,30 @@ foldrU = foldrWithKeyU . const
 foldrWithKeyU :: (k -> a -> b -> b) -> b -> MaxPQueue k a -> b
 foldrWithKeyU f z (MaxPQ q) = Q.foldrWithKeyU (f . unDown) z q
 
--- | /O(n)/. An unordered left fold over the elements of the queue, in no particular order.
+-- | /O(n)/. An unordered monoidal fold over the elements of the queue, in no particular order.
+foldMapWithKeyU :: Monoid m => (k -> a -> m) -> MaxPQueue k a -> m
+foldMapWithKeyU f (MaxPQ q) = Q.foldMapWithKeyU (f . unDown) q
+
+-- | /O(n)/. An unordered left fold over the elements of the queue, in no
+-- particular order.  This is rarely what you want; 'foldrU' and 'foldlU'' are
+-- more likely to perform well.
 foldlU :: (b -> a -> b) -> b -> MaxPQueue k a -> b
 foldlU f = foldlWithKeyU (const . f)
 
--- | /O(n)/. An unordered left fold over the elements of the queue, in no particular order.
+-- | /O(n)/. An unordered strict left fold over the elements of the queue, in no
+-- particular order.
+foldlU' :: (b -> a -> b) -> b -> MaxPQueue k a -> b
+foldlU' f = foldlWithKeyU' (const . f)
+
+-- | /O(n)/. An unordered left fold over the elements of the queue, in no
+-- particular order.  This is rarely what you want; 'foldrWithKeyU' and
+-- 'foldlWithKeyU'' are more likely to perform well.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
 foldlWithKeyU f z0 (MaxPQ q) = Q.foldlWithKeyU (\z -> f z . unDown) z0 q
+
+-- | /O(n)/. An unordered left fold over the elements of the queue, in no particular order.
+foldlWithKeyU' :: (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
+foldlWithKeyU' f z0 (MaxPQ q) = Q.foldlWithKeyU' (\z -> f z . unDown) z0 q
 
 -- | /O(n)/. An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
