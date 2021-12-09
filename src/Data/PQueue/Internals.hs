@@ -37,7 +37,6 @@ module Data.PQueue.Internals (
   foldrU,
   foldlU,
 --   traverseU,
-  keysQueue,
   seqSpine,
   unions
   ) where
@@ -47,8 +46,6 @@ import Data.Foldable (foldl')
 #if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
-
-import qualified Data.PQueue.Prio.Internals as Prio
 
 #ifdef __GLASGOW_HASKELL__
 import Data.Data
@@ -689,19 +686,6 @@ seqSpineF :: BinomForest rk a -> b -> b
 seqSpineF Nil z          = z
 seqSpineF (Skip ts') z   = seqSpineF ts' z
 seqSpineF (Cons _ ts') z = seqSpineF ts' z
-
--- | Constructs a priority queue out of the keys of the specified 'Prio.MinPQueue'.
-keysQueue :: Prio.MinPQueue k a -> MinQueue k
-keysQueue Prio.Empty = Empty
-keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (keysF (const Zero) ts)
-
-keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
-keysF f ts0 = case ts0 of
-  Prio.Nil       -> Nil
-  Prio.Skip ts'  -> Skip (keysF f' ts')
-  Prio.Cons (Prio.BinomTree k _ ts) ts'
-    -> Cons (BinomTree k (f ts)) (keysF f' ts')
-  where  f' (Prio.Succ (Prio.BinomTree k _ ts) tss) = Succ (BinomTree k (f ts)) (f tss)
 
 class NFRank rk where
   rnfRk :: NFData a => rk a -> ()
