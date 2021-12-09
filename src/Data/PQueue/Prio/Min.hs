@@ -101,9 +101,12 @@ module Data.PQueue.Prio.Min (
   toList,
   -- * Unordered operations
   foldrU,
+  foldMapWithKeyU,
   foldrWithKeyU,
   foldlU,
+  foldlU',
   foldlWithKeyU,
+  foldlWithKeyU',
   traverseU,
   traverseWithKeyU,
   keysU,
@@ -313,9 +316,16 @@ elemsU = List.map snd . toListU
 assocsU :: MinPQueue k a -> [(k, a)]
 assocsU = toListU
 
--- | /O(n)/. An unordered left fold over the elements of the queue, in no particular order.
+-- | /O(n)/. An unordered left fold over the elements of the queue, in no
+-- particular order.  This is rarely what you want; 'foldrU' and 'foldlU'' are
+-- more likely to perform well.
 foldlU :: (b -> a -> b) -> b -> MinPQueue k a -> b
 foldlU f = foldlWithKeyU (const . f)
+
+-- | /O(n)/. An unordered strict left fold over the elements of the queue, in no
+-- particular order.
+foldlU' :: (b -> a -> b) -> b -> MinPQueue k a -> b
+foldlU' f = foldlWithKeyU' (const . f)
 
 -- | /O(n)/. An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting

@@ -36,7 +36,9 @@ module Data.PQueue.Prio.Internals (
   fromList,
   fromAscList,
   foldrWithKeyU,
+  foldMapWithKeyU,
   foldlWithKeyU,
+  foldlWithKeyU',
   traverseWithKey,
   mapMWithKey,
   traverseWithKeyU,
@@ -49,6 +51,7 @@ import Control.Applicative.Identity (Identity(Identity, runIdentity))
 import Control.Applicative (liftA2, liftA3)
 import Control.DeepSeq (NFData(rnf), deepseq)
 import qualified Data.List as List
+import Data.PQueue.Internals.Foldable
 
 #if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
@@ -149,6 +152,40 @@ type BinomHeap = BinomForest Zero
 data BinomTree rk k a = BinomTree !k a !(rk k a)
 data Zero k a = Zero
 data Succ rk k a = Succ {-# UNPACK #-} !(BinomTree rk k a) !(rk k a)
+
+instance IFoldl' Zero where
+  foldlWithKey'_ _ z ~Zero = z
+
+instance IFoldMap Zero where
+  foldMapWithKey_ _ ~Zero = mempty
+
+instance IFoldl' t => IFoldl' (Succ t) where
+  foldlWithKey'_ f z (Succ t rk) = foldlWithKey'_ f z' rk
+    where
+      !z' = foldlWithKey'_ f z t
+
+instance IFoldMap t => IFoldMap (Succ t) where
+  foldMapWithKey_ f (Succ t rk) = foldMapWithKey_ f t `mappend` foldMapWithKey_ f rk
+
+instance IFoldl' rk => IFoldl' (BinomTree rk) where
+  foldlWithKey'_ f !z (BinomTree k a rk) = foldlWithKey'_ f ft rk
+    where
+      !ft = f z k a
+
+instance IFoldMap rk => IFoldMap (BinomTree rk) where
+  foldMapWithKey_ f (BinomTree k a rk) = f k a `mappend` foldMapWithKey_ f rk
+
+instance IFoldl' t => IFoldl' (BinomForest t) where
+  foldlWithKey'_ _f z Nil = z
+  foldlWithKey'_ f !z (Skip ts) = foldlWithKey'_ f z ts
+  foldlWithKey'_ f !z (Cons t ts) = foldlWithKey'_ f ft ts
+    where
+      !ft = foldlWithKey'_ f z t
+
+instance IFoldMap t => IFoldMap (BinomForest t) where
+  foldMapWithKey_ _f Nil = mempty
+  foldMapWithKey_ f (Skip ts) = foldMapWithKey_ f ts
+  foldMapWithKey_ f (Cons t ts) = foldMapWithKey_ f t `mappend` foldMapWithKey_ f ts
 
 type CompF a = a -> a -> Bool
 
@@ -586,10 +623,22 @@ foldrWithKeyU :: (k -> a -> b -> b) -> b -> MinPQueue k a -> b
 foldrWithKeyU _ z Empty            = z
 foldrWithKeyU f z (MinPQ _ k a ts) = f k a (foldrWithKeyF_ f (const id) ts z)
 
--- | /O(n)/. An unordered left fold over the elements of the queue, in no particular order.
+-- | /O(n)/. An unordered monoidal fold over the elements of the queue, in no particular order.
+foldMapWithKeyU :: Monoid m => (k -> a -> m) -> MinPQueue k a -> m
+foldMapWithKeyU _ Empty            = mempty
+foldMapWithKeyU f (MinPQ _ k a ts) = f k a `mappend` foldMapWithKey_ f ts
+
+-- | /O(n)/. An unordered left fold over the elements of the queue, in no
+-- particular order.  This is rarely what you want; 'foldrWithKeyU' and
+-- 'foldlWithKeyU'' are more likely to perform well.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU _ z Empty = z
 foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\k a z -> f z k a) (const id) ts (f z0 k0 a0)
+
+-- | /O(n)/. An unordered strict left fold over the elements of the queue, in no particular order.
+foldlWithKeyU' :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
+foldlWithKeyU' _ z Empty = z
+foldlWithKeyU' f !z0 (MinPQ _ k0 a0 ts) = foldlWithKey'_ f (f z0 k0 a0) ts
 
 -- | /O(n)/. Map a function over all values in the queue.
 map :: (a -> b) -> MinPQueue k a -> MinPQueue k b

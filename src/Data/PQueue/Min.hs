@@ -73,6 +73,8 @@ module Data.PQueue.Min (
   mapU,
   foldrU,
   foldlU,
+  foldlU',
+  foldMapU,
   elemsU,
   toListU,
   -- * Miscellaneous operations

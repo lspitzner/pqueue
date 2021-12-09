@@ -37,6 +37,7 @@ library
     Data.PQueue.Prio.Internals
     Data.PQueue.Internals
     Data.PQueue.Internals.Down
+    Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals
     Control.Applicative.Identity
   if impl(ghc) {
