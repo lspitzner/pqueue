@@ -35,9 +35,11 @@ library
     Data.PQueue.Prio.Max
     Data.PQueue.Min
     Data.PQueue.Max
+    Data.PQueue.Bare.Min
   other-modules:
     Data.PQueue.Prio.Internals
     Data.PQueue.Internals
+    Data.PQueue.Bare.Internals
     Data.PQueue.Internals.Down
     Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals

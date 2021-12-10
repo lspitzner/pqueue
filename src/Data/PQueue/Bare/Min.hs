@@ -2,20 +2,24 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Data.PQueue.Min
+-- Module      :  Data.PQueue.Bare.Min
 -- Copyright   :  (c) Louis Wasserman 2010
 -- License     :  BSD-style
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- General purpose priority queue, supporting extract-minimum operations.
+-- General purpose priority queue. Unlike the queues in "Data.PQueue.Min",
+-- these are /not/ augmented with a global root or their size, so 'getMin'
+-- and 'size' take logarithmic, rather than constant, time. When those
+-- operations are not (often) needed, these queues are generally faster than
+-- those in "Data.PQueue.Min".
 --
 -- An amortized running time is given for each operation, with /n/ referring
 -- to the length of the sequence and /k/ being the integral index used by
 -- some operations. These bounds hold even in a persistent (shared) setting.
 --
--- This implementation is based on a binomial heap augmented with a global root.
+-- This implementation is based on a binomial heap.
 --
 -- This implementation does not guarantee stable behavior.
 --
@@ -23,8 +27,8 @@
 -- unordered. No guarantees whatsoever are made on the execution or traversal order of
 -- these functions.
 -----------------------------------------------------------------------------
-module Data.PQueue.Min (
-  MinQueue,
+module Data.PQueue.Bare.Min (
+  BMinQueue,
   -- * Basic operations
   empty,
   null,
@@ -78,7 +82,7 @@ module Data.PQueue.Min (
   elemsU,
   toListU,
   -- * Miscellaneous operations
-  keysQueue,
+--  keysQueue,  -- We want bare Prio queues for this.
   seqSpine) where
 
 import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
@@ -92,9 +96,7 @@ import Data.Semigroup (Semigroup((<>)))
 
 import qualified Data.List as List
 
-import Data.PQueue.Internals
-import qualified Data.PQueue.Bare.Internals as BQ
-import qualified Data.PQueue.Prio.Internals as Prio
+import Data.PQueue.Bare.Internals
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
@@ -103,23 +105,23 @@ build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
 #endif
 
--- | /O(1)/. Returns the minimum element. Throws an error on an empty queue.
-findMin :: MinQueue a -> a
+-- | /O(log n)/. Returns the minimum element. Throws an error on an empty queue.
+findMin :: Ord a => BMinQueue a -> a
 findMin = fromMaybe (error "Error: findMin called on empty queue") . getMin
 
 -- | /O(log n)/. Deletes the minimum element. If the queue is empty, does nothing.
-deleteMin :: Ord a => MinQueue a -> MinQueue a
+deleteMin :: Ord a => BMinQueue a -> BMinQueue a
 deleteMin q = case minView q of
   Nothing      -> empty
   Just (_, q') -> q'
 
 -- | /O(log n)/. Extracts the minimum element. Throws an error on an empty queue.
-deleteFindMin :: Ord a => MinQueue a -> (a, MinQueue a)
+deleteFindMin :: Ord a => BMinQueue a -> (a, BMinQueue a)
 deleteFindMin = fromMaybe (error "Error: deleteFindMin called on empty queue") . minView
 
 -- | /O(k log n)/. Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th smallest
 -- element in the queue. Equivalent to @toAscList queue !! k@.
-(!!) :: Ord a => MinQueue a -> Int -> a
+(!!) :: Ord a => BMinQueue a -> Int -> a
 q !! n  | n >= size q
     = error "Data.PQueue.Min.!!: index too large"
 q !! n = (List.!!) (toAscList q) n
@@ -127,7 +129,7 @@ q !! n = (List.!!) (toAscList q) n
 {-# INLINE takeWhile #-}
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
-takeWhile :: Ord a => (a -> Bool) -> MinQueue a -> [a]
+takeWhile :: Ord a => (a -> Bool) -> BMinQueue a -> [a]
 takeWhile p = foldWhileFB p . toAscList
 
 {-# INLINE foldWhileFB #-}
@@ -140,7 +142,7 @@ foldWhileFB p xs0 = build (\c nil -> let
   in foldr consWhile nil xs0)
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
-dropWhile :: Ord a => (a -> Bool) -> MinQueue a -> MinQueue a
+dropWhile :: Ord a => (a -> Bool) -> BMinQueue a -> BMinQueue a
 dropWhile p = drop' where
   drop' q = case minView q of
     Just (x, q') | p x -> drop' q'
@@ -149,7 +151,7 @@ dropWhile p = drop' where
 -- | 'span', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
 -- satisfy @p@ and second element is the remainder of the queue.
-span :: Ord a => (a -> Bool) -> MinQueue a -> ([a], MinQueue a)
+span :: Ord a => (a -> Bool) -> BMinQueue a -> ([a], BMinQueue a)
 span p queue = case minView queue of
   Just (x, q')
     | p x  -> let (ys, q'') = span p q' in (x : ys, q'')
@@ -158,75 +160,62 @@ span p queue = case minView queue of
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
 -- /do not satisfy/ @p@ and second element is the remainder of the queue.
-break :: Ord a => (a -> Bool) -> MinQueue a -> ([a], MinQueue a)
+break :: Ord a => (a -> Bool) -> BMinQueue a -> ([a], BMinQueue a)
 break p = span (not . p)
 
 {-# INLINE take #-}
 -- | /O(k log n)/. 'take' @k@, applied to a queue @queue@, returns a list of the smallest @k@ elements of @queue@,
 -- or all elements of @queue@ itself if @k >= 'size' queue@.
-take :: Ord a => Int -> MinQueue a -> [a]
+take :: Ord a => Int -> BMinQueue a -> [a]
 take n = List.take n . toAscList
 
 -- | /O(k log n)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the smallest @k@ elements deleted,
 -- or an empty queue if @k >= size 'queue'@.
-drop :: Ord a => Int -> MinQueue a -> MinQueue a
+drop :: Ord a => Int -> BMinQueue a -> BMinQueue a
 drop n queue = n `seq` case minView queue of
   Just (_, queue')
     | n > 0  -> drop (n - 1) queue'
   _          -> queue
 
 -- | /O(k log n)/. Equivalent to @('take' k queue, 'drop' k queue)@.
-splitAt :: Ord a => Int -> MinQueue a -> ([a], MinQueue a)
+splitAt :: Ord a => Int -> BMinQueue a -> ([a], BMinQueue a)
 splitAt n queue = n `seq` case minView queue of
   Just (x, queue')
     | n > 0  -> let (xs, queue'') = splitAt (n - 1) queue' in (x : xs, queue'')
   _          -> ([], queue)
 
 -- | /O(n)/. Returns the queue with all elements not satisfying @p@ removed.
-filter :: Ord a => (a -> Bool) -> MinQueue a -> MinQueue a
+filter :: Ord a => (a -> Bool) -> BMinQueue a -> BMinQueue a
 filter p = mapMaybe (\x -> if p x then Just x else Nothing)
 
 -- | /O(n)/. Returns a pair where the first queue contains all elements satisfying @p@, and the second queue
 -- contains all elements not satisfying @p@.
-partition :: Ord a => (a -> Bool) -> MinQueue a -> (MinQueue a, MinQueue a)
+partition :: Ord a => (a -> Bool) -> BMinQueue a -> (BMinQueue a, BMinQueue a)
 partition p = mapEither (\x -> if p x then Left x else Right x)
 
 -- | /O(n)/. Creates a new priority queue containing the images of the elements of this queue.
 -- Equivalent to @'fromList' . 'Data.List.map' f . toList@.
-map :: Ord b => (a -> b) -> MinQueue a -> MinQueue b
+map :: Ord b => (a -> b) -> BMinQueue a -> BMinQueue b
 map f = foldrU (insert . f) empty
 
 {-# INLINE toList #-}
 -- | /O(n log n)/. Returns the elements of the priority queue in ascending order. Equivalent to 'toAscList'.
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
-toList :: Ord a => MinQueue a -> [a]
+toList :: Ord a => BMinQueue a -> [a]
 toList = toAscList
 
 -- | /O(n log n)/. Performs a left fold on the elements of a priority queue in descending order.
 -- @foldlDesc f z q == foldrAsc (flip f) z q@.
-foldlDesc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
+foldlDesc :: Ord a => (b -> a -> b) -> b -> BMinQueue a -> b
 foldlDesc = foldrAsc . flip
 
 {-# INLINE fromDescList #-}
 -- | /O(n)/. Constructs a priority queue from an descending list. /Warning/: Does not check the precondition.
-fromDescList :: [a] -> MinQueue a
+fromDescList :: [a] -> BMinQueue a
 -- We apply an explicit argument to get foldl' to inline.
 fromDescList xs = foldl' (flip insertMinQ') empty xs
 
 -- | Equivalent to 'toListU'.
-elemsU :: MinQueue a -> [a]
+elemsU :: BMinQueue a -> [a]
 elemsU = toListU
-
--- | Constructs a priority queue out of the keys of the specified 'Prio.MinPQueue'.
-keysQueue :: Prio.MinPQueue k a -> MinQueue k
-keysQueue Prio.Empty = Empty
-keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (BQ.BMinQueue (keysF (const Zero) ts))
-
-keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
-keysF f ts0 = case ts0 of
-  Prio.Nil       -> Nil
-  Prio.Skip ts'  -> Skip (keysF f' ts')
-  Prio.Cons (Prio.BinomTree k _ ts) ts'
-    -> Cons (BinomTree k (f ts)) (keysF f' ts')
-  where  f' (Prio.Succ (Prio.BinomTree k _ ts) tss) = Succ (BinomTree k (f ts)) (f tss)
