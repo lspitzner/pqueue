@@ -11,6 +11,9 @@
     are used to implement the `mapM` and `sequence` methods of `Traversable`.
     (#46)
 
+  * New functions for adjusting and updating the min/max of a key-value
+    priority queue in an `Applicative` context.
+
 ## 1.4.1.4  -- 2021-12-04
 
   * Maintenance release for ghc-9.0 & ghc-9.2 support

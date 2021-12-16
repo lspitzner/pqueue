@@ -47,9 +47,13 @@ module Data.PQueue.Prio.Min (
   deleteMin,
   deleteFindMin,
   adjustMin,
+  adjustMinA,
   adjustMinWithKey,
+  adjustMinWithKeyA,
   updateMin,
+  updateMinA,
   updateMinWithKey,
+  updateMinWithKeyA,
   minView,
   minViewWithKey,
   -- * Traversal
@@ -161,10 +165,39 @@ deleteFindMin = fromMaybe (error "Error: deleteFindMin called on an empty queue"
 adjustMin :: (a -> a) -> MinPQueue k a -> MinPQueue k a
 adjustMin = adjustMinWithKey . const
 
+-- | /O(1)/. Alter the value at the minimum key in an 'Applicative' context. If
+-- the queue is empty, does nothing.
+--
+-- @since 1.4.2
+adjustMinA :: Applicative f => (a -> f a) -> MinPQueue k a -> f (MinPQueue k a)
+adjustMinA = adjustMinWithKeyA . const
+
+-- | /O(1)/ per operation. Alter the value at the minimum key in an 'Applicative' context. If the
+-- queue is empty, does nothing.
+--
+-- @since 1.4.2
+adjustMinWithKeyA :: Applicative f => (k -> a -> f a) -> MinPQueue k a -> f (MinPQueue k a)
+adjustMinWithKeyA = adjustMinWithKeyA' id
+
 -- | /O(log n)/. (Actually /O(1)/ if there's no deletion.) Update the value at the minimum key.
 -- If the queue is empty, does nothing.
 updateMin :: Ord k => (a -> Maybe a) -> MinPQueue k a -> MinPQueue k a
 updateMin = updateMinWithKey . const
+
+-- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
+-- the value at the minimum key.  If the queue is empty, does nothing.
+--
+-- @since 1.4.2
+updateMinA :: (Applicative f, Ord k) => (a -> f (Maybe a)) -> MinPQueue k a -> f (MinPQueue k a)
+updateMinA = updateMinWithKeyA . const
+
+-- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
+-- the value at the minimum key in an 'Applicative' context. If the queue is
+-- empty, does nothing.
+--
+-- @since 1.4.2
+updateMinWithKeyA :: (Applicative f, Ord k) => (k -> a -> f (Maybe a)) -> MinPQueue k a -> f (MinPQueue k a)
+updateMinWithKeyA = updateMinWithKeyA' id
 
 -- | /O(log n)/. Retrieves the value associated with the minimal key of the queue, and the queue
 -- stripped of that element, or 'Nothing' if passed an empty queue.
