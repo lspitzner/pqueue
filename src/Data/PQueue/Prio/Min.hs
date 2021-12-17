@@ -317,13 +317,15 @@ assocsU :: MinPQueue k a -> [(k, a)]
 assocsU = toListU
 
 -- | /O(n)/. An unordered left fold over the elements of the queue, in no
--- particular order.  This is rarely what you want; 'foldrU' and 'foldlU'' are
+-- particular order. This is rarely what you want; 'foldrU' and 'foldlU'' are
 -- more likely to perform well.
 foldlU :: (b -> a -> b) -> b -> MinPQueue k a -> b
 foldlU f = foldlWithKeyU (const . f)
 
 -- | /O(n)/. An unordered strict left fold over the elements of the queue, in no
 -- particular order.
+--
+-- @since 1.4.2
 foldlU' :: (b -> a -> b) -> b -> MinPQueue k a -> b
 foldlU' f = foldlWithKeyU' (const . f)
 

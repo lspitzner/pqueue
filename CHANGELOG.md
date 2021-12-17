@@ -7,6 +7,9 @@
     *worst case* logarithmic, while maintaining their previous amortized
     bounds. (#26)
 
+  * Add strict left unordered folds (`foldlU'`, `foldlWithKeyU'`)
+    and monoidal unordered folds (`foldMapU`, `foldMapWithKeyU`). (#59)
+
   * New `mapMWithKey` functions optimized for working in strict monads. These
     are used to implement the `mapM` and `sequence` methods of `Traversable`.
     (#46)

@@ -624,18 +624,22 @@ foldrWithKeyU _ z Empty            = z
 foldrWithKeyU f z (MinPQ _ k a ts) = f k a (foldrWithKeyF_ f (const id) ts z)
 
 -- | /O(n)/. An unordered monoidal fold over the elements of the queue, in no particular order.
+--
+-- @since 1.4.2
 foldMapWithKeyU :: Monoid m => (k -> a -> m) -> MinPQueue k a -> m
 foldMapWithKeyU _ Empty            = mempty
 foldMapWithKeyU f (MinPQ _ k a ts) = f k a `mappend` foldMapWithKey_ f ts
 
 -- | /O(n)/. An unordered left fold over the elements of the queue, in no
--- particular order.  This is rarely what you want; 'foldrWithKeyU' and
+-- particular order. This is rarely what you want; 'foldrWithKeyU' and
 -- 'foldlWithKeyU'' are more likely to perform well.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU _ z Empty = z
 foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\k a z -> f z k a) (const id) ts (f z0 k0 a0)
 
 -- | /O(n)/. An unordered strict left fold over the elements of the queue, in no particular order.
+--
+-- @since 1.4.2
 foldlWithKeyU' :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU' _ z Empty = z
 foldlWithKeyU' f !z0 (MinPQ _ k0 a0 ts) = foldlWithKey'_ f (f z0 k0 a0) ts
@@ -723,7 +727,7 @@ mapKeysMonoF f fCh ts0 = case ts0 of
 
 -- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
--- Note: The spine of a 'MinPQueue' is stored somewhat lazily.  Most operations
+-- Note: The spine of a 'MinPQueue' is stored somewhat lazily. Most operations
 -- take great care to prevent chains of thunks from accumulating along the
 -- spine to the detriment of performance. However, 'mapKeysMonotonic' can leave
 -- expensive thunks in the structure and repeated applications of that function
