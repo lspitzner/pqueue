@@ -7,9 +7,8 @@ import qualified Data.PQueue.Min as Min
 
 import Test.QuickCheck
 import Test.QuickCheck.Poly (OrdA, B, C)
-import Test.QuickCheck.Function (Fun, applyFun2)
 
-import System.Exit
+import System.Exit (exitFailure)
 
 import qualified Data.List as List
 import Data.Function (on)
@@ -19,7 +18,7 @@ import Control.Arrow (second)
 validMinToAscList :: [Int] -> Bool
 validMinToAscList xs = Min.toAscList (Min.fromList xs) == List.sort xs
 
-validMinPrioToAscList :: [(Int,OrdA)] -> Bool
+validMinPrioToAscList :: [(Int, OrdA)] -> Bool
 validMinPrioToAscList xs =
   List.concatMap List.sort (List.groupBy ((==) `on` fst) (PMin.toAscList (PMin.fromList xs))) == List.sort xs
 
