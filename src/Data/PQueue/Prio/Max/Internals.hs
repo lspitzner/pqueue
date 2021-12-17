@@ -290,7 +290,7 @@ mapKeys :: Ord k' => (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
 mapKeys f (MaxPQ q) = MaxPQ (Q.mapKeys (fmap f) q)
 
 -- | /O(n)/. @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when @f@ is strictly
--- monotonic. /The precondition is not checked./  This function has better performance than
+-- monotonic. /The precondition is not checked./ This function has better performance than
 -- 'mapKeys'.
 mapKeysMonotonic :: (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
 mapKeysMonotonic f (MaxPQ q) = MaxPQ (Q.mapKeysMonotonic (fmap f) q)
@@ -468,27 +468,33 @@ foldrWithKeyU :: (k -> a -> b -> b) -> b -> MaxPQueue k a -> b
 foldrWithKeyU f z (MaxPQ q) = Q.foldrWithKeyU (f . unDown) z q
 
 -- | /O(n)/. An unordered monoidal fold over the elements of the queue, in no particular order.
+--
+-- @since 1.4.2
 foldMapWithKeyU :: Monoid m => (k -> a -> m) -> MaxPQueue k a -> m
 foldMapWithKeyU f (MaxPQ q) = Q.foldMapWithKeyU (f . unDown) q
 
 -- | /O(n)/. An unordered left fold over the elements of the queue, in no
--- particular order.  This is rarely what you want; 'foldrU' and 'foldlU'' are
+-- particular order. This is rarely what you want; 'foldrU' and 'foldlU'' are
 -- more likely to perform well.
 foldlU :: (b -> a -> b) -> b -> MaxPQueue k a -> b
 foldlU f = foldlWithKeyU (const . f)
 
 -- | /O(n)/. An unordered strict left fold over the elements of the queue, in no
 -- particular order.
+--
+-- @since 1.4.2
 foldlU' :: (b -> a -> b) -> b -> MaxPQueue k a -> b
 foldlU' f = foldlWithKeyU' (const . f)
 
 -- | /O(n)/. An unordered left fold over the elements of the queue, in no
--- particular order.  This is rarely what you want; 'foldrWithKeyU' and
+-- particular order. This is rarely what you want; 'foldrWithKeyU' and
 -- 'foldlWithKeyU'' are more likely to perform well.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
 foldlWithKeyU f z0 (MaxPQ q) = Q.foldlWithKeyU (\z -> f z . unDown) z0 q
 
 -- | /O(n)/. An unordered left fold over the elements of the queue, in no particular order.
+--
+-- @since 1.4.2
 foldlWithKeyU' :: (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
 foldlWithKeyU' f z0 (MaxPQ q) = Q.foldlWithKeyU' (\z -> f z . unDown) z0 q
 

@@ -278,14 +278,20 @@ foldrU :: (a -> b -> b) -> b -> MaxQueue a -> b
 foldrU f z (MaxQ q) = Min.foldrU (flip (foldr f)) z q
 
 -- | /O(n)/. Unordered monoidal fold on a priority queue.
+--
+-- @since 1.4.2
 foldMapU :: Monoid m => (a -> m) -> MaxQueue a -> m
 foldMapU f (MaxQ q) = Min.foldMapU (f . unDown) q
 
--- | /O(n)/. Unordered left fold on a priority queue.
+-- | /O(n)/. Unordered left fold on a priority queue. This is rarely
+-- what you want; 'foldrU' and 'foldlU'' are more likely to perform
+-- well.
 foldlU :: (b -> a -> b) -> b -> MaxQueue a -> b
 foldlU f z (MaxQ q) = Min.foldlU (foldl f) z q
 
 -- | /O(n)/. Unordered strict left fold on a priority queue.
+--
+-- @since 1.4.2
 foldlU' :: (b -> a -> b) -> b -> MaxQueue a -> b
 foldlU' f z (MaxQ q) = Min.foldlU' (foldl' f) z q
 
