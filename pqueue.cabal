@@ -39,7 +39,6 @@ library
     Data.PQueue.Internals.Down
     Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals
-    Control.Applicative.Identity
   if impl(ghc) {
     default-extensions: DeriveDataTypeable
   }

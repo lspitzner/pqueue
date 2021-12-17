@@ -47,9 +47,9 @@ module Data.PQueue.Prio.Internals (
   unions
   ) where
 
-import Control.Applicative.Identity (Identity(Identity, runIdentity))
 import Control.Applicative (liftA2, liftA3)
 import Control.DeepSeq (NFData(rnf), deepseq)
+import Data.Functor.Identity (Identity(Identity, runIdentity))
 import qualified Data.List as List
 import Data.PQueue.Internals.Foldable
 
