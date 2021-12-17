@@ -11,11 +11,11 @@ import Data.Data (Data)
 #endif
 
 newtype Down a = Down { unDown :: a }
-# if __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__
   deriving (Eq, Data)
-# else
+#else
   deriving (Eq)
-# endif
+#endif
 
 
 instance NFData a => NFData (Down a) where
