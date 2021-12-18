@@ -18,7 +18,9 @@ module Data.PQueue.Prio.Internals (
   union,
   getMin,
   adjustMinWithKey,
+  adjustMinWithKeyA',
   updateMinWithKey,
+  updateMinWithKeyA',
   minViewWithKey,
   mapWithKey,
   mapKeysMonotonic,
@@ -290,6 +292,12 @@ adjustMinWithKey :: (k -> a -> a) -> MinPQueue k a -> MinPQueue k a
 adjustMinWithKey _ Empty = Empty
 adjustMinWithKey f (MinPQ n k a ts) = MinPQ n k (f k a) ts
 
+-- | /O(1)/ per operation. Alter the value at the minimum key in an 'Applicative' context. If the
+-- queue is empty, does nothing.
+adjustMinWithKeyA' :: Applicative f => (MinPQueue k a -> r) -> (k -> a -> f a) -> MinPQueue k a -> f r
+adjustMinWithKeyA' g _ Empty = pure (g Empty)
+adjustMinWithKeyA' g f (MinPQ n k a ts) = fmap (\a' -> g (MinPQ n k a' ts)) (f k a)
+
 -- | /O(log n)/. (Actually /O(1)/ if there's no deletion.) Update the value at the minimum key.
 -- If the queue is empty, does nothing.
 updateMinWithKey :: Ord k => (k -> a -> Maybe a) -> MinPQueue k a -> MinPQueue k a
@@ -297,6 +305,21 @@ updateMinWithKey _ Empty = Empty
 updateMinWithKey f (MinPQ n k a ts) = case f k a of
   Nothing  -> extractHeap (<=) n ts
   Just a'  -> MinPQ n k a' ts
+
+-- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
+-- the value at the minimum key in an 'Applicative' context. If the queue is
+-- empty, does nothing.
+updateMinWithKeyA'
+  :: (Applicative f, Ord k)
+  => (MinPQueue k a -> r)
+  -> (k -> a -> f (Maybe a))
+  -> MinPQueue k a
+  -> f r
+updateMinWithKeyA' g _ Empty = pure (g Empty)
+updateMinWithKeyA' g f (MinPQ n k a ts) = fmap (g . tweak) (f k a)
+  where
+    tweak Nothing = extractHeap (<=) n ts
+    tweak (Just a') = MinPQ n k a' ts
 
 -- | /O(log n)/. Retrieves the minimal (key, value) pair of the map, and the map stripped of that
 -- element, or 'Nothing' if passed an empty map.

@@ -28,9 +28,13 @@ module Data.PQueue.Prio.Max.Internals (
   deleteMax,
   deleteFindMax,
   adjustMax,
+  adjustMaxA,
   adjustMaxWithKey,
+  adjustMaxWithKeyA,
   updateMax,
+  updateMaxA,
   updateMaxWithKey,
+  updateMaxWithKeyA,
   maxView,
   maxViewWithKey,
   -- * Traversal
@@ -249,19 +253,49 @@ deleteFindMax = fromMaybe (error "Error: deleteFindMax called on an empty queue"
 adjustMax :: (a -> a) -> MaxPQueue k a -> MaxPQueue k a
 adjustMax = adjustMaxWithKey . const
 
+-- | /O(1)/ per operation. Alter the value at the maximum key in an
+-- 'Applicative' context. If the queue is empty, does nothing.
+--
+-- @since 1.4.2
+adjustMaxA :: Applicative f => (a -> f a) -> MaxPQueue k a -> f (MaxPQueue k a)
+adjustMaxA = adjustMaxWithKeyA . const
+
 -- | /O(1)/. Alter the value at the maximum key. If the queue is empty, does nothing.
 adjustMaxWithKey :: (k -> a -> a) -> MaxPQueue k a -> MaxPQueue k a
 adjustMaxWithKey f (MaxPQ q) = MaxPQ (Q.adjustMinWithKey (f . unDown) q)
+
+-- | /O(1)/ per operation. Alter the value at the maximum key in an
+-- 'Applicative' context. If the queue is empty, does nothing.
+--
+-- @since 1.4.2
+adjustMaxWithKeyA :: Applicative f => (k -> a -> f a) -> MaxPQueue k a -> f (MaxPQueue k a)
+adjustMaxWithKeyA f (MaxPQ q) = PrioInternals.adjustMinWithKeyA' MaxPQ (f . unDown) q
 
 -- | /O(log n)/. (Actually /O(1)/ if there's no deletion.) Update the value at the maximum key.
 -- If the queue is empty, does nothing.
 updateMax :: Ord k => (a -> Maybe a) -> MaxPQueue k a -> MaxPQueue k a
 updateMax = updateMaxWithKey . const
 
+-- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
+-- the value at the maximum key in an 'Applicative' context. If the queue is
+-- empty, does nothing.
+--
+-- @since 1.4.2
+updateMaxA :: (Applicative f, Ord k) => (a -> f (Maybe a)) -> MaxPQueue k a -> f (MaxPQueue k a)
+updateMaxA = updateMaxWithKeyA . const
+
 -- | /O(log n)/. (Actually /O(1)/ if there's no deletion.) Update the value at the maximum key.
 -- If the queue is empty, does nothing.
 updateMaxWithKey :: Ord k => (k -> a -> Maybe a) -> MaxPQueue k a -> MaxPQueue k a
 updateMaxWithKey f (MaxPQ q) = MaxPQ (Q.updateMinWithKey (f . unDown) q)
+
+-- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
+-- the value at the maximum key in an 'Applicative' context. If the queue is
+-- empty, does nothing.
+--
+-- @since 1.4.2
+updateMaxWithKeyA :: (Applicative f, Ord k) => (k -> a -> f (Maybe a)) -> MaxPQueue k a -> f (MaxPQueue k a)
+updateMaxWithKeyA f (MaxPQ q) = PrioInternals.updateMinWithKeyA' MaxPQ (f . unDown) q
 
 -- | /O(log n)/. Retrieves the value associated with the maximum key of the queue, and the queue
 -- stripped of that element, or 'Nothing' if passed an empty queue.

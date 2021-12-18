@@ -44,9 +44,13 @@ module Data.PQueue.Prio.Max (
   deleteMax,
   deleteFindMax,
   adjustMax,
+  adjustMaxA,
   adjustMaxWithKey,
+  adjustMaxWithKeyA,
   updateMax,
+  updateMaxA,
   updateMaxWithKey,
+  updateMaxWithKeyA,
   maxView,
   maxViewWithKey,
   -- * Traversal
