@@ -290,7 +290,7 @@ updateMaxWithKey :: Ord k => (k -> a -> Maybe a) -> MaxPQueue k a -> MaxPQueue k
 updateMaxWithKey f (MaxPQ q) = MaxPQ (Q.updateMinWithKey (f . unDown) q)
 
 -- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
--- the value at the maximum key in an 'Applicative' context.  If the queue is
+-- the value at the maximum key in an 'Applicative' context. If the queue is
 -- empty, does nothing.
 --
 -- @since 1.4.2
