@@ -19,3 +19,5 @@ jobs:
         run: cabal build
       - name: Test
         run: cabal test --test-show-details=direct
+      - name: Build benchmarks
+        run: cabal build --enable-benchmarks

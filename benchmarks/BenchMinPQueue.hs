@@ -1,5 +1,5 @@
 import System.Random
-import Gauge
+import Test.Tasty.Bench
 
 import qualified KWay.PrioMergeAlg as KWay
 import qualified PHeapSort as HS
@@ -15,7 +15,7 @@ hSort n = bench
   (nf (HS.heapSortRandoms n) $ mkStdGen (-7750349139967535027))
 
 main :: IO ()
-main = defaultMainWith defaultConfig{timeLimit = Just 15}
+main = defaultMain
   [ bgroup "heapSort"
       [ hSort (10^3)
       , hSort (10^4)
