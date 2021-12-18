@@ -20,6 +20,8 @@ main = defaultMain
       [ hSort (10^3)
       , hSort (10^4)
       , hSort (10^5)
+      , hSort (10^6)
+      , hSort (3*10^6)
       ]
   , bgroup "kWay"
       [ kWay (10^3) 1000000
