@@ -1,5 +1,5 @@
 import System.Random
-import Gauge
+import Test.Tasty.Bench
 
 import qualified KWay.MergeAlg as KWay
 import qualified HeapSort as HS
@@ -14,9 +14,9 @@ hSort n = bench
   ("Heap sort with " ++ show n ++ " elements")
   (nf (HS.heapSortRandoms n) $ mkStdGen (-7750349139967535027))
 
-main = defaultMainWith defaultConfig{timeLimit = Just 15}
-  [
-    bgroup "heapSort"
+main :: IO ()
+main = defaultMain
+  [ bgroup "heapSort"
       [ hSort (10^3)
       , hSort (10^4)
       , hSort (10^5)
