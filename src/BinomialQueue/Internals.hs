@@ -2,8 +2,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Data.PQueue.Bare.Internals (
-  BMinQueue (..),
+module BinomialQueue.Internals (
+  MinQueue (..),
   BinomHeap,
   BinomForest(..),
   BinomTree(..),
@@ -72,10 +72,10 @@ build f = f (:) []
 
 -- | A priority queue with elements of type @a@. Getting the
 -- size or retrieving the minimum element takes /O(log n)/ time.
-newtype BMinQueue a = BMinQueue (BinomHeap a)
+newtype MinQueue a = MinQueue (BinomHeap a)
 
 #ifdef __GLASGOW_HASKELL__
-instance (Ord a, Data a) => Data (BMinQueue a) where
+instance (Ord a, Data a) => Data (MinQueue a) where
   gfoldl f z q = case minView q of
     Nothing      -> z empty
     Just (x, q') -> z insert `f` x `f` q'
@@ -104,10 +104,10 @@ consConstr  = mkConstr queueDataType "<|" [] Infix
 
 type BinomHeap = BinomForest Zero
 
-instance Ord a => Eq (BMinQueue a) where
+instance Ord a => Eq (MinQueue a) where
   (==) = (==) `on` minView
 
-instance Ord a => Ord (BMinQueue a) where
+instance Ord a => Ord (MinQueue a) where
   compare = compare `on` minView
     -- We compare their first elements, then their other elements up to the smaller queue's length,
     -- and then the longer queue wins.
@@ -174,17 +174,17 @@ type LEq a = a -> a -> Bool
 -- basics
 
 -- | /O(1)/. The empty priority queue.
-empty :: BMinQueue a
-empty = BMinQueue Nil
+empty :: MinQueue a
+empty = MinQueue Nil
 
 -- | /O(1)/. Is this the empty priority queue?
-null :: BMinQueue a -> Bool
-null (BMinQueue Nil) = True
+null :: MinQueue a -> Bool
+null (MinQueue Nil) = True
 null _ = False
 
 -- | /O(log n)/. The number of elements in the queue.
-size :: BMinQueue a -> Int
-size (BMinQueue hp) = go 0 1 hp
+size :: MinQueue a -> Int
+size (MinQueue hp) = go 0 1 hp
   where
     go :: Int -> Int -> BinomForest rk a -> Int
     go acc rk Nil = rk `seq` acc
@@ -192,7 +192,7 @@ size (BMinQueue hp) = go 0 1 hp
     go acc rk (Cons _t f) = go (acc + rk) (2 * rk) f
 
 -- | /O(log n)/. Returns the minimum element of the queue, if the queue is nonempty.
-getMin :: Ord a => BMinQueue a -> Maybe a
+getMin :: Ord a => MinQueue a -> Maybe a
 -- TODO: Write this directly to avoid rebuilding the heap.
 getMin xs = case minView xs of
   Just (a, _) -> Just a
@@ -200,49 +200,49 @@ getMin xs = case minView xs of
 
 -- | Retrieves the minimum element of the queue, and the queue stripped of that element,
 -- or 'Nothing' if passed an empty queue.
-minView :: Ord a => BMinQueue a -> Maybe (a, BMinQueue a)
-minView (BMinQueue ts) = case extractBin (<=) ts of
+minView :: Ord a => MinQueue a -> Maybe (a, MinQueue a)
+minView (MinQueue ts) = case extractBin (<=) ts of
   No -> Nothing
-  Yes (Extract x ~Zero ts') -> Just (x, BMinQueue ts')
+  Yes (Extract x ~Zero ts') -> Just (x, MinQueue ts')
 
 -- | /O(1)/. Construct a priority queue with a single element.
-singleton :: a -> BMinQueue a
-singleton x = BMinQueue (Cons (tip x) Nil)
+singleton :: a -> MinQueue a
+singleton x = MinQueue (Cons (tip x) Nil)
 
 -- | Amortized /O(1)/, worst-case /O(log n)/. Insert an element into the priority queue.
-insert :: Ord a => a -> BMinQueue a -> BMinQueue a
+insert :: Ord a => a -> MinQueue a -> MinQueue a
 insert = insert' (<=)
 
 -- | Amortized /O(log (min(n,m)))/, worst-case /O(log (max (n,m)))/. Take the union of two priority queues.
-union :: Ord a => BMinQueue a -> BMinQueue a -> BMinQueue a
+union :: Ord a => MinQueue a -> MinQueue a -> MinQueue a
 union = union' (<=)
 
 -- | Takes the union of a list of priority queues. Equivalent to @'foldl'' 'union' 'empty'@.
-unions :: Ord a => [BMinQueue a] -> BMinQueue a
+unions :: Ord a => [MinQueue a] -> MinQueue a
 unions = foldl' union empty
 
 -- | /O(n)/. Map elements and collect the 'Just' results.
-mapMaybe :: Ord b => (a -> Maybe b) -> BMinQueue a -> BMinQueue b
-mapMaybe f (BMinQueue ts) = mapMaybeQueue f (<=) (const empty) empty ts
+mapMaybe :: Ord b => (a -> Maybe b) -> MinQueue a -> MinQueue b
+mapMaybe f (MinQueue ts) = mapMaybeQueue f (<=) (const empty) empty ts
 
 -- | /O(n)/. Map elements and separate the 'Left' and 'Right' results.
-mapEither :: (Ord b, Ord c) => (a -> Either b c) -> BMinQueue a -> (BMinQueue b, BMinQueue c)
-mapEither f (BMinQueue ts) = mapEitherQueue f (<=) (<=) (const (empty, empty)) (empty, empty) ts
+mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MinQueue a -> (MinQueue b, MinQueue c)
+mapEither f (MinQueue ts) = mapEitherQueue f (<=) (<=) (const (empty, empty)) (empty, empty) ts
 
 -- | /O(n)/. Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
 -- as in 'fmap'. If it is not, the result is undefined.
-mapMonotonic :: (a -> b) -> BMinQueue a -> BMinQueue b
+mapMonotonic :: (a -> b) -> MinQueue a -> MinQueue b
 mapMonotonic = mapU
 
 {-# INLINABLE [0] foldrAsc #-}
 -- | /O(n log n)/. Performs a right fold on the elements of a priority queue in
 -- ascending order.
-foldrAsc :: Ord a => (a -> b -> b) -> b -> BMinQueue a -> b
-foldrAsc f z (BMinQueue ts) = foldrUnfold f z extractHeap ts
+foldrAsc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
+foldrAsc f z (MinQueue ts) = foldrUnfold f z extractHeap ts
 
 -- | /O(n log n)/. Performs a right fold on the elements of a priority queue in descending order.
 -- @foldrDesc f z q == foldlAsc (flip f) z q@.
-foldrDesc :: Ord a => (a -> b -> b) -> b -> BMinQueue a -> b
+foldrDesc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
 foldrDesc = foldlAsc . flip
 {-# INLINE [0] foldrDesc #-}
 
@@ -256,8 +256,8 @@ foldrUnfold f z suc s0 = unf s0 where
 
 -- | /O(n log n)/. Performs a left fold on the elements of a priority queue in
 -- ascending order.
-foldlAsc :: Ord a => (b -> a -> b) -> b -> BMinQueue a -> b
-foldlAsc f z (BMinQueue ts) = foldlUnfold f z extractHeap ts
+foldlAsc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
+foldlAsc f z (MinQueue ts) = foldlUnfold f z extractHeap ts
 
 {-# INLINE foldlUnfold #-}
 -- | @foldlUnfold f z suc s0@ is equivalent to @foldl f z (unfoldr suc s0)@.
@@ -269,21 +269,21 @@ foldlUnfold f z0 suc s0 = unf z0 s0 where
 
 {-# INLINABLE [1] toAscList #-}
 -- | /O(n log n)/. Extracts the elements of the priority queue in ascending order.
-toAscList :: Ord a => BMinQueue a -> [a]
+toAscList :: Ord a => MinQueue a -> [a]
 toAscList queue = foldrAsc (:) [] queue
 
 {-# INLINABLE toAscListApp #-}
-toAscListApp :: Ord a => BMinQueue a -> [a] -> [a]
-toAscListApp (BMinQueue ts) app = foldrUnfold (:) app extractHeap ts
+toAscListApp :: Ord a => MinQueue a -> [a] -> [a]
+toAscListApp (MinQueue ts) app = foldrUnfold (:) app extractHeap ts
 
 {-# INLINABLE [1] toDescList #-}
 -- | /O(n log n)/. Extracts the elements of the priority queue in descending order.
-toDescList :: Ord a => BMinQueue a -> [a]
+toDescList :: Ord a => MinQueue a -> [a]
 toDescList queue = foldrDesc (:) [] queue
 
 {-# INLINABLE toDescListApp #-}
-toDescListApp :: Ord a => BMinQueue a -> [a] -> [a]
-toDescListApp (BMinQueue ts) app = foldlUnfold (flip (:)) app extractHeap ts
+toDescListApp :: Ord a => MinQueue a -> [a] -> [a]
+toDescListApp (MinQueue ts) app = foldlUnfold (flip (:)) app extractHeap ts
 
 {-# RULES
 "toAscList" [~1] forall q. toAscList q = build (\c nil -> foldrAsc c nil q)
@@ -299,17 +299,17 @@ toDescListApp (BMinQueue ts) app = foldlUnfold (flip (:)) app extractHeap ts
 -- with an argument that is a "good producer" for list fusion should be compiled
 -- with @-fspec-constr@ or @-O2@. For example, @fromAscList . map f@ needs one
 -- of these options for best results.
-fromAscList :: [a] -> BMinQueue a
+fromAscList :: [a] -> MinQueue a
 -- We apply an explicit argument to get foldl' to inline.
 fromAscList xs = foldl' (flip insertMaxQ') empty xs
 
-insert' :: LEq a -> a -> BMinQueue a -> BMinQueue a
-insert' le x (BMinQueue ts)
-  = BMinQueue (incr le (tip x) ts)
+insert' :: LEq a -> a -> MinQueue a -> MinQueue a
+insert' le x (MinQueue ts)
+  = MinQueue (incr le (tip x) ts)
 
 {-# INLINE union' #-}
-union' :: LEq a -> BMinQueue a -> BMinQueue a -> BMinQueue a
-union' le (BMinQueue f1) (BMinQueue f2) = BMinQueue (merge le f1 f2)
+union' :: LEq a -> MinQueue a -> MinQueue a -> MinQueue a
+union' le (MinQueue f1) (MinQueue f2) = MinQueue (merge le f1 f2)
 
 -- | Takes a size and a binomial forest and produces a priority queue with a distinguished global root.
 extractHeap :: Ord a => BinomHeap a -> Maybe (a, BinomHeap a)
@@ -378,7 +378,7 @@ extractBin le0 = start le0
           No -> Yes (Extract x ts (Skip f))
           Yes ex -> Yes (incrExtract' le t ex)
 
-mapMaybeQueue :: (a -> Maybe b) -> LEq b -> (rk a -> BMinQueue b) -> BMinQueue b -> BinomForest rk a -> BMinQueue b
+mapMaybeQueue :: (a -> Maybe b) -> LEq b -> (rk a -> MinQueue b) -> MinQueue b -> BinomForest rk a -> MinQueue b
 mapMaybeQueue f le fCh q0 forest = q0 `seq` case forest of
   Nil    -> q0
   Skip forest'  -> mapMaybeQueue f le fCh' q0 forest'
@@ -386,7 +386,7 @@ mapMaybeQueue f le fCh q0 forest = q0 `seq` case forest of
   where fCh' (Succ t tss) = union' le (mapMaybeT t) (fCh tss)
         mapMaybeT (BinomTree x0 ts) = maybe (fCh ts) (\x -> insert' le x (fCh ts)) (f x0)
 
-type Partition a b = (BMinQueue a, BMinQueue b)
+type Partition a b = (MinQueue a, MinQueue b)
 
 mapEitherQueue :: (a -> Either b c) -> LEq b -> LEq c -> (rk a -> Partition b c) -> Partition b c ->
   BinomForest rk a -> Partition b c
@@ -406,8 +406,8 @@ mapEitherQueue f0 leB leC fCh (q00, q10) ts0 = q00 `seq` q10 `seq` case ts0 of
 tip :: a -> BinomTree Zero a
 tip x = BinomTree x Zero
 
-insertMinQ :: a -> BMinQueue a -> BMinQueue a
-insertMinQ x (BMinQueue f) = BMinQueue (insertMin (tip x) f)
+insertMinQ :: a -> MinQueue a -> MinQueue a
+insertMinQ x (MinQueue f) = MinQueue (insertMin (tip x) f)
 
 -- | @insertMin t f@ assumes that the root of @t@ compares as less than
 -- or equal to every other root in @f@, and merges accordingly.
@@ -419,8 +419,8 @@ insertMin (BinomTree x ts) (Cons t' f) = f `seq` Skip (insertMin (BinomTree x (S
 
 -- | @insertMinQ' x h@ assumes that @x@ compares as less
 -- than or equal to every element of @h@.
-insertMinQ' :: a -> BMinQueue a -> BMinQueue a
-insertMinQ' x (BMinQueue f) = BMinQueue (insertMin' (tip x) f)
+insertMinQ' :: a -> MinQueue a -> MinQueue a
+insertMinQ' x (MinQueue f) = MinQueue (insertMin' (tip x) f)
 
 -- | @insertMin' t f@ assumes that the root of @t@ compares as less than
 -- every other root in @f@, and merges accordingly. It eagerly evaluates
@@ -435,8 +435,8 @@ insertMin' (BinomTree x ts) (Cons t' f) = Skip $! insertMin' (BinomTree x (Succ 
 -- and preserves, an extra invariant. See 'insertMax'' for details.
 -- tldr: this function can be used safely to build a queue from an
 -- ascending list/array/whatever, but that's about it.
-insertMaxQ' :: a -> BMinQueue a -> BMinQueue a
-insertMaxQ' x (BMinQueue f) = BMinQueue (insertMax' (tip x) f)
+insertMaxQ' :: a -> MinQueue a -> MinQueue a
+insertMaxQ' x (MinQueue f) = MinQueue (insertMax' (tip x) f)
 
 -- | @insertMax' t f@ assumes that the root of @t@ compares as greater
 -- than or equal to every root in @f@, and further assumes that the roots
@@ -450,8 +450,8 @@ insertMax' t (Cons (BinomTree x ts) f) = Skip $! insertMax' (BinomTree x (Succ t
 
 {-# INLINABLE fromList #-}
 -- | /O(n)/. Constructs a priority queue from an unordered list.
-fromList :: Ord a => [a] -> BMinQueue a
-fromList xs = BMinQueue (fromListHeap (<=) xs)
+fromList :: Ord a => [a] -> MinQueue a
+fromList xs = MinQueue (fromListHeap (<=) xs)
 
 {-# INLINE fromListHeap #-}
 fromListHeap :: LEq a -> [a] -> BinomHeap a
@@ -474,8 +474,8 @@ merge le f1 f2 = case (f1, f2) of
   where  cat = joinBin le
 
 -- | Take the union of two queues and toss in an extra element.
-unionPlusOne :: LEq a -> a -> BMinQueue a -> BMinQueue a -> BMinQueue a
-unionPlusOne le a (BMinQueue xs) (BMinQueue ys) = BMinQueue (carry le (tip a) xs ys)
+unionPlusOne :: LEq a -> a -> MinQueue a -> MinQueue a -> MinQueue a
+unionPlusOne le a (MinQueue xs) (MinQueue ys) = MinQueue (carry le (tip a) xs ys)
 
 -- | Merges two binomial forests with another tree. If we are thinking of the trees
 -- in the binomial forest as binary digits, this corresponds to a carry operation.
@@ -654,40 +654,40 @@ instance Foldable rk => Foldable (BinomForest rk) where
 --   traverse f (Skip tss) = Skip <$> traverse f tss
 --   traverse f (Cons t tss) = Cons <$> traverse f t <*> traverse f tss
 
-mapU :: (a -> b) -> BMinQueue a -> BMinQueue b
-mapU f (BMinQueue ts) = BMinQueue (f <$> ts)
+mapU :: (a -> b) -> MinQueue a -> MinQueue b
+mapU f (MinQueue ts) = MinQueue (f <$> ts)
 
 {-# NOINLINE [0] foldrU #-}
 -- | /O(n)/. Unordered right fold on a priority queue.
-foldrU :: (a -> b -> b) -> b -> BMinQueue a -> b
-foldrU f z (BMinQueue ts) = foldr_ f z ts
+foldrU :: (a -> b -> b) -> b -> MinQueue a -> b
+foldrU f z (MinQueue ts) = foldr_ f z ts
 
 -- | /O(n)/. Unordered left fold on a priority queue. This is rarely
 -- what you want; 'foldrU' and 'foldlU'' are more likely to perform
 -- well.
-foldlU :: (b -> a -> b) -> b -> BMinQueue a -> b
-foldlU f z (BMinQueue ts) = foldl_ f z ts
+foldlU :: (b -> a -> b) -> b -> MinQueue a -> b
+foldlU f z (MinQueue ts) = foldl_ f z ts
 
 -- | /O(n)/. Unordered strict left fold on a priority queue.
 --
 -- @since 1.4.2
-foldlU' :: (b -> a -> b) -> b -> BMinQueue a -> b
-foldlU' f z (BMinQueue ts) = foldl'_ f z ts
+foldlU' :: (b -> a -> b) -> b -> MinQueue a -> b
+foldlU' f z (MinQueue ts) = foldl'_ f z ts
 
 -- | /O(n)/. Unordered monoidal fold on a priority queue.
 --
 -- @since 1.4.2
-foldMapU :: Monoid m => (a -> m) -> BMinQueue a -> m
-foldMapU f (BMinQueue ts) = foldMap_ f ts
+foldMapU :: Monoid m => (a -> m) -> MinQueue a -> m
+foldMapU f (MinQueue ts) = foldMap_ f ts
 
 {-# NOINLINE toListU #-}
 -- | /O(n)/. Returns the elements of the queue, in no particular order.
-toListU :: BMinQueue a -> [a]
+toListU :: MinQueue a -> [a]
 toListU q = foldrU (:) [] q
 
 {-# NOINLINE toListUApp #-}
-toListUApp :: BMinQueue a -> [a] -> [a]
-toListUApp (BMinQueue ts) app = foldr_ (:) app ts
+toListUApp :: MinQueue a -> [a] -> [a]
+toListUApp (MinQueue ts) app = foldr_ (:) app ts
 
 {-# RULES
 "toListU/build" [~1] forall q. toListU q = build (\c n -> foldrU c n q)
@@ -705,8 +705,8 @@ toListUApp (BMinQueue ts) app = foldr_ (:) app ts
 -- spine to the detriment of performance. However, @mapU@ can leave expensive
 -- thunks in the structure and repeated applications of that function can
 -- create thunk chains.
-seqSpine :: BMinQueue a -> b -> b
-seqSpine (BMinQueue ts) z = seqSpineF ts z
+seqSpine :: MinQueue a -> b -> b
+seqSpine (MinQueue ts) z = seqSpineF ts z
 
 seqSpineF :: BinomForest rk a -> b -> b
 seqSpineF Nil z          = z
@@ -730,14 +730,14 @@ instance (NFData a, NFRank rk) => NFData (BinomForest rk a) where
   rnf (Skip ts)   = rnf ts
   rnf (Cons t ts) = t `deepseq` rnf ts
 
-instance NFData a => NFData (BMinQueue a) where
-  rnf (BMinQueue ts) = rnf ts
+instance NFData a => NFData (MinQueue a) where
+  rnf (MinQueue ts) = rnf ts
 
-instance (Ord a, Show a) => Show (BMinQueue a) where
+instance (Ord a, Show a) => Show (MinQueue a) where
   showsPrec p xs = showParen (p > 10) $
     showString "fromAscList " . shows (toAscList xs)
 
-instance Read a => Read (BMinQueue a) where
+instance Read a => Read (MinQueue a) where
 #ifdef __GLASGOW_HASKELL__
   readPrec = parens $ prec 10 $ do
     Ident "fromAscList" <- lexP
@@ -753,12 +753,12 @@ instance Read a => Read (BMinQueue a) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance Ord a => Semigroup (BMinQueue a) where
+instance Ord a => Semigroup (MinQueue a) where
   (<>) = union
   stimes = stimesMonoid
 #endif
 
-instance Ord a => Monoid (BMinQueue a) where
+instance Ord a => Monoid (MinQueue a) where
   mempty = empty
 #if !MIN_VERSION_base(4,11,0)
   mappend = union

@@ -93,7 +93,7 @@ import Data.Semigroup (Semigroup((<>)))
 import qualified Data.List as List
 
 import Data.PQueue.Internals
-import qualified Data.PQueue.Bare.Internals as BQ
+import qualified BinomialQueue.Internals as BQ
 import qualified Data.PQueue.Prio.Internals as Prio
 
 #ifdef __GLASGOW_HASKELL__
@@ -221,7 +221,7 @@ elemsU = toListU
 -- | Constructs a priority queue out of the keys of the specified 'Prio.MinPQueue'.
 keysQueue :: Prio.MinPQueue k a -> MinQueue k
 keysQueue Prio.Empty = Empty
-keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (BQ.BMinQueue (keysF (const Zero) ts))
+keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (BQ.MinQueue (keysF (const Zero) ts))
 
 keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
 keysF f ts0 = case ts0 of

@@ -41,9 +41,8 @@ module Data.PQueue.Internals (
   unions
   ) where
 
-import Data.PQueue.Bare.Internals
-  ( BMinQueue
-  , BinomHeap
+import BinomialQueue.Internals
+  ( BinomHeap
   , BinomForest (..)
   , BinomTree (..)
   , Succ (..)
@@ -51,7 +50,7 @@ import Data.PQueue.Bare.Internals
   , Extract (..)
   , MExtract (..)
   )
-import qualified Data.PQueue.Bare.Internals as BQ
+import qualified BinomialQueue.Internals as BQ
 import Control.DeepSeq (NFData(rnf), deepseq)
 import Data.Foldable (foldl')
 #if MIN_VERSION_base(4,9,0)
@@ -74,9 +73,9 @@ build f = f (:) []
 #endif
 
 -- | A priority queue with elements of type @a@. Supports extracting the minimum element.
-data MinQueue a = Empty | MinQueue {-# UNPACK #-} !Int !a !(BMinQueue a)
+data MinQueue a = Empty | MinQueue {-# UNPACK #-} !Int !a !(BQ.MinQueue a)
 
-fromBare :: Ord a => BQ.BMinQueue a -> MinQueue a
+fromBare :: Ord a => BQ.MinQueue a -> MinQueue a
 -- Should we fuse the size calculation with the minimum extraction?
 fromBare xs = case BQ.minView xs of
   Just (x, xs') -> MinQueue (1 + BQ.size xs') x xs'
