@@ -36,6 +36,7 @@ library
     Data.PQueue.Min
     Data.PQueue.Max
     BinomialQueue.Min
+    BinomialQueue.Max
   other-modules:
     Data.PQueue.Prio.Internals
     Data.PQueue.Internals
