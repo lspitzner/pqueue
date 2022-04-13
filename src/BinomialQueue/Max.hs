@@ -121,7 +121,7 @@ getMax (MaxQueue q) = unDown <$> MinQ.getMin q
 deleteMax :: Ord a => MaxQueue a -> MaxQueue a
 deleteMax = MaxQueue . MinQ.deleteMin . unMaxQueue
 
--- | /O(log n)/. Extracts the minimum element. Throws an error on an empty queue.
+-- | /O(log n)/. Extracts the maximum element. Throws an error on an empty queue.
 deleteFindMax :: Ord a => MaxQueue a -> (a, MaxQueue a)
 deleteFindMax = fromMaybe (error "Error: deleteFindMax called on empty queue") . maxView
 
