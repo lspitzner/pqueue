@@ -35,12 +35,12 @@ library
     Data.PQueue.Prio.Max
     Data.PQueue.Min
     Data.PQueue.Max
-    BinomialQueue.Min
-    BinomialQueue.Max
   other-modules:
     Data.PQueue.Prio.Internals
     Data.PQueue.Internals
     BinomialQueue.Internals
+    BinomialQueue.Min
+    BinomialQueue.Max
     Data.PQueue.Internals.Down
     Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals
