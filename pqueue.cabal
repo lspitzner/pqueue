@@ -7,8 +7,10 @@ license-file:       LICENSE
 stability:          experimental
 synopsis:           Reliable, persistent, fast priority queues.
 description:        A fast, reliable priority queue implementation based on a binomial heap.
-maintainer:         Lennart Spitzner <hexagoxel@hexagoxel.de>
-                    Louis Wasserman <wasserman.louis@gmail.com>
+maintainer:         Lennart Spitzner <hexagoxel@hexagoxel.de>,
+                    Louis Wasserman <wasserman.louis@gmail.com>,
+                    konsumlamm <konsumlamm@gmail.com>,
+                    David Feuer <David.Feuer@gmail.com>
 homepage:           https://github.com/lspitzner/pqueue
 bug-reports:        https://github.com/lspitzner/pqueue/issues
 build-type:         Simple
