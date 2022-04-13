@@ -130,21 +130,21 @@ type LEq a = a -> a -> Bool
 
 -- basics
 
--- | /O(1)/. The empty priority queue.
+-- | \(O(1)\). The empty priority queue.
 empty :: MinQueue a
 empty = Empty
 
--- | /O(1)/. Is this the empty priority queue?
+-- | \(O(1)\). Is this the empty priority queue?
 null :: MinQueue a -> Bool
 null Empty = True
 null _     = False
 
--- | /O(1)/. The number of elements in the queue.
+-- | \(O(1)\). The number of elements in the queue.
 size :: MinQueue a -> Int
 size Empty            = 0
 size (MinQueue n _ _) = n
 
--- | /O(1)/. Returns the minimum element of the queue, if the queue is nonempty.
+-- | \(O(1)\). Returns the minimum element of the queue, if the queue is nonempty.
 getMin :: MinQueue a -> Maybe a
 getMin (MinQueue _ x _) = Just x
 getMin _                = Nothing
@@ -157,15 +157,15 @@ minView (MinQueue n x ts) = Just (x, case BQ.minView ts of
   Nothing        -> Empty
   Just (x', ts') -> MinQueue (n - 1) x' ts')
 
--- | /O(1)/. Construct a priority queue with a single element.
+-- | \(O(1)\). Construct a priority queue with a single element.
 singleton :: a -> MinQueue a
 singleton x = MinQueue 1 x BQ.empty
 
--- | Amortized /O(1)/, worst-case /O(log n)/. Insert an element into the priority queue.
+-- | Amortized \(O(1)\), worst-case \(O(\log n)\). Insert an element into the priority queue.
 insert :: Ord a => a -> MinQueue a -> MinQueue a
 insert = insert' (<=)
 
--- | Amortized /O(log (min(n,m)))/, worst-case /O(log (max (n,m)))/. Take the union of two priority queues.
+-- | Amortized \(O(\log \min(n,m))\), worst-case \(O(\log \max(n,m))\). Take the union of two priority queues.
 union :: Ord a => MinQueue a -> MinQueue a -> MinQueue a
 union = union' (<=)
 
@@ -173,14 +173,14 @@ union = union' (<=)
 unions :: Ord a => [MinQueue a] -> MinQueue a
 unions = foldl' union empty
 
--- | /O(n)/. Map elements and collect the 'Just' results.
+-- | \(O(n)\). Map elements and collect the 'Just' results.
 mapMaybe :: Ord b => (a -> Maybe b) -> MinQueue a -> MinQueue b
 mapMaybe _ Empty = Empty
 mapMaybe f (MinQueue _ x ts) = fromBare $ maybe q' (`BQ.insert` q') (f x)
   where
     q' = BQ.mapMaybe f ts
 
--- | /O(n)/. Map elements and separate the 'Left' and 'Right' results.
+-- | \(O(n)\). Map elements and separate the 'Left' and 'Right' results.
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MinQueue a -> (MinQueue b, MinQueue c)
 mapEither _ Empty = (Empty, Empty)
 mapEither f (MinQueue _ x ts)
@@ -189,32 +189,32 @@ mapEither f (MinQueue _ x ts)
       Left y -> (fromBare (BQ.insert y l), fromBare r)
       Right z -> (fromBare l, fromBare (BQ.insert z r))
 
--- | /O(n)/. Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
+-- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
 -- as in 'fmap'. If it is not, the result is undefined.
 mapMonotonic :: (a -> b) -> MinQueue a -> MinQueue b
 mapMonotonic = mapU
 
 {-# INLINABLE [0] foldrAsc #-}
--- | /O(n log n)/. Performs a right fold on the elements of a priority queue in
+-- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in
 -- ascending order.
 foldrAsc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
 foldrAsc _ z Empty = z
 foldrAsc f z (MinQueue _ x ts) = x `f` BQ.foldrUnfold f z BQ.minView ts
 
--- | /O(n log n)/. Performs a right fold on the elements of a priority queue in descending order.
+-- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in descending order.
 -- @foldrDesc f z q == foldlAsc (flip f) z q@.
 foldrDesc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
 foldrDesc = foldlAsc . flip
 {-# INLINE [0] foldrDesc #-}
 
--- | /O(n log n)/. Performs a left fold on the elements of a priority queue in
+-- | \(O(n \log n)\). Performs a left fold on the elements of a priority queue in
 -- ascending order.
 foldlAsc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
 foldlAsc _ z Empty             = z
 foldlAsc f z (MinQueue _ x ts) = BQ.foldlUnfold f (z `f` x) BQ.minView ts
 
 {-# INLINABLE [1] toAscList #-}
--- | /O(n log n)/. Extracts the elements of the priority queue in ascending order.
+-- | \(O(n \log n)\). Extracts the elements of the priority queue in ascending order.
 toAscList :: Ord a => MinQueue a -> [a]
 toAscList queue = foldrAsc (:) [] queue
 
@@ -224,7 +224,7 @@ toAscListApp Empty app = app
 toAscListApp (MinQueue _ x ts) app = x : BQ.foldrUnfold (:) app BQ.minView ts
 
 {-# INLINABLE [1] toDescList #-}
--- | /O(n log n)/. Extracts the elements of the priority queue in descending order.
+-- | \(O(n \log n)\). Extracts the elements of the priority queue in descending order.
 toDescList :: Ord a => MinQueue a -> [a]
 toDescList queue = foldrDesc (:) [] queue
 
@@ -241,7 +241,7 @@ toDescListApp (MinQueue _ x ts) app = BQ.foldlUnfold (flip (:)) (x : app) BQ.min
  #-}
 
 {-# INLINE fromAscList #-}
--- | /O(n)/. Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
+-- | \(O(n)\). Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
 --
 -- Performance note: Code using this function in a performance-sensitive context
 -- with an argument that is a "good producer" for list fusion should be compiled
@@ -287,7 +287,7 @@ insertMaxQ' x Empty = singleton x
 insertMaxQ' x (MinQueue n x' f) = MinQueue (n + 1) x' (BQ.insertMaxQ' x f)
 
 {-# INLINABLE fromList #-}
--- | /O(n)/. Constructs a priority queue from an unordered list.
+-- | \(O(n)\). Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MinQueue a
 -- We build a forest first and then extract its minimum at the end.
 -- Why not just build the 'MinQueue' directly? This way saves us one
@@ -299,26 +299,26 @@ mapU _ Empty = Empty
 mapU f (MinQueue n x ts) = MinQueue n (f x) (BQ.mapU f ts)
 
 {-# NOINLINE [0] foldrU #-}
--- | /O(n)/. Unordered right fold on a priority queue.
+-- | \(O(n)\). Unordered right fold on a priority queue.
 foldrU :: (a -> b -> b) -> b -> MinQueue a -> b
 foldrU _ z Empty = z
 foldrU f z (MinQueue _ x ts) = x `f` BQ.foldrU f z ts
 
--- | /O(n)/. Unordered left fold on a priority queue. This is rarely
+-- | \(O(n)\). Unordered left fold on a priority queue. This is rarely
 -- what you want; 'foldrU' and 'foldlU'' are more likely to perform
 -- well.
 foldlU :: (b -> a -> b) -> b -> MinQueue a -> b
 foldlU _ z Empty = z
 foldlU f z (MinQueue _ x ts) = BQ.foldlU f (z `f` x) ts
 
--- | /O(n)/. Unordered strict left fold on a priority queue.
+-- | \(O(n)\). Unordered strict left fold on a priority queue.
 --
 -- @since 1.4.2
 foldlU' :: (b -> a -> b) -> b -> MinQueue a -> b
 foldlU' _ z Empty = z
 foldlU' f z (MinQueue _ x ts) = BQ.foldlU' f (z `f` x) ts
 
--- | /O(n)/. Unordered monoidal fold on a priority queue.
+-- | \(O(n)\). Unordered monoidal fold on a priority queue.
 --
 -- @since 1.4.2
 foldMapU :: Monoid m => (a -> m) -> MinQueue a -> m
@@ -326,7 +326,7 @@ foldMapU _ Empty = mempty
 foldMapU f (MinQueue _ x ts) = f x `mappend` BQ.foldMapU f ts
 
 {-# NOINLINE toListU #-}
--- | /O(n)/. Returns the elements of the queue, in no particular order.
+-- | \(O(n)\). Returns the elements of the queue, in no particular order.
 toListU :: MinQueue a -> [a]
 toListU q = foldrU (:) [] q
 
@@ -344,7 +344,7 @@ toListUApp (MinQueue _ x ts) app = x : BQ.foldrU (:) app ts
 -- traverseU _ Empty = pure Empty
 -- traverseU f (MinQueue n x ts) = MinQueue n <$> f x <*> traverse f ts
 
--- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
+-- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
 -- Note: The spine of a 'MinQueue' is stored somewhat lazily. Most operations
 -- take great care to prevent chains of thunks from accumulating along the

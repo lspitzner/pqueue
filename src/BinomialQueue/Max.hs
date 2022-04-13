@@ -109,29 +109,29 @@ build f = f (:) []
 
 newtype MaxQueue a = MaxQueue { unMaxQueue :: MinQ.MinQueue (Down a) }
 
--- | /O(log n)/. Returns the minimum element. Throws an error on an empty queue.
+-- | \(O(\log n)\). Returns the minimum element. Throws an error on an empty queue.
 findMax :: Ord a => MaxQueue a -> a
 findMax = fromMaybe (error "Error: findMax called on empty queue") . getMax
 
--- | /O(1)/. The top (maximum) element of the queue, if there is one.
+-- | \(O(1)\). The top (maximum) element of the queue, if there is one.
 getMax :: Ord a => MaxQueue a -> Maybe a
 getMax (MaxQueue q) = unDown <$> MinQ.getMin q
 
--- | /O(log n)/. Deletes the maximum element. If the queue is empty, does nothing.
+-- | \(O(\log n)\). Deletes the maximum element. If the queue is empty, does nothing.
 deleteMax :: Ord a => MaxQueue a -> MaxQueue a
 deleteMax = MaxQueue . MinQ.deleteMin . unMaxQueue
 
--- | /O(log n)/. Extracts the maximum element. Throws an error on an empty queue.
+-- | \(O(\log n)\). Extracts the maximum element. Throws an error on an empty queue.
 deleteFindMax :: Ord a => MaxQueue a -> (a, MaxQueue a)
 deleteFindMax = fromMaybe (error "Error: deleteFindMax called on empty queue") . maxView
 
--- | /O(log n)/. Extract the top (maximum) element of the sequence, if there is one.
+-- | \(O(\log n)\). Extract the top (maximum) element of the sequence, if there is one.
 maxView :: Ord a => MaxQueue a -> Maybe (a, MaxQueue a)
 maxView (MaxQueue q) = case MinQ.minView q of
   Just (Down a, q') -> Just (a, MaxQueue q')
   Nothing -> Nothing
 
--- | /O(k log n)/. Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th largest
+-- | \(O(k \log n)\)/. Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th largest
 -- element in the queue. Equivalent to @toDescList queue !! k@.
 (!!) :: Ord a => MaxQueue a -> Int -> a
 q !! n  | n >= size q
@@ -163,27 +163,27 @@ break :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
 break p = span (not . p)
 
 {-# INLINE take #-}
--- | /O(k log n)/. 'take' @k@, applied to a queue @queue@, returns a list of the greatest @k@ elements of @queue@,
+-- | \(O(k \log n)\)/. 'take' @k@, applied to a queue @queue@, returns a list of the greatest @k@ elements of @queue@,
 -- or all elements of @queue@ itself if @k >= 'size' queue@.
 take :: Ord a => Int -> MaxQueue a -> [a]
 take n = List.take n . toDescList
 
--- | /O(k log n)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the greatest @k@ elements deleted,
+-- | \(O(k \log n)\)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the greatest @k@ elements deleted,
 -- or an empty queue if @k >= size 'queue'@.
 drop :: Ord a => Int -> MaxQueue a -> MaxQueue a
 drop n (MaxQueue queue) = MaxQueue (MinQ.drop n queue)
 
--- | /O(k log n)/. Equivalent to @('take' k queue, 'drop' k queue)@.
+-- | \(O(k \log n)\)/. Equivalent to @('take' k queue, 'drop' k queue)@.
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
 splitAt n (MaxQueue queue)
   | (l, r) <- MinQ.splitAt n queue
   = (fmap unDown l, MaxQueue r)
 
--- | /O(n)/. Returns the queue with all elements not satisfying @p@ removed.
+-- | \(O(n)\). Returns the queue with all elements not satisfying @p@ removed.
 filter :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
 filter p = MaxQueue . MinQ.filter (p . unDown) . unMaxQueue
 
--- | /O(n)/. Returns a pair where the first queue contains all elements satisfying @p@, and the second queue
+-- | \(O(n)\). Returns a pair where the first queue contains all elements satisfying @p@, and the second queue
 -- contains all elements not satisfying @p@.
 partition :: Ord a => (a -> Bool) -> MaxQueue a -> (MaxQueue a, MaxQueue a)
 partition p = go . unMaxQueue
@@ -192,13 +192,13 @@ partition p = go . unMaxQueue
       | (l, r) <- MinQ.partition (p . unDown) queue
       = (MaxQueue l, MaxQueue r)
 
--- | /O(n)/. Creates a new priority queue containing the images of the elements of this queue.
+-- | \(O(n)\). Creates a new priority queue containing the images of the elements of this queue.
 -- Equivalent to @'fromList' . 'Data.List.map' f . toList@.
 map :: Ord b => (a -> b) -> MaxQueue a -> MaxQueue b
 map f = MaxQueue . MinQ.map (fmap f) . unMaxQueue
 
 {-# INLINE toList #-}
--- | /O(n log n)/. Returns the elements of the priority queue in descending order. Equivalent to 'toDescList'.
+-- | \(O(n \log n)\). Returns the elements of the priority queue in descending order. Equivalent to 'toDescList'.
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
@@ -210,29 +210,29 @@ toAscList = fmap unDown . MinQ.toDescList . unMaxQueue
 toDescList :: Ord a => MaxQueue a -> [a]
 toDescList = fmap unDown . MinQ.toAscList . unMaxQueue
 
--- | /O(n log n)/. Performs a right fold on the elements of a priority queue in descending order.
+-- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in descending order.
 foldrDesc :: Ord a => (a -> b -> b) -> b -> MaxQueue a -> b
 foldrDesc f z (MaxQueue q) = MinQ.foldrAsc (flip (foldr f)) z q
 
--- | /O(n log n)/. Performs a right fold on the elements of a priority queue in ascending order.
+-- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in ascending order.
 foldrAsc :: Ord a => (a -> b -> b) -> b -> MaxQueue a -> b
 foldrAsc f z (MaxQueue q) = MinQ.foldrDesc (flip (foldr f)) z q
 
--- | /O(n log n)/. Performs a left fold on the elements of a priority queue in ascending order.
+-- | \(O(n \log n)\). Performs a left fold on the elements of a priority queue in ascending order.
 foldlAsc :: Ord a => (b -> a -> b) -> b -> MaxQueue a -> b
 foldlAsc f z (MaxQueue q) = MinQ.foldlDesc (foldl f) z q
 
--- | /O(n log n)/. Performs a left fold on the elements of a priority queue in descending order.
+-- | \(O(n \log n)\). Performs a left fold on the elements of a priority queue in descending order.
 foldlDesc :: Ord a => (b -> a -> b) -> b -> MaxQueue a -> b
 foldlDesc f z (MaxQueue q) = MinQ.foldlAsc (foldl f) z q
 
 {-# INLINE fromAscList #-}
--- | /O(n)/. Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
+-- | \(O(n)\). Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
 fromAscList :: [a] -> MaxQueue a
 fromAscList = MaxQueue . MinQ.fromDescList . fmap Down
 
 {-# INLINE fromDescList #-}
--- | /O(n)/. Constructs a priority queue from a descending list. /Warning/: Does not check the precondition.
+-- | \(O(n)\). Constructs a priority queue from a descending list. /Warning/: Does not check the precondition.
 fromDescList :: [a] -> MaxQueue a
 fromDescList = MaxQueue . MinQ.fromAscList . fmap Down
 

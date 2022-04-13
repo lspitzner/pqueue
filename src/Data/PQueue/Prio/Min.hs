@@ -147,50 +147,50 @@ uncurry' f (a, b) = f a b
 
 infixr 8 .:
 
--- | /O(1)/. The minimal (key, element) in the queue. Calls 'error' if empty.
+-- | \(O(1)\). The minimal (key, element) in the queue. Calls 'error' if empty.
 findMin :: MinPQueue k a -> (k, a)
 findMin = fromMaybe (error "Error: findMin called on an empty queue") . getMin
 
--- | /O(log n)/. Deletes the minimal (key, element) in the queue. Returns an empty queue
+-- | \(O(\log n)\). Deletes the minimal (key, element) in the queue. Returns an empty queue
 -- if the queue is empty.
 deleteMin :: Ord k => MinPQueue k a -> MinPQueue k a
 deleteMin = updateMin (const Nothing)
 
--- | /O(log n)/. Delete and find the element with the minimum key. Calls 'error' if empty.
+-- | \(O(\log n)\). Delete and find the element with the minimum key. Calls 'error' if empty.
 deleteFindMin :: Ord k => MinPQueue k a -> ((k, a), MinPQueue k a)
 deleteFindMin = fromMaybe (error "Error: deleteFindMin called on an empty queue") . minViewWithKey
 
--- | /O(1)/. Alter the value at the minimum key. If the queue is empty, does nothing.
+-- | \(O(1)\). Alter the value at the minimum key. If the queue is empty, does nothing.
 adjustMin :: (a -> a) -> MinPQueue k a -> MinPQueue k a
 adjustMin = adjustMinWithKey . const
 
--- | /O(1)/. Alter the value at the minimum key in an 'Applicative' context. If
+-- | \(O(1)\). Alter the value at the minimum key in an 'Applicative' context. If
 -- the queue is empty, does nothing.
 --
 -- @since 1.4.2
 adjustMinA :: Applicative f => (a -> f a) -> MinPQueue k a -> f (MinPQueue k a)
 adjustMinA = adjustMinWithKeyA . const
 
--- | /O(1)/ per operation. Alter the value at the minimum key in an 'Applicative' context. If the
+-- | \(O(1)\) per operation. Alter the value at the minimum key in an 'Applicative' context. If the
 -- queue is empty, does nothing.
 --
 -- @since 1.4.2
 adjustMinWithKeyA :: Applicative f => (k -> a -> f a) -> MinPQueue k a -> f (MinPQueue k a)
 adjustMinWithKeyA = adjustMinWithKeyA' id
 
--- | /O(log n)/. (Actually /O(1)/ if there's no deletion.) Update the value at the minimum key.
+-- | \(O(\log n)\). (Actually \(O(1)\) if there's no deletion.) Update the value at the minimum key.
 -- If the queue is empty, does nothing.
 updateMin :: Ord k => (a -> Maybe a) -> MinPQueue k a -> MinPQueue k a
 updateMin = updateMinWithKey . const
 
--- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
+-- | \(O(\log n)\) per operation. (Actually \(O(1)\) if there's no deletion.) Update
 -- the value at the minimum key.  If the queue is empty, does nothing.
 --
 -- @since 1.4.2
 updateMinA :: (Applicative f, Ord k) => (a -> f (Maybe a)) -> MinPQueue k a -> f (MinPQueue k a)
 updateMinA = updateMinWithKeyA . const
 
--- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
+-- | \(O(\log n)\) per operation. (Actually \(O(1)\) if there's no deletion.) Update
 -- the value at the minimum key in an 'Applicative' context. If the queue is
 -- empty, does nothing.
 --
@@ -198,53 +198,53 @@ updateMinA = updateMinWithKeyA . const
 updateMinWithKeyA :: (Applicative f, Ord k) => (k -> a -> f (Maybe a)) -> MinPQueue k a -> f (MinPQueue k a)
 updateMinWithKeyA = updateMinWithKeyA' id
 
--- | /O(log n)/. Retrieves the value associated with the minimal key of the queue, and the queue
+-- | \(O(\log n)\). Retrieves the value associated with the minimal key of the queue, and the queue
 -- stripped of that element, or 'Nothing' if passed an empty queue.
 minView :: Ord k => MinPQueue k a -> Maybe (a, MinPQueue k a)
 minView q = do  ((_, a), q') <- minViewWithKey q
                 return (a, q')
 
--- | /O(n)/. Map a function over all values in the queue.
+-- | \(O(n)\). Map a function over all values in the queue.
 map :: (a -> b) -> MinPQueue k a -> MinPQueue k b
 map = mapWithKey . const
 
--- | /O(n)/. @'mapKeys' f q@ is the queue obtained by applying @f@ to each key of @q@.
+-- | \(O(n)\). @'mapKeys' f q@ is the queue obtained by applying @f@ to each key of @q@.
 mapKeys :: Ord k' => (k -> k') -> MinPQueue k a -> MinPQueue k' a
 mapKeys f q = fromList [(f k, a) | (k, a) <- toListU q]
 
--- | /O(n)/. Map values and collect the 'Just' results.
+-- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybe :: Ord k => (a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
 mapMaybe = mapMaybeWithKey . const
 
--- | /O(n)/. Map values and separate the 'Left' and 'Right' results.
+-- | \(O(n)\). Map values and separate the 'Left' and 'Right' results.
 mapEither :: Ord k => (a -> Either b c) -> MinPQueue k a -> (MinPQueue k b, MinPQueue k c)
 mapEither = mapEitherWithKey . const
 
--- | /O(n)/. Filter all values that satisfy the predicate.
+-- | \(O(n)\). Filter all values that satisfy the predicate.
 filter :: Ord k => (a -> Bool) -> MinPQueue k a -> MinPQueue k a
 filter = filterWithKey . const
 
--- | /O(n)/. Filter all values that satisfy the predicate.
+-- | \(O(n)\). Filter all values that satisfy the predicate.
 filterWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> MinPQueue k a
 filterWithKey p = mapMaybeWithKey (\k a -> if p k a then Just a else Nothing)
 
--- | /O(n)/. Partition the queue according to a predicate. The first queue contains all elements
+-- | \(O(n)\). Partition the queue according to a predicate. The first queue contains all elements
 -- which satisfy the predicate, the second all elements that fail the predicate.
 partition :: Ord k => (a -> Bool) -> MinPQueue k a -> (MinPQueue k a, MinPQueue k a)
 partition = partitionWithKey . const
 
--- | /O(n)/. Partition the queue according to a predicate. The first queue contains all elements
+-- | \(O(n)\). Partition the queue according to a predicate. The first queue contains all elements
 -- which satisfy the predicate, the second all elements that fail the predicate.
 partitionWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> (MinPQueue k a, MinPQueue k a)
 partitionWithKey p = mapEitherWithKey (\k a -> if p k a then Left a else Right a)
 
 {-# INLINE take #-}
--- | /O(k log n)/. Takes the first @k@ (key, value) pairs in the queue, or the first @n@ if @k >= n@.
+-- | \(O(k \log n)\)/. Takes the first @k@ (key, value) pairs in the queue, or the first @n@ if @k >= n@.
 -- (@'take' k q == 'List.take' k ('toAscList' q)@)
 take :: Ord k => Int -> MinPQueue k a -> [(k, a)]
 take n = List.take n . toAscList
 
--- | /O(k log n)/. Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
+-- | \(O(k \log n)\)/. Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
 drop :: Ord k => Int -> MinPQueue k a -> MinPQueue k a
 drop n0 q0
   | n0 <= 0  = q0
@@ -255,7 +255,7 @@ drop n0 q0
       | n == 0    = q
       | otherwise = drop' (n - 1) (deleteMin q)
 
--- | /O(k log n)/. Equivalent to @('take' k q, 'drop' k q)@.
+-- | \(O(k \log n)\)/. Equivalent to @('take' k q, 'drop' k q)@.
 splitAt :: Ord k => Int -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 splitAt n q
   | n <= 0     = ([], q)
@@ -306,62 +306,62 @@ spanWithKey p q = case minViewWithKey q of
 breakWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 breakWithKey p = spanWithKey (not .: p)
 
--- | /O(n)/. Build a priority queue from a descending list of (key, value) pairs. /The precondition is not checked./
+-- | \(O(n)\). Build a priority queue from a descending list of (key, value) pairs. /The precondition is not checked./
 fromDescList :: [(k, a)] -> MinPQueue k a
 {-# INLINE fromDescList #-}
 fromDescList xs = List.foldl' (\q (k, a) -> insertMin' k a q) empty xs
 
 {-# INLINE keys #-}
--- | /O(n log n)/. Return all keys of the queue in ascending order.
+-- | \(O(n \log n)\). Return all keys of the queue in ascending order.
 keys :: Ord k => MinPQueue k a -> [k]
 keys = List.map fst . toAscList
 
 {-# INLINE elems #-}
--- | /O(n log n)/. Return all elements of the queue in ascending order by key.
+-- | \(O(n \log n)\). Return all elements of the queue in ascending order by key.
 elems :: Ord k => MinPQueue k a -> [a]
 elems = List.map snd . toAscList
 
 {-# INLINE toList #-}
--- | /O(n log n)/. Equivalent to 'toAscList'.
+-- | \(O(n \log n)\). Equivalent to 'toAscList'.
 --
 -- If the traversal order is irrelevant, consider using 'toListU'.
 toList :: Ord k => MinPQueue k a -> [(k, a)]
 toList = toAscList
 
 {-# INLINE assocs #-}
--- | /O(n log n)/. Equivalent to 'toAscList'.
+-- | \(O(n \log n)\). Equivalent to 'toAscList'.
 assocs :: Ord k => MinPQueue k a -> [(k, a)]
 assocs = toAscList
 
 {-# INLINE keysU #-}
--- | /O(n)/. Return all keys of the queue in no particular order.
+-- | \(O(n)\). Return all keys of the queue in no particular order.
 keysU :: MinPQueue k a -> [k]
 keysU = List.map fst . toListU
 
 {-# INLINE elemsU #-}
--- | /O(n)/. Return all elements of the queue in no particular order.
+-- | \(O(n)\). Return all elements of the queue in no particular order.
 elemsU :: MinPQueue k a -> [a]
 elemsU = List.map snd . toListU
 
 {-# INLINE assocsU #-}
--- | /O(n)/. Equivalent to 'toListU'.
+-- | \(O(n)\). Equivalent to 'toListU'.
 assocsU :: MinPQueue k a -> [(k, a)]
 assocsU = toListU
 
--- | /O(n)/. An unordered left fold over the elements of the queue, in no
+-- | \(O(n)\). An unordered left fold over the elements of the queue, in no
 -- particular order. This is rarely what you want; 'foldrU' and 'foldlU'' are
 -- more likely to perform well.
 foldlU :: (b -> a -> b) -> b -> MinPQueue k a -> b
 foldlU f = foldlWithKeyU (const . f)
 
--- | /O(n)/. An unordered strict left fold over the elements of the queue, in no
+-- | \(O(n)\). An unordered strict left fold over the elements of the queue, in no
 -- particular order.
 --
 -- @since 1.4.2
 foldlU' :: (b -> a -> b) -> b -> MinPQueue k a -> b
 foldlU' f = foldlWithKeyU' (const . f)
 
--- | /O(n)/. An unordered traversal over a priority queue, in no particular order.
+-- | \(O(n)\). An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
 traverseU :: (Applicative f) => (a -> f b) -> MinPQueue k a -> f (MinPQueue k b)

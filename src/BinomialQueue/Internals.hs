@@ -71,7 +71,7 @@ build f = f (:) []
 #endif
 
 -- | A priority queue with elements of type @a@. Getting the
--- size or retrieving the minimum element takes /O(log n)/ time.
+-- size or retrieving the minimum element takes \(O(\log n)\) time.
 newtype MinQueue a = MinQueue (BinomHeap a)
 
 #ifdef __GLASGOW_HASKELL__
@@ -173,16 +173,16 @@ type LEq a = a -> a -> Bool
 
 -- basics
 
--- | /O(1)/. The empty priority queue.
+-- | \(O(1)\). The empty priority queue.
 empty :: MinQueue a
 empty = MinQueue Nil
 
--- | /O(1)/. Is this the empty priority queue?
+-- | \(O(1)\). Is this the empty priority queue?
 null :: MinQueue a -> Bool
 null (MinQueue Nil) = True
 null _ = False
 
--- | /O(log n)/. The number of elements in the queue.
+-- | \(O(\log n)\). The number of elements in the queue.
 size :: MinQueue a -> Int
 size (MinQueue hp) = go 0 1 hp
   where
@@ -191,7 +191,7 @@ size (MinQueue hp) = go 0 1 hp
     go acc rk (Skip f) = go acc (2 * rk) f
     go acc rk (Cons _t f) = go (acc + rk) (2 * rk) f
 
--- | /O(log n)/. Returns the minimum element of the queue, if the queue is nonempty.
+-- | \(O(\log n)\). Returns the minimum element of the queue, if the queue is nonempty.
 getMin :: Ord a => MinQueue a -> Maybe a
 -- TODO: Write this directly to avoid rebuilding the heap.
 getMin xs = case minView xs of
@@ -205,15 +205,15 @@ minView (MinQueue ts) = case extractBin (<=) ts of
   No -> Nothing
   Yes (Extract x ~Zero ts') -> Just (x, MinQueue ts')
 
--- | /O(1)/. Construct a priority queue with a single element.
+-- | \(O(1)\). Construct a priority queue with a single element.
 singleton :: a -> MinQueue a
 singleton x = MinQueue (Cons (tip x) Nil)
 
--- | Amortized /O(1)/, worst-case /O(log n)/. Insert an element into the priority queue.
+-- | Amortized \(O(1)\), worst-case \(O(\log n)\). Insert an element into the priority queue.
 insert :: Ord a => a -> MinQueue a -> MinQueue a
 insert = insert' (<=)
 
--- | Amortized /O(log (min(n,m)))/, worst-case /O(log (max (n,m)))/. Take the union of two priority queues.
+-- | Amortized \(O(\log \min(n,m))\), worst-case \(O(\log \max(n,m))\). Take the union of two priority queues.
 union :: Ord a => MinQueue a -> MinQueue a -> MinQueue a
 union = union' (<=)
 
@@ -221,26 +221,26 @@ union = union' (<=)
 unions :: Ord a => [MinQueue a] -> MinQueue a
 unions = foldl' union empty
 
--- | /O(n)/. Map elements and collect the 'Just' results.
+-- | \(O(n)\). Map elements and collect the 'Just' results.
 mapMaybe :: Ord b => (a -> Maybe b) -> MinQueue a -> MinQueue b
 mapMaybe f (MinQueue ts) = mapMaybeQueue f (<=) (const empty) empty ts
 
--- | /O(n)/. Map elements and separate the 'Left' and 'Right' results.
+-- | \(O(n)\). Map elements and separate the 'Left' and 'Right' results.
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MinQueue a -> (MinQueue b, MinQueue c)
 mapEither f (MinQueue ts) = mapEitherQueue f (<=) (<=) (const (empty, empty)) (empty, empty) ts
 
--- | /O(n)/. Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
+-- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
 -- as in 'fmap'. If it is not, the result is undefined.
 mapMonotonic :: (a -> b) -> MinQueue a -> MinQueue b
 mapMonotonic = mapU
 
 {-# INLINABLE [0] foldrAsc #-}
--- | /O(n log n)/. Performs a right fold on the elements of a priority queue in
+-- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in
 -- ascending order.
 foldrAsc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
 foldrAsc f z (MinQueue ts) = foldrUnfold f z extractHeap ts
 
--- | /O(n log n)/. Performs a right fold on the elements of a priority queue in descending order.
+-- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in descending order.
 -- @foldrDesc f z q == foldlAsc (flip f) z q@.
 foldrDesc :: Ord a => (a -> b -> b) -> b -> MinQueue a -> b
 foldrDesc = foldlAsc . flip
@@ -254,7 +254,7 @@ foldrUnfold f z suc s0 = unf s0 where
     Nothing      -> z
     Just (x, s') -> x `f` unf s'
 
--- | /O(n log n)/. Performs a left fold on the elements of a priority queue in
+-- | \(O(n \log n)\). Performs a left fold on the elements of a priority queue in
 -- ascending order.
 foldlAsc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
 foldlAsc f z (MinQueue ts) = foldlUnfold f z extractHeap ts
@@ -268,7 +268,7 @@ foldlUnfold f z0 suc s0 = unf z0 s0 where
     Just (x, s') -> unf (z `f` x) s'
 
 {-# INLINABLE [1] toAscList #-}
--- | /O(n log n)/. Extracts the elements of the priority queue in ascending order.
+-- | \(O(n \log n)\). Extracts the elements of the priority queue in ascending order.
 toAscList :: Ord a => MinQueue a -> [a]
 toAscList queue = foldrAsc (:) [] queue
 
@@ -277,7 +277,7 @@ toAscListApp :: Ord a => MinQueue a -> [a] -> [a]
 toAscListApp (MinQueue ts) app = foldrUnfold (:) app extractHeap ts
 
 {-# INLINABLE [1] toDescList #-}
--- | /O(n log n)/. Extracts the elements of the priority queue in descending order.
+-- | \(O(n \log n)\). Extracts the elements of the priority queue in descending order.
 toDescList :: Ord a => MinQueue a -> [a]
 toDescList queue = foldrDesc (:) [] queue
 
@@ -293,7 +293,7 @@ toDescListApp (MinQueue ts) app = foldlUnfold (flip (:)) app extractHeap ts
  #-}
 
 {-# INLINE fromAscList #-}
--- | /O(n)/. Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
+-- | \(O(n)\). Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
 --
 -- Performance note: Code using this function in a performance-sensitive context
 -- with an argument that is a "good producer" for list fusion should be compiled
@@ -352,7 +352,7 @@ incrExtract' le t (Extract minKey (Succ kChild kChildren) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
--- amortized /O(1)/ time, so applying it from the beginning takes /O(log n)/ time.
+-- amortized \(O(1)\) time, so applying it from the beginning takes \(O(\log n)\) time.
 extractBin :: LEq a -> BinomForest rk a -> MExtract rk a
 extractBin le0 = start le0
   where
@@ -449,7 +449,7 @@ insertMax' t (Skip f) = Cons t f
 insertMax' t (Cons (BinomTree x ts) f) = Skip $! insertMax' (BinomTree x (Succ t ts)) f
 
 {-# INLINABLE fromList #-}
--- | /O(n)/. Constructs a priority queue from an unordered list.
+-- | \(O(n)\). Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MinQueue a
 fromList xs = MinQueue (fromListHeap (<=) xs)
 
@@ -460,8 +460,8 @@ fromListHeap le xs = foldl' go Nil xs
     go fr x = incr' le (tip x) fr
 
 -- | Given two binomial forests starting at rank @rk@, takes their union.
--- Each successive application of this function costs /O(1)/, so applying it
--- from the beginning costs /O(log n)/.
+-- Each successive application of this function costs \(O(1)\), so applying it
+-- from the beginning costs \(O(\log n)\).
 merge :: LEq a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
 merge le f1 f2 = case (f1, f2) of
   (Skip f1', Skip f2')    -> Skip $! merge le f1' f2'
@@ -479,7 +479,7 @@ unionPlusOne le a (MinQueue xs) (MinQueue ys) = MinQueue (carry le (tip a) xs ys
 
 -- | Merges two binomial forests with another tree. If we are thinking of the trees
 -- in the binomial forest as binary digits, this corresponds to a carry operation.
--- Each call to this function takes /O(1)/ time, so in total, it costs /O(log n)/.
+-- Each call to this function takes \(O(1)\) time, so in total, it costs \(O(\log n)\).
 carry :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
 carry le t0 f1 f2 = t0 `seq` case (f1, f2) of
   (Skip f1', Skip f2')    -> Cons t0 $! merge le f1' f2'
@@ -497,7 +497,7 @@ carry le t0 f1 f2 = t0 `seq` case (f1, f2) of
 
 -- | Merges a binomial tree into a binomial forest. If we are thinking
 -- of the trees in the binomial forest as binary digits, this corresponds
--- to adding a power of 2. This costs amortized /O(1)/ time.
+-- to adding a power of 2. This costs amortized \(O(1)\) time.
 incr :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a
 -- See Note [Amortization]
 incr le t f0 = t `seq` case f0 of
@@ -542,7 +542,7 @@ incr' le t f0 = t `seq` case f0 of
       cat = joinBin le
 
 -- | The carrying operation: takes two binomial heaps of the same rank @k@
--- and returns one of rank @k+1@. Takes /O(1)/ time.
+-- and returns one of rank @k+1@. Takes \(O(1)\) time.
 joinBin :: LEq a -> BinomTree rk a -> BinomTree rk a -> BinomTree (Succ rk) a
 joinBin le t1@(BinomTree x1 ts1) t2@(BinomTree x2 ts2)
   | x1 `le` x2 = BinomTree x1 (Succ t2 ts1)
@@ -658,30 +658,30 @@ mapU :: (a -> b) -> MinQueue a -> MinQueue b
 mapU f (MinQueue ts) = MinQueue (f <$> ts)
 
 {-# NOINLINE [0] foldrU #-}
--- | /O(n)/. Unordered right fold on a priority queue.
+-- | \(O(n)\). Unordered right fold on a priority queue.
 foldrU :: (a -> b -> b) -> b -> MinQueue a -> b
 foldrU f z (MinQueue ts) = foldr_ f z ts
 
--- | /O(n)/. Unordered left fold on a priority queue. This is rarely
+-- | \(O(n)\). Unordered left fold on a priority queue. This is rarely
 -- what you want; 'foldrU' and 'foldlU'' are more likely to perform
 -- well.
 foldlU :: (b -> a -> b) -> b -> MinQueue a -> b
 foldlU f z (MinQueue ts) = foldl_ f z ts
 
--- | /O(n)/. Unordered strict left fold on a priority queue.
+-- | \(O(n)\). Unordered strict left fold on a priority queue.
 --
 -- @since 1.4.2
 foldlU' :: (b -> a -> b) -> b -> MinQueue a -> b
 foldlU' f z (MinQueue ts) = foldl'_ f z ts
 
--- | /O(n)/. Unordered monoidal fold on a priority queue.
+-- | \(O(n)\). Unordered monoidal fold on a priority queue.
 --
 -- @since 1.4.2
 foldMapU :: Monoid m => (a -> m) -> MinQueue a -> m
 foldMapU f (MinQueue ts) = foldMap_ f ts
 
 {-# NOINLINE toListU #-}
--- | /O(n)/. Returns the elements of the queue, in no particular order.
+-- | \(O(n)\). Returns the elements of the queue, in no particular order.
 toListU :: MinQueue a -> [a]
 toListU q = foldrU (:) [] q
 
@@ -698,7 +698,7 @@ toListUApp (MinQueue ts) app = foldr_ (:) app ts
 -- traverseU _ Empty = pure Empty
 -- traverseU f (MinQueue n x ts) = MinQueue n <$> f x <*> traverse f ts
 
--- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
+-- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
 -- Note: The spine of a 'MinQueue' is stored somewhat lazily. Most operations
 -- take great care to prevent chains of thunks from accumulating along the

@@ -103,21 +103,21 @@ build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
 #endif
 
--- | /O(1)/. Returns the minimum element. Throws an error on an empty queue.
+-- | \(O(1)\). Returns the minimum element. Throws an error on an empty queue.
 findMin :: MinQueue a -> a
 findMin = fromMaybe (error "Error: findMin called on empty queue") . getMin
 
--- | /O(log n)/. Deletes the minimum element. If the queue is empty, does nothing.
+-- | \(O(\log n)\). Deletes the minimum element. If the queue is empty, does nothing.
 deleteMin :: Ord a => MinQueue a -> MinQueue a
 deleteMin q = case minView q of
   Nothing      -> empty
   Just (_, q') -> q'
 
--- | /O(log n)/. Extracts the minimum element. Throws an error on an empty queue.
+-- | \(O(\log n)\). Extracts the minimum element. Throws an error on an empty queue.
 deleteFindMin :: Ord a => MinQueue a -> (a, MinQueue a)
 deleteFindMin = fromMaybe (error "Error: deleteFindMin called on empty queue") . minView
 
--- | /O(k log n)/. Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th smallest
+-- | \(O(k \log n)\)/. Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th smallest
 -- element in the queue. Equivalent to @toAscList queue !! k@.
 (!!) :: Ord a => MinQueue a -> Int -> a
 q !! n  | n >= size q
@@ -162,12 +162,12 @@ break :: Ord a => (a -> Bool) -> MinQueue a -> ([a], MinQueue a)
 break p = span (not . p)
 
 {-# INLINE take #-}
--- | /O(k log n)/. 'take' @k@, applied to a queue @queue@, returns a list of the smallest @k@ elements of @queue@,
+-- | \(O(k \log n)\)/. 'take' @k@, applied to a queue @queue@, returns a list of the smallest @k@ elements of @queue@,
 -- or all elements of @queue@ itself if @k >= 'size' queue@.
 take :: Ord a => Int -> MinQueue a -> [a]
 take n = List.take n . toAscList
 
--- | /O(k log n)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the smallest @k@ elements deleted,
+-- | \(O(k \log n)\)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the smallest @k@ elements deleted,
 -- or an empty queue if @k >= size 'queue'@.
 drop :: Ord a => Int -> MinQueue a -> MinQueue a
 drop n queue = n `seq` case minView queue of
@@ -175,41 +175,41 @@ drop n queue = n `seq` case minView queue of
     | n > 0  -> drop (n - 1) queue'
   _          -> queue
 
--- | /O(k log n)/. Equivalent to @('take' k queue, 'drop' k queue)@.
+-- | \(O(k \log n)\)/. Equivalent to @('take' k queue, 'drop' k queue)@.
 splitAt :: Ord a => Int -> MinQueue a -> ([a], MinQueue a)
 splitAt n queue = n `seq` case minView queue of
   Just (x, queue')
     | n > 0  -> let (xs, queue'') = splitAt (n - 1) queue' in (x : xs, queue'')
   _          -> ([], queue)
 
--- | /O(n)/. Returns the queue with all elements not satisfying @p@ removed.
+-- | \(O(n)\). Returns the queue with all elements not satisfying @p@ removed.
 filter :: Ord a => (a -> Bool) -> MinQueue a -> MinQueue a
 filter p = mapMaybe (\x -> if p x then Just x else Nothing)
 
--- | /O(n)/. Returns a pair where the first queue contains all elements satisfying @p@, and the second queue
+-- | \(O(n)\). Returns a pair where the first queue contains all elements satisfying @p@, and the second queue
 -- contains all elements not satisfying @p@.
 partition :: Ord a => (a -> Bool) -> MinQueue a -> (MinQueue a, MinQueue a)
 partition p = mapEither (\x -> if p x then Left x else Right x)
 
--- | /O(n)/. Creates a new priority queue containing the images of the elements of this queue.
+-- | \(O(n)\). Creates a new priority queue containing the images of the elements of this queue.
 -- Equivalent to @'fromList' . 'Data.List.map' f . toList@.
 map :: Ord b => (a -> b) -> MinQueue a -> MinQueue b
 map f = foldrU (insert . f) empty
 
 {-# INLINE toList #-}
--- | /O(n log n)/. Returns the elements of the priority queue in ascending order. Equivalent to 'toAscList'.
+-- | \(O(n \log n)\). Returns the elements of the priority queue in ascending order. Equivalent to 'toAscList'.
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MinQueue a -> [a]
 toList = toAscList
 
--- | /O(n log n)/. Performs a left fold on the elements of a priority queue in descending order.
+-- | \(O(n \log n)\). Performs a left fold on the elements of a priority queue in descending order.
 -- @foldlDesc f z q == foldrAsc (flip f) z q@.
 foldlDesc :: Ord a => (b -> a -> b) -> b -> MinQueue a -> b
 foldlDesc = foldrAsc . flip
 
 {-# INLINE fromDescList #-}
--- | /O(n)/. Constructs a priority queue from an descending list. /Warning/: Does not check the precondition.
+-- | \(O(n)\). Constructs a priority queue from an descending list. /Warning/: Does not check the precondition.
 fromDescList :: [a] -> MinQueue a
 -- We apply an explicit argument to get foldl' to inline.
 fromDescList xs = foldl' (flip insertMinQ') empty xs
