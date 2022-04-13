@@ -13,7 +13,7 @@
 -- these are /not/ augmented with a global root or their size, so 'getMax'
 -- and 'size' take logarithmic, rather than constant, time. When those
 -- operations are not (often) needed, these queues are generally faster than
--- those in "Data.PQueue.Min".
+-- those in "Data.PQueue.Max".
 --
 -- An amortized running time is given for each operation, with /n/ referring
 -- to the length of the sequence and /k/ being the integral index used by
@@ -117,7 +117,7 @@ findMax = fromMaybe (error "Error: findMax called on empty queue") . getMax
 getMax :: Ord a => MaxQueue a -> Maybe a
 getMax (MaxQueue q) = unDown <$> MinQ.getMin q
 
--- | /O(log n)/. Deletes the minimum element. If the queue is empty, does nothing.
+-- | /O(log n)/. Deletes the maximum element. If the queue is empty, does nothing.
 deleteMax :: Ord a => MaxQueue a -> MaxQueue a
 deleteMax = MaxQueue . MinQ.deleteMin . unMaxQueue
 
