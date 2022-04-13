@@ -38,6 +38,9 @@ library
   other-modules:
     Data.PQueue.Prio.Internals
     Data.PQueue.Internals
+    BinomialQueue.Internals
+    BinomialQueue.Min
+    BinomialQueue.Max
     Data.PQueue.Internals.Down
     Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals

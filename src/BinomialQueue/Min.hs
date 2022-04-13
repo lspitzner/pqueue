@@ -2,20 +2,24 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Data.PQueue.Min
+-- Module      :  BinomialQueue.Min
 -- Copyright   :  (c) Louis Wasserman 2010
 -- License     :  BSD-style
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- General purpose priority queue, supporting extract-minimum operations.
+-- General purpose priority queue. Unlike the queues in "Data.PQueue.Min",
+-- these are /not/ augmented with a global root or their size, so 'getMin'
+-- and 'size' take logarithmic, rather than constant, time. When those
+-- operations are not (often) needed, these queues are generally faster than
+-- those in "Data.PQueue.Min".
 --
 -- An amortized running time is given for each operation, with /n/ referring
 -- to the length of the sequence and /k/ being the integral index used by
 -- some operations. These bounds hold even in a persistent (shared) setting.
 --
--- This implementation is based on a binomial heap augmented with a global root.
+-- This implementation is based on a binomial heap.
 --
 -- This implementation does not guarantee stable behavior.
 --
@@ -23,7 +27,7 @@
 -- unordered. No guarantees whatsoever are made on the execution or traversal order of
 -- these functions.
 -----------------------------------------------------------------------------
-module Data.PQueue.Min (
+module BinomialQueue.Min (
   MinQueue,
   -- * Basic operations
   empty,
@@ -78,8 +82,9 @@ module Data.PQueue.Min (
   elemsU,
   toListU,
   -- * Miscellaneous operations
-  keysQueue,
-  seqSpine) where
+--  keysQueue,  -- We want bare Prio queues for this.
+  seqSpine
+  ) where
 
 import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
 
@@ -92,9 +97,7 @@ import Data.Semigroup (Semigroup((<>)))
 
 import qualified Data.List as List
 
-import Data.PQueue.Internals
-import qualified BinomialQueue.Internals as BQ
-import qualified Data.PQueue.Prio.Internals as Prio
+import BinomialQueue.Internals
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
@@ -103,8 +106,8 @@ build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
 #endif
 
--- | /O(1)/. Returns the minimum element. Throws an error on an empty queue.
-findMin :: MinQueue a -> a
+-- | /O(log n)/. Returns the minimum element. Throws an error on an empty queue.
+findMin :: Ord a => MinQueue a -> a
 findMin = fromMaybe (error "Error: findMin called on empty queue") . getMin
 
 -- | /O(log n)/. Deletes the minimum element. If the queue is empty, does nothing.
@@ -217,16 +220,3 @@ fromDescList xs = foldl' (flip insertMinQ') empty xs
 -- | Equivalent to 'toListU'.
 elemsU :: MinQueue a -> [a]
 elemsU = toListU
-
--- | Constructs a priority queue out of the keys of the specified 'Prio.MinPQueue'.
-keysQueue :: Prio.MinPQueue k a -> MinQueue k
-keysQueue Prio.Empty = Empty
-keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (BQ.MinQueue (keysF (const Zero) ts))
-
-keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
-keysF f ts0 = case ts0 of
-  Prio.Nil       -> Nil
-  Prio.Skip ts'  -> Skip (keysF f' ts')
-  Prio.Cons (Prio.BinomTree k _ ts) ts'
-    -> Cons (BinomTree k (f ts)) (keysF f' ts')
-  where  f' (Prio.Succ (Prio.BinomTree k _ ts) tss) = Succ (BinomTree k (f ts)) (f tss)

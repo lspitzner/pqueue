@@ -19,7 +19,7 @@ mkStream gen
   = (Stream (fromIntegral (w16 :: Word16)) gen1', gen2)
 
 mkStreams :: Int -> StdGen -> [Stream]
-mkStreams n gen
+mkStreams !n !gen
   | n <= 0 = []
   | (s, gen') <- mkStream gen
   = s : mkStreams (n - 1) gen'
