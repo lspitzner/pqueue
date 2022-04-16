@@ -223,30 +223,30 @@ cmpExtract k10 a10 ts10 k20 a20 ts20 =
     (Yes{}, No) -> GT
     (No, No)    -> EQ
 
--- | /O(1)/. Returns the empty priority queue.
+-- | \(O(1)\). Returns the empty priority queue.
 empty :: MinPQueue k a
 empty = Empty
 
--- | /O(1)/. Checks if this priority queue is empty.
+-- | \(O(1)\). Checks if this priority queue is empty.
 null :: MinPQueue k a -> Bool
 null Empty = True
 null _     = False
 
--- | /O(1)/. Returns the size of this priority queue.
+-- | \(O(1)\). Returns the size of this priority queue.
 size :: MinPQueue k a -> Int
 size Empty           = 0
 size (MinPQ n _ _ _) = n
 
--- | /O(1)/. Constructs a singleton priority queue.
+-- | \(O(1)\). Constructs a singleton priority queue.
 singleton :: k -> a -> MinPQueue k a
 singleton k a = MinPQ 1 k a Nil
 
--- | Amortized /O(1)/, worst-case /O(log n)/. Inserts
+-- | Amortized \(O(1)\), worst-case \(O(\log n)\). Inserts
 -- an element with the specified key into the queue.
 insert :: Ord k => k -> a -> MinPQueue k a -> MinPQueue k a
 insert = insert' (<=)
 
--- | /O(n)/ (an earlier implementation had /O(1)/ but was buggy).
+-- | \(O(n)\) (an earlier implementation had \(O(1)\) but was buggy).
 -- Insert an element with the specified key into the priority queue,
 -- putting it behind elements whose key compares equal to the
 -- inserted one.
@@ -268,7 +268,7 @@ insert' le k a (MinPQ n k' a' ts)
   | k `le` k' = MinPQ (n + 1) k  a  (incrMin (tip k' a') ts)
   | otherwise = MinPQ (n + 1) k' a' (incr le (tip k  a ) ts)
 
--- | Amortized /O(log(min(n1, n2)))/, worst-case /O(log(max(n1, n2)))/. Returns the union
+-- | Amortized \(O(\log \min(n_1,n_2))\), worst-case \(O(\log \max(n_1,n_2))\). Returns the union
 -- of the two specified queues.
 union :: Ord k => MinPQueue k a -> MinPQueue k a -> MinPQueue k a
 union = union' (<=)
@@ -282,23 +282,23 @@ union' le (MinPQ n1 k1 a1 ts1) (MinPQ n2 k2 a2 ts2)
 union' _ Empty q2 = q2
 union' _ q1 Empty = q1
 
--- | /O(1)/. The minimal (key, element) in the queue, if the queue is nonempty.
+-- | \(O(1)\). The minimal (key, element) in the queue, if the queue is nonempty.
 getMin :: MinPQueue k a -> Maybe (k, a)
 getMin (MinPQ _ k a _) = Just (k, a)
 getMin _               = Nothing
 
--- | /O(1)/. Alter the value at the minimum key. If the queue is empty, does nothing.
+-- | \(O(1)\). Alter the value at the minimum key. If the queue is empty, does nothing.
 adjustMinWithKey :: (k -> a -> a) -> MinPQueue k a -> MinPQueue k a
 adjustMinWithKey _ Empty = Empty
 adjustMinWithKey f (MinPQ n k a ts) = MinPQ n k (f k a) ts
 
--- | /O(1)/ per operation. Alter the value at the minimum key in an 'Applicative' context. If the
+-- | \(O(1)\) per operation. Alter the value at the minimum key in an 'Applicative' context. If the
 -- queue is empty, does nothing.
 adjustMinWithKeyA' :: Applicative f => (MinPQueue k a -> r) -> (k -> a -> f a) -> MinPQueue k a -> f r
 adjustMinWithKeyA' g _ Empty = pure (g Empty)
 adjustMinWithKeyA' g f (MinPQ n k a ts) = fmap (\a' -> g (MinPQ n k a' ts)) (f k a)
 
--- | /O(log n)/. (Actually /O(1)/ if there's no deletion.) Update the value at the minimum key.
+-- | \(O(\log n)\). (Actually \(O(1)\) if there's no deletion.) Update the value at the minimum key.
 -- If the queue is empty, does nothing.
 updateMinWithKey :: Ord k => (k -> a -> Maybe a) -> MinPQueue k a -> MinPQueue k a
 updateMinWithKey _ Empty = Empty
@@ -306,7 +306,7 @@ updateMinWithKey f (MinPQ n k a ts) = case f k a of
   Nothing  -> extractHeap (<=) n ts
   Just a'  -> MinPQ n k a' ts
 
--- | /O(log n)/ per operation. (Actually /O(1)/ if there's no deletion.) Update
+-- | \(O(\log n)\) per operation. (Actually \(O(1)\) if there's no deletion.) Update
 -- the value at the minimum key in an 'Applicative' context. If the queue is
 -- empty, does nothing.
 updateMinWithKeyA'
@@ -321,35 +321,35 @@ updateMinWithKeyA' g f (MinPQ n k a ts) = fmap (g . tweak) (f k a)
     tweak Nothing = extractHeap (<=) n ts
     tweak (Just a') = MinPQ n k a' ts
 
--- | /O(log n)/. Retrieves the minimal (key, value) pair of the map, and the map stripped of that
+-- | \(O(\log n)\). Retrieves the minimal (key, value) pair of the map, and the map stripped of that
 -- element, or 'Nothing' if passed an empty map.
 minViewWithKey :: Ord k => MinPQueue k a -> Maybe ((k, a), MinPQueue k a)
 minViewWithKey Empty            = Nothing
 minViewWithKey (MinPQ n k a ts) = Just ((k, a), extractHeap (<=) n ts)
 
--- | /O(n)/. Map a function over all values in the queue.
+-- | \(O(n)\). Map a function over all values in the queue.
 mapWithKey :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
 mapWithKey f = runIdentity . traverseWithKeyU (Identity .: f)
 
--- | /O(n)/. @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when @f@ is strictly
+-- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when @f@ is strictly
 -- monotonic. /The precondition is not checked./ This function has better performance than
 -- 'mapKeys'.
 mapKeysMonotonic :: (k -> k') -> MinPQueue k a -> MinPQueue k' a
 mapKeysMonotonic _ Empty = Empty
 mapKeysMonotonic f (MinPQ n k a ts) = MinPQ n (f k) a (mapKeysMonoF f (const Zero) ts)
 
--- | /O(n)/. Map values and collect the 'Just' results.
+-- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybeWithKey :: Ord k => (k -> a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
 mapMaybeWithKey _ Empty            = Empty
 mapMaybeWithKey f (MinPQ _ k a ts) = maybe id (insert k) (f k a) (mapMaybeF (<=) f (const Empty) ts)
 
--- | /O(n)/. Map values and separate the 'Left' and 'Right' results.
+-- | \(O(n)\). Map values and separate the 'Left' and 'Right' results.
 mapEitherWithKey :: Ord k => (k -> a -> Either b c) -> MinPQueue k a -> (MinPQueue k b, MinPQueue k c)
 mapEitherWithKey _ Empty            = (Empty, Empty)
 mapEitherWithKey f (MinPQ _ k a ts) = either (first' . insert k) (second' . insert k) (f k a)
   (mapEitherF (<=) f (const (Empty, Empty)) ts)
 
--- | /O(n log n)/. Fold the keys and values in the map, such that
+-- | \(O(n \log n)\). Fold the keys and values in the map, such that
 -- @'foldrWithKey' f z q == 'List.foldr' ('uncurry' f) z ('toAscList' q)@.
 --
 -- If you do not care about the traversal order, consider using 'foldrWithKeyU'.
@@ -360,7 +360,7 @@ foldrWithKey f z (MinPQ _ k0 a0 ts0) = f k0 a0 (foldF ts0) where
     Yes (Extract k a _ ts') -> f k a (foldF ts')
     _                       -> z
 
--- | /O(n log n)/. Fold the keys and values in the map, such that
+-- | \(O(n \log n)\). Fold the keys and values in the map, such that
 -- @'foldlWithKey' f z q == 'List.foldl' ('uncurry' . f) z ('toAscList' q)@.
 --
 -- If you do not care about the traversal order, consider using 'foldlWithKeyU'.
@@ -372,16 +372,16 @@ foldlWithKey f z0 (MinPQ _ k0 a0 ts0) = foldF (f z0 k0 a0) ts0 where
     _                       -> z
 
 {-# INLINABLE [1] toAscList #-}
--- | /O(n log n)/. Return all (key, value) pairs in ascending order by key.
+-- | \(O(n \log n)\). Return all (key, value) pairs in ascending order by key.
 toAscList :: Ord k => MinPQueue k a -> [(k, a)]
 toAscList = foldrWithKey (curry (:)) []
 
 {-# INLINABLE [1] toDescList #-}
--- | /O(n log n)/. Return all (key, value) pairs in descending order by key.
+-- | \(O(n \log n)\). Return all (key, value) pairs in descending order by key.
 toDescList :: Ord k => MinPQueue k a -> [(k, a)]
 toDescList = foldlWithKey (\z k a -> (k, a) : z) []
 
--- | /O(n)/. Build a priority queue from an ascending list of (key, value) pairs. /The precondition is not checked./
+-- | \(O(n)\). Build a priority queue from an ascending list of (key, value) pairs. /The precondition is not checked./
 fromAscList :: [(k, a)] -> MinPQueue k a
 {-# INLINE fromAscList #-}
 fromAscList xs = List.foldl' (\q (k, a) -> insertMax' k a q) empty xs
@@ -393,11 +393,11 @@ fromAscList xs = List.foldl' (\q (k, a) -> insertMax' k a q) empty xs
   #-}
 
 {-# NOINLINE toListU #-}
--- | /O(n)/. Returns all (key, value) pairs in the queue in no particular order.
+-- | \(O(n)\). Returns all (key, value) pairs in the queue in no particular order.
 toListU :: MinPQueue k a -> [(k, a)]
 toListU = foldrWithKeyU (curry (:)) []
 
--- | /O(n)/. An unordered right fold over the elements of the queue, in no particular order.
+-- | \(O(n)\). An unordered right fold over the elements of the queue, in no particular order.
 foldrU :: (a -> b -> b) -> b -> MinPQueue k a -> b
 foldrU = foldrWithKeyU . const
 
@@ -422,7 +422,7 @@ insertMax' k a Empty = MinPQ 1 k a Nil
 insertMax' k a (MinPQ n k' a' ts) = MinPQ (n + 1) k' a' (incrMax' (tip k a) ts)
 
 {-# INLINE fromList #-}
--- | /O(n)/. Constructs a priority queue from an unordered list.
+-- | \(O(n)\). Constructs a priority queue from an unordered list.
 fromList :: Ord k => [(k, a)] -> MinPQueue k a
 -- We build a forest first and then extract its minimum at the end.
 -- Why not just build the 'MinQueue' directly? This way saves us one
@@ -449,12 +449,12 @@ sizeHeap = go 0 1
     go acc rk (Skip f) = go acc (2 * rk) f
     go acc rk (Cons _t f) = go (acc + rk) (2 * rk) f
 
--- | /O(1)/. Returns a binomial tree of rank zero containing this
+-- | \(O(1)\). Returns a binomial tree of rank zero containing this
 -- key and value.
 tip :: k -> a -> BinomTree Zero k a
 tip k a = BinomTree k a Zero
 
--- | /O(1)/. Takes the union of two binomial trees of the same rank.
+-- | \(O(1)\). Takes the union of two binomial trees of the same rank.
 meld :: CompF k -> BinomTree rk k a -> BinomTree rk k a -> BinomTree (Succ rk) k a
 meld le t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
   | k1 `le` k2 = BinomTree k1 v1 (Succ t2 ts1)
@@ -575,7 +575,7 @@ incrExtract' le t (Extract minKey minVal (Succ kChild kChildren) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
--- amortized /O(1)/ time, so applying it from the beginning takes /O(log n)/ time.
+-- amortized \(O(1)\) time, so applying it from the beginning takes \(O(\log n)\) time.
 extractForest :: CompF k -> BinomForest rk k a -> MExtract rk k a
 extractForest le0 = start le0
   where
@@ -641,37 +641,37 @@ mapEitherF le f0 fCh ts0 = case ts0 of
       insF k a (fCh ts) (fCh tss)
     both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)
 
--- | /O(n)/. An unordered right fold over the elements of the queue, in no particular order.
+-- | \(O(n)\). An unordered right fold over the elements of the queue, in no particular order.
 foldrWithKeyU :: (k -> a -> b -> b) -> b -> MinPQueue k a -> b
 foldrWithKeyU _ z Empty            = z
 foldrWithKeyU f z (MinPQ _ k a ts) = f k a (foldrWithKeyF_ f (const id) ts z)
 
--- | /O(n)/. An unordered monoidal fold over the elements of the queue, in no particular order.
+-- | \(O(n)\). An unordered monoidal fold over the elements of the queue, in no particular order.
 --
 -- @since 1.4.2
 foldMapWithKeyU :: Monoid m => (k -> a -> m) -> MinPQueue k a -> m
 foldMapWithKeyU _ Empty            = mempty
 foldMapWithKeyU f (MinPQ _ k a ts) = f k a `mappend` foldMapWithKey_ f ts
 
--- | /O(n)/. An unordered left fold over the elements of the queue, in no
+-- | \(O(n)\). An unordered left fold over the elements of the queue, in no
 -- particular order. This is rarely what you want; 'foldrWithKeyU' and
 -- 'foldlWithKeyU'' are more likely to perform well.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU _ z Empty = z
 foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\k a z -> f z k a) (const id) ts (f z0 k0 a0)
 
--- | /O(n)/. An unordered strict left fold over the elements of the queue, in no particular order.
+-- | \(O(n)\). An unordered strict left fold over the elements of the queue, in no particular order.
 --
 -- @since 1.4.2
 foldlWithKeyU' :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKeyU' _ z Empty = z
 foldlWithKeyU' f !z0 (MinPQ _ k0 a0 ts) = foldlWithKey'_ f (f z0 k0 a0) ts
 
--- | /O(n)/. Map a function over all values in the queue.
+-- | \(O(n)\). Map a function over all values in the queue.
 map :: (a -> b) -> MinPQueue k a -> MinPQueue k b
 map = mapWithKey . const
 
--- | /O(n log n)/. Traverses the elements of the queue in ascending order by key.
+-- | \(O(n \log n)\). Traverses the elements of the queue in ascending order by key.
 -- (@'traverseWithKey' f q == 'fromAscList' <$> 'traverse' ('uncurry' f) ('toAscList' q)@)
 --
 -- If you do not care about the /order/ of the traversal, consider using 'traverseWithKeyU'.
@@ -696,7 +696,7 @@ mapMWithKey f = go empty
           let !acc' = insertMax' k b acc
           go acc' q'
 
--- | /O(n)/. An unordered traversal over a priority queue, in no particular order.
+-- | \(O(n)\). An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
 traverseWithKeyU :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
@@ -748,7 +748,7 @@ mapKeysMonoF f fCh ts0 = case ts0 of
     fCh' (Succ (BinomTree k a ts) tss) =
       Succ (BinomTree (f k) a (fCh ts)) (fCh tss)
 
--- | /O(log n)/. @seqSpine q r@ forces the spine of @q@ and returns @r@.
+-- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
 -- Note: The spine of a 'MinPQueue' is stored somewhat lazily. Most operations
 -- take great care to prevent chains of thunks from accumulating along the
