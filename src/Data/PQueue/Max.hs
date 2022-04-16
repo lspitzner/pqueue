@@ -96,7 +96,7 @@ import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio
 import Data.PQueue.Internals.Down (Down(..))
 
-import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter)
+import Prelude hiding (null, map, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter)
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
@@ -223,13 +223,13 @@ drop k (MaxQ q) = MaxQ (Min.drop k q)
 
 -- | \(O(k \log n)\)/. Equivalent to @(take k queue, drop k queue)@.
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
-splitAt k (MaxQ q) = (map unDown xs, MaxQ q') where
+splitAt k (MaxQ q) = (fmap unDown xs, MaxQ q') where
   (xs, q') = Min.splitAt k q
 
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
 takeWhile :: Ord a => (a -> Bool) -> MaxQueue a -> [a]
-takeWhile p (MaxQ q) = map unDown (Min.takeWhile (p . unDown) q)
+takeWhile p (MaxQ q) = fmap unDown (Min.takeWhile (p . unDown) q)
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
 dropWhile :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
@@ -240,7 +240,7 @@ dropWhile p (MaxQ q) = MaxQ (Min.dropWhile (p . unDown) q)
 -- satisfy @p@ and second element is the remainder of the queue.
 --
 span :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
-span p (MaxQ q) = (map unDown xs, MaxQ q') where
+span p (MaxQ q) = (fmap unDown xs, MaxQ q') where
   (xs, q') = Min.span (p . unDown) q
 
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
@@ -267,6 +267,11 @@ mapMaybe f (MaxQ q) = MaxQ (Min.mapMaybe (\(Down x) -> Down <$> f x) q)
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MaxQueue a -> (MaxQueue b, MaxQueue c)
 mapEither f (MaxQ q) = (MaxQ q0, MaxQ q1)
   where  (q0, q1) = Min.mapEither (either (Left . Down) (Right . Down) . f . unDown) q
+
+-- | \(O(n)\). Creates a new priority queue containing the images of the elements of this queue.
+-- Equivalent to @'fromList' . 'Data.List.map' f . toList@.
+map :: Ord b => (a -> b) -> MaxQueue a -> MaxQueue b
+map f (MaxQ q) = MaxQ (Min.map (\(Down x) -> Down (f x)) q)
 
 -- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue.
 -- /Does not check the precondition/.
@@ -303,7 +308,7 @@ elemsU = toListU
 {-# INLINE toListU #-}
 -- | \(O(n)\). Returns a list of the elements of the priority queue, in no particular order.
 toListU :: MaxQueue a -> [a]
-toListU (MaxQ q) = map unDown (Min.toListU q)
+toListU (MaxQ q) = fmap unDown (Min.toListU q)
 
 -- | \(O(n \log n)\). Performs a right-fold on the elements of a priority queue in ascending order.
 -- @'foldrAsc' f z q == 'foldlDesc' (flip f) z q@.
@@ -340,22 +345,22 @@ toDescList q = build (\c nil -> foldrDesc c nil q)
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
-toList (MaxQ q) = map unDown (Min.toList q)
+toList (MaxQ q) = fmap unDown (Min.toList q)
 
 {-# INLINE fromAscList #-}
 -- | \(O(n)\). Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
 fromAscList :: [a] -> MaxQueue a
-fromAscList = MaxQ . Min.fromDescList . map Down
+fromAscList = MaxQ . Min.fromDescList . fmap Down
 
 {-# INLINE fromDescList #-}
 -- | \(O(n)\). Constructs a priority queue from a descending list. /Warning/: Does not check the precondition.
 fromDescList :: [a] -> MaxQueue a
-fromDescList = MaxQ . Min.fromAscList . map Down
+fromDescList = MaxQ . Min.fromAscList . fmap Down
 
 {-# INLINE fromList #-}
 -- | \(O(n \log n)\). Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MaxQueue a
-fromList = MaxQ . Min.fromList . map Down
+fromList = MaxQ . Min.fromList . fmap Down
 
 -- | \(O(n)\). Constructs a priority queue from the keys of a 'Prio.MaxPQueue'.
 keysQueue :: Prio.MaxPQueue k a -> MaxQueue k
