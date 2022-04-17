@@ -105,6 +105,7 @@ module Data.PQueue.Prio.Max (
   foldrWithKeyU,
   foldMapWithKeyU,
   foldlU,
+  foldlU',
   foldlWithKeyU,
   foldlWithKeyU',
   traverseU,
