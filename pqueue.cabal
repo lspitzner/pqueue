@@ -52,19 +52,16 @@ library
   other-extensions:
       BangPatterns
     , CPP
-  ghc-options: {
+  ghc-options:
     -- We currently need -fspec-constr to get GHC to compile conversions
     -- from lists well. We could (and probably should) write those a
     -- bit differently so we won't need it.
     -fspec-constr
     -fdicts-strict
     -Wall
-  }
-  if impl(ghc >= 8.0) {
-    ghc-options: {
+  if impl(ghc >= 8.0)
+    ghc-options:
       -fno-warn-unused-imports
-    }
-  }
 
 test-suite test
   hs-source-dirs: tests
@@ -74,12 +71,13 @@ test-suite test
   build-depends:
   { base >= 4.8 && < 4.17
   , deepseq >= 1.3 && < 1.5
-  , QuickCheck >= 2.10 && < 3
+  , tasty
+  , tasty-quickcheck
   , pqueue
   }
-  ghc-options: {
+  ghc-options:
     -Wall
-  }
+    -Wno-type-defaults
 
 benchmark minqueue-benchmarks
   default-language: Haskell2010
