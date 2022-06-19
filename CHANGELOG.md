@@ -1,21 +1,29 @@
 # Revision history for pqueue
 
-## 1.4.2
+## 1.4.2.0
 
   * Overall performance has improved greatly, especially when there are many
     insertions and/or merges in a row. Insertion, deletion, and merge are now
     *worst case* logarithmic, while maintaining their previous amortized
-    bounds. (#26)
-
-  * Add strict left unordered folds (`foldlU'`, `foldlWithKeyU'`)
-    and monoidal unordered folds (`foldMapU`, `foldMapWithKeyU`). (#59)
+    bounds. ([#26](https://github.com/lspitzner/pqueue/pull/26))
 
   * New `mapMWithKey` functions optimized for working in strict monads. These
     are used to implement the `mapM` and `sequence` methods of `Traversable`.
-    (#46)
+    ([#46](https://github.com/lspitzner/pqueue/pull/46))
+
+  * Define `stimes` in the `Semigroup` instances.
+    ([#57](https://github.com/lspitzner/pqueue/pull/57))
+
+  * Add strict left unordered folds (`foldlU'`, `foldlWithKeyU'`)
+    and monoidal unordered folds (`foldMapU`, `foldMapWithKeyU`).
+    ([#59](https://github.com/lspitzner/pqueue/pull/59))
 
   * New functions for adjusting and updating the min/max of a key-value
     priority queue in an `Applicative` context.
+    ([#66](https://github.com/lspitzner/pqueue/pull/66))
+
+  * Fixed `Data.PQueue.Max.map` to work on `MaxQueue`s.
+    ([#76](https://github.com/lspitzner/pqueue/pull/76))
 
 ## 1.4.1.4  -- 2021-12-04
 
@@ -35,7 +43,7 @@
 
 ## 1.4.1.1  -- 2018-02-11
 
-  * Remove/Replace buggy insertBehind implementation.
+  * Remove/replace buggy `insertBehind` implementation.
 
     The existing implementation did not always insert behind. As a fix,
     the function was removed from Data.PQueue.Max/Min and was rewritten
@@ -56,7 +64,7 @@
 
   * Fix documentation errors
     - complexity on `toList`, `toListU`
-    - PQueue.Prio.Max had "ascending" instead of "descending" in some places
+    - `PQueue.Prio.Max` had "ascending" instead of "descending" in some places
 
 ## 1.3.2    -- 2016-09-28
 
@@ -70,7 +78,7 @@
 
 ## 1.3.1    -- 2015-10-03
 
-  * Add Monoid instance for MaxPQueue
+  * Add `Monoid` instance for `MaxPQueue`
 
 ## 1.3.0    -- 2015-06-23
 
