@@ -1,6 +1,6 @@
 # Revision history for pqueue
 
-## 1.4.2.0
+## 1.4.2.0  -- 2022-06-19
 
   * Overall performance has improved greatly, especially when there are many
     insertions and/or merges in a row. Insertion, deletion, and merge are now
