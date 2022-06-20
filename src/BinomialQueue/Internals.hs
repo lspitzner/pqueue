@@ -11,7 +11,6 @@ module BinomialQueue.Internals (
   MExtract(..),
   Succ(..),
   Zero(..),
-  LEq,
   empty,
   extractHeap,
   null,
@@ -20,7 +19,6 @@ module BinomialQueue.Internals (
   minView,
   singleton,
   insert,
-  insert',
   union,
   unionPlusOne,
   mapMaybe,
@@ -168,9 +166,6 @@ data Succ rk a = Succ {-# UNPACK #-} !(BinomTree rk a) !(rk a)
 -- | Type corresponding to the Zero rank.
 data Zero a = Zero
 
--- | Type alias for a comparison function.
-type LEq a = a -> a -> Bool
-
 -- basics
 
 -- | \(O(1)\). The empty priority queue.
@@ -201,7 +196,7 @@ getMin xs = case minView xs of
 -- | Retrieves the minimum element of the queue, and the queue stripped of that element,
 -- or 'Nothing' if passed an empty queue.
 minView :: Ord a => MinQueue a -> Maybe (a, MinQueue a)
-minView (MinQueue ts) = case extractBin (<=) ts of
+minView (MinQueue ts) = case extractBin ts of
   No -> Nothing
   Yes (Extract x ~Zero ts') -> Just (x, MinQueue ts')
 
@@ -211,11 +206,11 @@ singleton x = MinQueue (Cons (tip x) Nil)
 
 -- | Amortized \(O(1)\), worst-case \(O(\log n)\). Insert an element into the priority queue.
 insert :: Ord a => a -> MinQueue a -> MinQueue a
-insert = insert' (<=)
+insert x (MinQueue ts) = MinQueue (incr (tip x) ts)
 
 -- | Amortized \(O(\log \min(n,m))\), worst-case \(O(\log \max(n,m))\). Take the union of two priority queues.
 union :: Ord a => MinQueue a -> MinQueue a -> MinQueue a
-union = union' (<=)
+union (MinQueue f1) (MinQueue f2) = MinQueue (merge f1 f2)
 
 -- | Takes the union of a list of priority queues. Equivalent to @'foldl'' 'union' 'empty'@.
 unions :: Ord a => [MinQueue a] -> MinQueue a
@@ -223,11 +218,11 @@ unions = foldl' union empty
 
 -- | \(O(n)\). Map elements and collect the 'Just' results.
 mapMaybe :: Ord b => (a -> Maybe b) -> MinQueue a -> MinQueue b
-mapMaybe f (MinQueue ts) = mapMaybeQueue f (<=) (const empty) empty ts
+mapMaybe f (MinQueue ts) = mapMaybeQueue f (const empty) empty ts
 
 -- | \(O(n)\). Map elements and separate the 'Left' and 'Right' results.
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MinQueue a -> (MinQueue b, MinQueue c)
-mapEither f (MinQueue ts) = mapEitherQueue f (<=) (<=) (const (empty, empty)) (empty, empty) ts
+mapEither f (MinQueue ts) = mapEitherQueue f (const (empty, empty)) (empty, empty) ts
 
 -- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
 -- as in 'fmap'. If it is not, the result is undefined.
@@ -303,17 +298,9 @@ fromAscList :: [a] -> MinQueue a
 -- We apply an explicit argument to get foldl' to inline.
 fromAscList xs = foldl' (flip insertMaxQ') empty xs
 
-insert' :: LEq a -> a -> MinQueue a -> MinQueue a
-insert' le x (MinQueue ts)
-  = MinQueue (incr le (tip x) ts)
-
-{-# INLINE union' #-}
-union' :: LEq a -> MinQueue a -> MinQueue a -> MinQueue a
-union' le (MinQueue f1) (MinQueue f2) = MinQueue (merge le f1 f2)
-
 -- | Takes a size and a binomial forest and produces a priority queue with a distinguished global root.
 extractHeap :: Ord a => BinomHeap a -> Maybe (a, BinomHeap a)
-extractHeap ts = case extractBin (<=) ts of
+extractHeap ts = case extractBin ts of
   No                        -> Nothing
   Yes (Extract x ~Zero ts') -> Just (x, ts')
 
@@ -344,62 +331,60 @@ incrExtract :: Extract (Succ rk) a -> Extract rk a
 incrExtract (Extract minKey (Succ kChild kChildren) ts)
   = Extract minKey kChildren (Cons kChild ts)
 
-incrExtract' :: LEq a -> BinomTree rk a -> Extract (Succ rk) a -> Extract rk a
-incrExtract' le t (Extract minKey (Succ kChild kChildren) ts)
-  = Extract minKey kChildren (Skip $ incr le (t `cat` kChild) ts)
-  where
-    cat = joinBin le
+incrExtract' :: Ord a => BinomTree rk a -> Extract (Succ rk) a -> Extract rk a
+incrExtract' t (Extract minKey (Succ kChild kChildren) ts)
+  = Extract minKey kChildren (Skip $ incr (t `joinBin` kChild) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
 -- amortized \(O(1)\) time, so applying it from the beginning takes \(O(\log n)\) time.
-extractBin :: LEq a -> BinomForest rk a -> MExtract rk a
-extractBin le0 = start le0
+extractBin :: Ord a => BinomForest rk a -> MExtract rk a
+extractBin = start
   where
-    start :: LEq a -> BinomForest rk a -> MExtract rk a
-    start _le Nil = No
-    start le (Skip f) = case start le f of
+    start :: Ord a => BinomForest rk a -> MExtract rk a
+    start Nil = No
+    start (Skip f) = case start f of
       No     -> No
       Yes ex -> Yes (incrExtract ex)
-    start le (Cons t@(BinomTree x ts) f) = Yes $ case go le x f of
+    start (Cons t@(BinomTree x ts) f) = Yes $ case go x f of
       No -> Extract x ts (Skip f)
-      Yes ex -> incrExtract' le t ex
+      Yes ex -> incrExtract' t ex
 
-    go :: LEq a -> a -> BinomForest rk a -> MExtract rk a
-    go _le _min_above Nil = _min_above `seq` No
-    go le min_above (Skip f) = case go le min_above f of
+    go :: Ord a => a -> BinomForest rk a -> MExtract rk a
+    go _min_above Nil = _min_above `seq` No
+    go min_above (Skip f) = case go min_above f of
       No -> No
       Yes ex -> Yes (incrExtract ex)
-    go le min_above (Cons t@(BinomTree x ts) f)
-      | min_above `le` x = case go le min_above f of
+    go min_above (Cons t@(BinomTree x ts) f)
+      | min_above <= x = case go min_above f of
           No -> No
-          Yes ex -> Yes (incrExtract' le t ex)
-      | otherwise = case go le x f of
+          Yes ex -> Yes (incrExtract' t ex)
+      | otherwise = case go x f of
           No -> Yes (Extract x ts (Skip f))
-          Yes ex -> Yes (incrExtract' le t ex)
+          Yes ex -> Yes (incrExtract' t ex)
 
-mapMaybeQueue :: (a -> Maybe b) -> LEq b -> (rk a -> MinQueue b) -> MinQueue b -> BinomForest rk a -> MinQueue b
-mapMaybeQueue f le fCh q0 forest = q0 `seq` case forest of
+mapMaybeQueue :: Ord b => (a -> Maybe b) -> (rk a -> MinQueue b) -> MinQueue b -> BinomForest rk a -> MinQueue b
+mapMaybeQueue f fCh q0 forest = q0 `seq` case forest of
   Nil    -> q0
-  Skip forest'  -> mapMaybeQueue f le fCh' q0 forest'
-  Cons t forest'  -> mapMaybeQueue f le fCh' (union' le (mapMaybeT t) q0) forest'
-  where fCh' (Succ t tss) = union' le (mapMaybeT t) (fCh tss)
-        mapMaybeT (BinomTree x0 ts) = maybe (fCh ts) (\x -> insert' le x (fCh ts)) (f x0)
+  Skip forest'  -> mapMaybeQueue f fCh' q0 forest'
+  Cons t forest'  -> mapMaybeQueue f fCh' (union (mapMaybeT t) q0) forest'
+  where fCh' (Succ t tss) = union (mapMaybeT t) (fCh tss)
+        mapMaybeT (BinomTree x0 ts) = maybe (fCh ts) (\x -> insert x (fCh ts)) (f x0)
 
 type Partition a b = (MinQueue a, MinQueue b)
 
-mapEitherQueue :: (a -> Either b c) -> LEq b -> LEq c -> (rk a -> Partition b c) -> Partition b c ->
+mapEitherQueue :: (Ord b, Ord c) => (a -> Either b c) -> (rk a -> Partition b c) -> Partition b c ->
   BinomForest rk a -> Partition b c
-mapEitherQueue f0 leB leC fCh (q00, q10) ts0 = q00 `seq` q10 `seq` case ts0 of
+mapEitherQueue f0 fCh (q00, q10) ts0 = q00 `seq` q10 `seq` case ts0 of
   Nil        -> (q00, q10)
-  Skip ts'   -> mapEitherQueue f0 leB leC fCh' (q00, q10) ts'
-  Cons t ts' -> mapEitherQueue f0 leB leC fCh' (both (union' leB) (union' leC) (partitionT t) (q00, q10)) ts'
+  Skip ts'   -> mapEitherQueue f0 fCh' (q00, q10) ts'
+  Cons t ts' -> mapEitherQueue f0 fCh' (both union union (partitionT t) (q00, q10)) ts'
   where  both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)
-         fCh' (Succ t tss) = both (union' leB) (union' leC) (partitionT t) (fCh tss)
+         fCh' (Succ t tss) = both union union (partitionT t) (fCh tss)
          partitionT (BinomTree x ts) = case fCh ts of
            (q0, q1) -> case f0 x of
-             Left b  -> (insert' leB b q0, q1)
-             Right c  -> (q0, insert' leC c q1)
+             Left b  -> (insert b q0, q1)
+             Right c  -> (q0, insert c q1)
 
 {-# INLINE tip #-}
 -- | Constructs a binomial tree of rank 0.
@@ -451,38 +436,33 @@ insertMax' t (Cons (BinomTree x ts) f) = Skip $! insertMax' (BinomTree x (Succ t
 {-# INLINABLE fromList #-}
 -- | \(O(n)\). Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MinQueue a
-fromList xs = MinQueue (fromListHeap (<=) xs)
-
-{-# INLINE fromListHeap #-}
-fromListHeap :: LEq a -> [a] -> BinomHeap a
-fromListHeap le xs = foldl' go Nil xs
+fromList xs = MinQueue (foldl' go Nil xs)
   where
-    go fr x = incr' le (tip x) fr
+    go fr x = incr' (tip x) fr
 
 -- | Given two binomial forests starting at rank @rk@, takes their union.
 -- Each successive application of this function costs \(O(1)\), so applying it
 -- from the beginning costs \(O(\log n)\).
-merge :: LEq a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
-merge le f1 f2 = case (f1, f2) of
-  (Skip f1', Skip f2')    -> Skip $! merge le f1' f2'
-  (Skip f1', Cons t2 f2') -> Cons t2 $! merge le f1' f2'
-  (Cons t1 f1', Skip f2') -> Cons t1 $! merge le f1' f2'
+merge :: Ord a => BinomForest rk a -> BinomForest rk a -> BinomForest rk a
+merge f1 f2 = case (f1, f2) of
+  (Skip f1', Skip f2')    -> Skip $! merge f1' f2'
+  (Skip f1', Cons t2 f2') -> Cons t2 $! merge f1' f2'
+  (Cons t1 f1', Skip f2') -> Cons t1 $! merge f1' f2'
   (Cons t1 f1', Cons t2 f2')
-        -> Skip $! carry le (t1 `cat` t2) f1' f2'
+        -> Skip $! carry (t1 `joinBin` t2) f1' f2'
   (Nil, _)                -> f2
   (_, Nil)                -> f1
-  where  cat = joinBin le
 
 -- | Take the union of two queues and toss in an extra element.
-unionPlusOne :: LEq a -> a -> MinQueue a -> MinQueue a -> MinQueue a
-unionPlusOne le a (MinQueue xs) (MinQueue ys) = MinQueue (carry le (tip a) xs ys)
+unionPlusOne :: Ord a => a -> MinQueue a -> MinQueue a -> MinQueue a
+unionPlusOne a (MinQueue xs) (MinQueue ys) = MinQueue (carry (tip a) xs ys)
 
 -- | Merges two binomial forests with another tree. If we are thinking of the trees
 -- in the binomial forest as binary digits, this corresponds to a carry operation.
 -- Each call to this function takes \(O(1)\) time, so in total, it costs \(O(\log n)\).
-carry :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
-carry le t0 f1 f2 = t0 `seq` case (f1, f2) of
-  (Skip f1', Skip f2')    -> Cons t0 $! merge le f1' f2'
+carry :: Ord a => BinomTree rk a -> BinomForest rk a -> BinomForest rk a -> BinomForest rk a
+carry t0 f1 f2 = t0 `seq` case (f1, f2) of
+  (Skip f1', Skip f2')    -> Cons t0 $! merge f1' f2'
   (Skip f1', Cons t2 f2') -> Skip $! mergeCarry t0 t2 f1' f2'
   (Cons t1 f1', Skip f2') -> Skip $! mergeCarry t0 t1 f1' f2'
   (Cons t1 f1', Cons t2 f2')
@@ -490,26 +470,24 @@ carry le t0 f1 f2 = t0 `seq` case (f1, f2) of
   -- Why do these use incr and not incr'? We want the merge to take amortized
   -- O(log(min(|f1|, |f2|))) time. If we performed this final increment
   -- eagerly, that would degrade to O(log(max(|f1|, |f2|))) time.
-  (Nil, _f2)              -> incr le t0 f2
-  (_f1, Nil)              -> incr le t0 f1
-  where  cat = joinBin le
-         mergeCarry tA tB = carry le (tA `cat` tB)
+  (Nil, _f2)              -> incr t0 f2
+  (_f1, Nil)              -> incr t0 f1
+  where
+    mergeCarry tA tB = carry (tA `joinBin` tB)
 
 -- | Merges a binomial tree into a binomial forest. If we are thinking
 -- of the trees in the binomial forest as binary digits, this corresponds
 -- to adding a power of 2. This costs amortized \(O(1)\) time.
-incr :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a
+incr :: Ord a => BinomTree rk a -> BinomForest rk a -> BinomForest rk a
 -- See Note [Amortization]
-incr le t f0 = t `seq` case f0 of
+incr t f0 = t `seq` case f0 of
   Nil  -> Cons t Nil
   Skip f     -> Cons t f
-  Cons t' f' -> f' `seq` Skip (incr le (t `cat` t') f')
+  Cons t' f' -> f' `seq` Skip (incr (t `joinBin` t') f')
       -- See Note [Force on cascade]
 
       -- Question: should we force t `cat` t' here? We're allowed to;
       -- it's not obviously good or obviously bad.
-    where
-      cat = joinBin le
 
 -- Note [Amortization]
 --
@@ -533,20 +511,19 @@ incr le t f0 = t `seq` case f0 of
 
 -- | A version of 'incr' that constructs the spine eagerly. This is
 -- intended for implementing @fromList@.
-incr' :: LEq a -> BinomTree rk a -> BinomForest rk a -> BinomForest rk a
-incr' le t f0 = t `seq` case f0 of
+incr' :: Ord a => BinomTree rk a -> BinomForest rk a -> BinomForest rk a
+incr' t f0 = t `seq` case f0 of
   Nil  -> Cons t Nil
   Skip f     -> Cons t f
-  Cons t' f' -> Skip $! incr' le (t `cat` t') f'
-    where
-      cat = joinBin le
+  Cons t' f' -> Skip $! incr' (t `joinBin` t') f'
 
 -- | The carrying operation: takes two binomial heaps of the same rank @k@
 -- and returns one of rank @k+1@. Takes \(O(1)\) time.
-joinBin :: LEq a -> BinomTree rk a -> BinomTree rk a -> BinomTree (Succ rk) a
-joinBin le t1@(BinomTree x1 ts1) t2@(BinomTree x2 ts2)
-  | x1 `le` x2 = BinomTree x1 (Succ t2 ts1)
+joinBin :: Ord a => BinomTree rk a -> BinomTree rk a -> BinomTree (Succ rk) a
+joinBin t1@(BinomTree x1 ts1) t2@(BinomTree x2 ts2)
+  | x1 <= x2 = BinomTree x1 (Succ t2 ts1)
   | otherwise  = BinomTree x2 (Succ t1 ts2)
+
 
 instance Functor Zero where
   fmap _ _ = Zero

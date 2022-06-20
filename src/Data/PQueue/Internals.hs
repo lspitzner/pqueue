@@ -8,7 +8,6 @@ module Data.PQueue.Internals (
   BinomTree(..),
   Succ(..),
   Zero(..),
-  LEq,
   empty,
   null,
   size,
@@ -125,9 +124,6 @@ instance Ord a => Ord (MinQueue a) where
     -- and then the longer queue wins.
     -- This is equivalent to @comparing toAscList@, except it fuses much more nicely.
 
--- | Type alias for a comparison function.
-type LEq a = a -> a -> Bool
-
 -- basics
 
 -- | \(O(1)\). The empty priority queue.
@@ -163,11 +159,19 @@ singleton x = MinQueue 1 x BQ.empty
 
 -- | Amortized \(O(1)\), worst-case \(O(\log n)\). Insert an element into the priority queue.
 insert :: Ord a => a -> MinQueue a -> MinQueue a
-insert = insert' (<=)
+insert x Empty = singleton x
+insert x (MinQueue n x' ts)
+  | x <= x' = MinQueue (n + 1) x (BQ.insertMinQ x' ts)
+  | otherwise = MinQueue (n + 1) x' (BQ.insert x ts)
 
 -- | Amortized \(O(\log \min(n,m))\), worst-case \(O(\log \max(n,m))\). Take the union of two priority queues.
 union :: Ord a => MinQueue a -> MinQueue a -> MinQueue a
-union = union' (<=)
+union Empty q = q
+union q Empty = q
+union (MinQueue n1 x1 f1) (MinQueue n2 x2 f2)
+  | x1 <= x2 = MinQueue (n1 + n2) x1 (BQ.unionPlusOne x2 f1 f2)
+  | otherwise  = MinQueue (n1 + n2) x2 (BQ.unionPlusOne x1 f1 f2)
+
 
 -- | Takes the union of a list of priority queues. Equivalent to @'foldl'' 'union' 'empty'@.
 unions :: Ord a => [MinQueue a] -> MinQueue a
@@ -250,20 +254,6 @@ toDescListApp (MinQueue _ x ts) app = BQ.foldlUnfold (flip (:)) (x : app) BQ.min
 fromAscList :: [a] -> MinQueue a
 -- We apply an explicit argument to get foldl' to inline.
 fromAscList xs = foldl' (flip insertMaxQ') empty xs
-
-insert' :: LEq a -> a -> MinQueue a -> MinQueue a
-insert' _ x Empty = singleton x
-insert' le x (MinQueue n x' ts)
-  | x `le` x' = MinQueue (n + 1) x (BQ.insertMinQ x' ts)
-  | otherwise = MinQueue (n + 1) x' (BQ.insert' le x ts)
-
-{-# INLINE union' #-}
-union' :: LEq a -> MinQueue a -> MinQueue a -> MinQueue a
-union' _ Empty q = q
-union' _ q Empty = q
-union' le (MinQueue n1 x1 f1) (MinQueue n2 x2 f2)
-  | x1 `le` x2 = MinQueue (n1 + n2) x1 (BQ.unionPlusOne le x2 f1 f2)
-  | otherwise  = MinQueue (n1 + n2) x2 (BQ.unionPlusOne le x1 f1 f2)
 
 -- | @insertMinQ x h@ assumes that @x@ compares as less
 -- than or equal to every element of @h@.
