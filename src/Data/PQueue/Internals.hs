@@ -372,6 +372,7 @@ instance Read a => Read (MinQueue a) where
 instance Ord a => Semigroup (MinQueue a) where
   (<>) = union
   stimes = stimesMonoid
+  {-# INLINABLE stimes #-}
 #endif
 
 instance Ord a => Monoid (MinQueue a) where

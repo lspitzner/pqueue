@@ -149,6 +149,7 @@ first' f (a, c) = (f a, c)
 instance Ord k => Semigroup (MaxPQueue k a) where
   (<>) = union
   stimes = stimesMonoid
+  {-# INLINABLE stimes #-}
 #endif
 
 instance Ord k => Monoid (MaxPQueue k a) where

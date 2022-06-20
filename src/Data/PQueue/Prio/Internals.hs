@@ -96,6 +96,7 @@ fromListConstr = mkConstr queueDataType "fromList" [] Prefix
 instance Ord k => Semigroup (MinPQueue k a) where
   (<>) = union
   stimes = stimesMonoid
+  {-# INLINABLE stimes #-}
 #endif
 
 instance Ord k => Monoid (MinPQueue k a) where
