@@ -17,13 +17,15 @@ newtype Down a = Down { unDown :: a }
   deriving (Eq)
 #endif
 
-
 instance NFData a => NFData (Down a) where
   rnf (Down a) = rnf a
 
 instance Ord a => Ord (Down a) where
   Down a `compare` Down b = b `compare` a
   Down a <= Down b = b <= a
+  Down a >= Down b = b >= a
+  Down a < Down b = b < a
+  Down a > Down b = b > a
 
 instance Functor Down where
   fmap f (Down a) = Down (f a)
@@ -31,4 +33,5 @@ instance Functor Down where
 instance Foldable Down where
   foldr f z (Down a) = a `f` z
   foldl f z (Down a) = z `f` a
+  foldr' f !z (Down a) = a `f` z
   foldl' f !z (Down a) = z `f` a
