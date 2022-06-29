@@ -8,7 +8,6 @@ module Data.PQueue.Prio.Internals (
   BinomTree(..),
   Zero(..),
   Succ(..),
-  CompF,
   empty,
   null,
   size,
@@ -97,6 +96,7 @@ fromListConstr = mkConstr queueDataType "fromList" [] Prefix
 instance Ord k => Semigroup (MinPQueue k a) where
   (<>) = union
   stimes = stimesMonoid
+  {-# INLINABLE stimes #-}
 #endif
 
 instance Ord k => Monoid (MinPQueue k a) where
@@ -189,8 +189,6 @@ instance IFoldMap t => IFoldMap (BinomForest t) where
   foldMapWithKey_ f (Skip ts) = foldMapWithKey_ f ts
   foldMapWithKey_ f (Cons t ts) = foldMapWithKey_ f t `mappend` foldMapWithKey_ f ts
 
-type CompF a = a -> a -> Bool
-
 instance (Ord k, Eq a) => Eq (MinPQueue k a) where
   MinPQ n1 k1 a1 ts1 == MinPQ n2 k2 a2 ts2 =
     n1 == n2 && eqExtract k1 a1 ts1 k2 a2 ts2
@@ -244,7 +242,10 @@ singleton k a = MinPQ 1 k a Nil
 -- | Amortized \(O(1)\), worst-case \(O(\log n)\). Inserts
 -- an element with the specified key into the queue.
 insert :: Ord k => k -> a -> MinPQueue k a -> MinPQueue k a
-insert = insert' (<=)
+insert k a Empty = singleton k a
+insert k a (MinPQ n k' a' ts)
+  | k <= k' = MinPQ (n + 1) k  a  (incrMin (tip k' a') ts)
+  | otherwise = MinPQ (n + 1) k' a' (incr (tip k  a ) ts)
 
 -- | \(O(n)\) (an earlier implementation had \(O(1)\) but was buggy).
 -- Insert an element with the specified key into the priority queue,
@@ -261,26 +262,15 @@ spanKey p q = case minViewWithKey q of
     let (kas, q'') = spanKey p q' in (t : kas, q'')
   _ -> ([], q)
 
--- | Internal helper method, using a specific comparator function.
-insert' :: CompF k -> k -> a -> MinPQueue k a -> MinPQueue k a
-insert' _ k a Empty = singleton k a
-insert' le k a (MinPQ n k' a' ts)
-  | k `le` k' = MinPQ (n + 1) k  a  (incrMin (tip k' a') ts)
-  | otherwise = MinPQ (n + 1) k' a' (incr le (tip k  a ) ts)
-
 -- | Amortized \(O(\log \min(n_1,n_2))\), worst-case \(O(\log \max(n_1,n_2))\). Returns the union
 -- of the two specified queues.
 union :: Ord k => MinPQueue k a -> MinPQueue k a -> MinPQueue k a
-union = union' (<=)
-
--- | Takes the union of the two specified queues, using the given comparison function.
-union' :: CompF k -> MinPQueue k a -> MinPQueue k a -> MinPQueue k a
-union' le (MinPQ n1 k1 a1 ts1) (MinPQ n2 k2 a2 ts2)
-  | k1 `le` k2 = MinPQ (n1 + n2) k1 a1 (insMerge k2 a2)
+union (MinPQ n1 k1 a1 ts1) (MinPQ n2 k2 a2 ts2)
+  | k1 <= k2 = MinPQ (n1 + n2) k1 a1 (insMerge k2 a2)
   | otherwise  = MinPQ (n1 + n2) k2 a2 (insMerge k1 a1)
-  where  insMerge k a = carryForest le (tip k a) ts1 ts2
-union' _ Empty q2 = q2
-union' _ q1 Empty = q1
+  where  insMerge k a = carryForest (tip k a) ts1 ts2
+union Empty q2 = q2
+union q1 Empty = q1
 
 -- | \(O(1)\). The minimal (key, element) in the queue, if the queue is nonempty.
 getMin :: MinPQueue k a -> Maybe (k, a)
@@ -303,7 +293,7 @@ adjustMinWithKeyA' g f (MinPQ n k a ts) = fmap (\a' -> g (MinPQ n k a' ts)) (f k
 updateMinWithKey :: Ord k => (k -> a -> Maybe a) -> MinPQueue k a -> MinPQueue k a
 updateMinWithKey _ Empty = Empty
 updateMinWithKey f (MinPQ n k a ts) = case f k a of
-  Nothing  -> extractHeap (<=) n ts
+  Nothing  -> extractHeap n ts
   Just a'  -> MinPQ n k a' ts
 
 -- | \(O(\log n)\) per operation. (Actually \(O(1)\) if there's no deletion.) Update
@@ -318,14 +308,14 @@ updateMinWithKeyA'
 updateMinWithKeyA' g _ Empty = pure (g Empty)
 updateMinWithKeyA' g f (MinPQ n k a ts) = fmap (g . tweak) (f k a)
   where
-    tweak Nothing = extractHeap (<=) n ts
+    tweak Nothing = extractHeap n ts
     tweak (Just a') = MinPQ n k a' ts
 
 -- | \(O(\log n)\). Retrieves the minimal (key, value) pair of the map, and the map stripped of that
 -- element, or 'Nothing' if passed an empty map.
 minViewWithKey :: Ord k => MinPQueue k a -> Maybe ((k, a), MinPQueue k a)
 minViewWithKey Empty            = Nothing
-minViewWithKey (MinPQ n k a ts) = Just ((k, a), extractHeap (<=) n ts)
+minViewWithKey (MinPQ n k a ts) = Just ((k, a), extractHeap n ts)
 
 -- | \(O(n)\). Map a function over all values in the queue.
 mapWithKey :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
@@ -341,13 +331,13 @@ mapKeysMonotonic f (MinPQ n k a ts) = MinPQ n (f k) a (mapKeysMonoF f (const Zer
 -- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybeWithKey :: Ord k => (k -> a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
 mapMaybeWithKey _ Empty            = Empty
-mapMaybeWithKey f (MinPQ _ k a ts) = maybe id (insert k) (f k a) (mapMaybeF (<=) f (const Empty) ts)
+mapMaybeWithKey f (MinPQ _ k a ts) = maybe id (insert k) (f k a) (mapMaybeF f (const Empty) ts)
 
 -- | \(O(n)\). Map values and separate the 'Left' and 'Right' results.
 mapEitherWithKey :: Ord k => (k -> a -> Either b c) -> MinPQueue k a -> (MinPQueue k b, MinPQueue k c)
 mapEitherWithKey _ Empty            = (Empty, Empty)
 mapEitherWithKey f (MinPQ _ k a ts) = either (first' . insert k) (second' . insert k) (f k a)
-  (mapEitherF (<=) f (const (Empty, Empty)) ts)
+  (mapEitherF f (const (Empty, Empty)) ts)
 
 -- | \(O(n \log n)\). Fold the keys and values in the map, such that
 -- @'foldrWithKey' f z q == 'List.foldr' ('uncurry' f) z ('toAscList' q)@.
@@ -427,7 +417,7 @@ fromList :: Ord k => [(k, a)] -> MinPQueue k a
 -- We build a forest first and then extract its minimum at the end.
 -- Why not just build the 'MinQueue' directly? This way saves us one
 -- comparison per element.
-fromList xs = case extractForest (<=) (fromListHeap (<=) xs) of
+fromList xs = case extract (fromListHeap xs) of
   No -> Empty
   -- Should we track the size as we go instead? That saves O(log n)
   -- at the end, but it needs an extra register all along the way.
@@ -436,10 +426,10 @@ fromList xs = case extractForest (<=) (fromListHeap (<=) xs) of
   Yes (Extract k v ~Zero f) -> MinPQ (sizeHeap f + 1) k v f
 
 {-# INLINE fromListHeap #-}
-fromListHeap :: CompF k -> [(k, a)] -> BinomHeap k a
-fromListHeap le xs = List.foldl' go Nil xs
+fromListHeap :: Ord k => [(k, a)] -> BinomHeap k a
+fromListHeap xs = List.foldl' go Nil xs
   where
-    go fr (k, a) = incr' le (tip k a) fr
+    go fr (k, a) = incr' (tip k a) fr
 
 sizeHeap :: BinomHeap k a -> Int
 sizeHeap = go 0 1
@@ -455,50 +445,50 @@ tip :: k -> a -> BinomTree Zero k a
 tip k a = BinomTree k a Zero
 
 -- | \(O(1)\). Takes the union of two binomial trees of the same rank.
-meld :: CompF k -> BinomTree rk k a -> BinomTree rk k a -> BinomTree (Succ rk) k a
-meld le t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
-  | k1 `le` k2 = BinomTree k1 v1 (Succ t2 ts1)
+meld :: Ord k => BinomTree rk k a -> BinomTree rk k a -> BinomTree (Succ rk) k a
+meld t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
+  | k1 <= k2 = BinomTree k1 v1 (Succ t2 ts1)
   | otherwise  = BinomTree k2 v2 (Succ t1 ts2)
 
 -- | Takes the union of two binomial forests, starting at the same rank. Analogous to binary addition.
-mergeForest :: CompF k -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
-mergeForest le f1 f2 = case (f1, f2) of
-  (Skip ts1, Skip ts2)       -> Skip $! mergeForest le ts1 ts2
-  (Skip ts1, Cons t2 ts2)    -> Cons t2 $! mergeForest le ts1 ts2
-  (Cons t1 ts1, Skip ts2)    -> Cons t1 $! mergeForest le ts1 ts2
-  (Cons t1 ts1, Cons t2 ts2) -> Skip $! carryForest le (meld le t1 t2) ts1 ts2
+mergeForest :: Ord k => BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
+mergeForest f1 f2 = case (f1, f2) of
+  (Skip ts1, Skip ts2)       -> Skip $! mergeForest ts1 ts2
+  (Skip ts1, Cons t2 ts2)    -> Cons t2 $! mergeForest ts1 ts2
+  (Cons t1 ts1, Skip ts2)    -> Cons t1 $! mergeForest ts1 ts2
+  (Cons t1 ts1, Cons t2 ts2) -> Skip $! carryForest (meld t1 t2) ts1 ts2
   (Nil, _)                   -> f2
   (_, Nil)                   -> f1
 
 -- | Takes the union of two binomial forests, starting at the same rank, with an additional tree.
 -- Analogous to binary addition when a digit has been carried.
-carryForest :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
-carryForest le t0 f1 f2 = t0 `seq` case (f1, f2) of
+carryForest :: Ord k => BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
+carryForest t0 f1 f2 = t0 `seq` case (f1, f2) of
   (Cons t1 ts1, Cons t2 ts2) -> Cons t0 $! carryMeld t1 t2 ts1 ts2
   (Cons t1 ts1, Skip ts2)    -> Skip $! carryMeld t0 t1 ts1 ts2
   (Skip ts1, Cons t2 ts2)    -> Skip $! carryMeld t0 t2 ts1 ts2
-  (Skip ts1, Skip ts2)       -> Cons t0 $! mergeForest le ts1 ts2
+  (Skip ts1, Skip ts2)       -> Cons t0 $! mergeForest ts1 ts2
   -- Why do these use incr and not incr'? We want the merge to take
   -- O(log(min(|f1|, |f2|))) amortized time. If we performed this final
   -- increment eagerly, that would degrade to O(log(max(|f1|, |f2|))) time.
-  (Nil, _)                   -> incr le t0 f2
-  (_, Nil)                   -> incr le t0 f1
-  where  carryMeld = carryForest le .: meld le
+  (Nil, _)                   -> incr t0 f2
+  (_, Nil)                   -> incr t0 f1
+  where  carryMeld = carryForest .: meld
 
 -- | Inserts a binomial tree into a binomial forest. Analogous to binary incrementation.
-incr :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
-incr le t ts = t `seq` case ts of
+incr :: Ord k => BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
+incr t ts = t `seq` case ts of
   Nil         -> Cons t Nil
   Skip ts'    -> Cons t ts'
-  Cons t' ts' -> ts' `seq` Skip (incr le (meld le t t') ts')
+  Cons t' ts' -> ts' `seq` Skip (incr (meld t t') ts')
 
 -- | Inserts a binomial tree into a binomial forest. Analogous to binary incrementation.
 -- Forces the rebuilt portion of the spine.
-incr' :: CompF k -> BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
-incr' le t ts = t `seq` case ts of
+incr' :: Ord k => BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
+incr' t ts = t `seq` case ts of
   Nil         -> Cons t Nil
   Skip ts'    -> Cons t ts'
-  Cons t' ts' -> Skip $! incr' le (meld le t t') ts'
+  Cons t' ts' -> Skip $! incr' (meld t t') ts'
 
 -- | Inserts a binomial tree into a binomial forest. Assumes that the root of this tree
 -- is less than all other roots. Analogous to binary incrementation. Equivalent to
@@ -525,8 +515,8 @@ incrMax' t tss = t `seq` case tss of
   Skip tss'    -> Cons t tss'
   Cons (BinomTree k a ts) tss' -> Skip $! incrMax' (BinomTree k a (Succ t ts)) tss'
 
-extractHeap :: CompF k -> Int -> BinomHeap k a -> MinPQueue k a
-extractHeap le n ts = n `seq` case extractForest le ts of
+extractHeap :: Ord k => Int -> BinomHeap k a -> MinPQueue k a
+extractHeap n ts = n `seq` case extract ts of
   No                      -> Empty
   Yes (Extract k a _ ts') -> MinPQ (n - 1) k a ts'
 
@@ -567,42 +557,37 @@ incrExtract (Extract minKey minVal (Succ kChild kChildren) ts)
 -- fused (operationally) with successive operations. If the next operation is
 -- union or minView, this doesn't save anything, but if some insertions follow,
 -- it might be faster this way.
-incrExtract' :: CompF k -> BinomTree rk k a -> Extract (Succ rk) k a -> Extract rk k a
-incrExtract' le t (Extract minKey minVal (Succ kChild kChildren) ts)
-  = Extract minKey minVal kChildren (Skip $ incr le (t `cat` kChild) ts)
-  where
-    cat = meld le
+incrExtract' :: Ord k => BinomTree rk k a -> Extract (Succ rk) k a -> Extract rk k a
+incrExtract' t (Extract minKey minVal (Succ kChild kChildren) ts)
+  = Extract minKey minVal kChildren (Skip $ incr (t `meld` kChild) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
 -- amortized \(O(1)\) time, so applying it from the beginning takes \(O(\log n)\) time.
-extractForest :: CompF k -> BinomForest rk k a -> MExtract rk k a
-extractForest le0 = start le0
+extract :: Ord k => BinomForest rk k a -> MExtract rk k a
+extract = start
   where
-    start :: CompF k -> BinomForest rk k a -> MExtract rk k a
-    start _le Nil = No
-    start le (Skip f) = case start le f of
+    start :: Ord k => BinomForest rk k a -> MExtract rk k a
+    start Nil = No
+    start (Skip f) = case start f of
       No     -> No
       Yes ex -> Yes (incrExtract ex)
-    start le (Cons t@(BinomTree k v ts) f) = Yes $ case go le k f of
+    start (Cons t@(BinomTree k v ts) f) = Yes $ case go k f of
       No -> Extract k v ts (Skip f)
-      Yes ex -> incrExtract' le t ex
+      Yes ex -> incrExtract' t ex
 
-    go :: CompF k -> k -> BinomForest rk k a -> MExtract rk k a
-    go _le _min_above Nil = _min_above `seq` No
-    go le min_above (Skip f) = case go le min_above f of
+    go :: Ord k => k -> BinomForest rk k a -> MExtract rk k a
+    go _min_above Nil = _min_above `seq` No
+    go min_above (Skip f) = case go min_above f of
       No -> No
       Yes ex -> Yes (incrExtract ex)
-    go le min_above (Cons t@(BinomTree k v ts) f)
-      | min_above `le` k = case go le min_above f of
+    go min_above (Cons t@(BinomTree k v ts) f)
+      | min_above <= k = case go min_above f of
           No -> No
-          Yes ex -> Yes (incrExtract' le t ex)
-      | otherwise = case go le k f of
+          Yes ex -> Yes (incrExtract' t ex)
+      | otherwise = case go k f of
           No -> Yes (Extract k v ts (Skip f))
-          Yes ex -> Yes (incrExtract' le t ex)
-
-extract :: (Ord k) => BinomForest rk k a -> MExtract rk k a
-extract = extractForest (<=)
+          Yes ex -> Yes (incrExtract' t ex)
 
 -- | Utility function for mapping over a forest.
 mapForest :: (k -> a -> b) -> (rk k a -> rk k b) -> BinomForest rk k a -> BinomForest rk k b
@@ -615,28 +600,28 @@ mapForest f fCh ts0 = case ts0 of
            = Succ (BinomTree k (f k a) (fCh ts)) (fCh tss)
 
 -- | Utility function for mapping a 'Maybe' function over a forest.
-mapMaybeF :: CompF k -> (k -> a -> Maybe b) -> (rk k a -> MinPQueue k b) ->
+mapMaybeF :: Ord k => (k -> a -> Maybe b) -> (rk k a -> MinPQueue k b) ->
   BinomForest rk k a -> MinPQueue k b
-mapMaybeF le f fCh ts0 = case ts0 of
+mapMaybeF f fCh ts0 = case ts0 of
   Nil    -> Empty
-  Skip ts'  -> mapMaybeF le f fCh' ts'
+  Skip ts'  -> mapMaybeF f fCh' ts'
   Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapMaybeF le f fCh' ts')
-  where  insF k a = maybe id (insert' le k) (f k a) .: union' le
+      -> insF k a (fCh ts) (mapMaybeF f fCh' ts')
+  where  insF k a = maybe id (insert k) (f k a) .: union
          fCh' (Succ (BinomTree k a ts) tss) =
            insF k a (fCh ts) (fCh tss)
 
 -- | Utility function for mapping an 'Either' function over a forest.
-mapEitherF :: CompF k -> (k -> a -> Either b c) -> (rk k a -> (MinPQueue k b, MinPQueue k c)) ->
+mapEitherF :: Ord k => (k -> a -> Either b c) -> (rk k a -> (MinPQueue k b, MinPQueue k c)) ->
   BinomForest rk k a -> (MinPQueue k b, MinPQueue k c)
-mapEitherF le f0 fCh ts0 = case ts0 of
+mapEitherF f0 fCh ts0 = case ts0 of
   Nil    -> (Empty, Empty)
-  Skip ts'  -> mapEitherF le f0 fCh' ts'
+  Skip ts'  -> mapEitherF f0 fCh' ts'
   Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapEitherF le f0 fCh' ts')
+      -> insF k a (fCh ts) (mapEitherF f0 fCh' ts')
   where
-    insF k a = either (first' . insert' le k) (second' . insert' le k) (f0 k a) .:
-      (union' le `both` union' le)
+    insF k a = either (first' . insert k) (second' . insert k) (f0 k a) .:
+      (union `both` union)
     fCh' (Succ (BinomTree k a ts) tss) =
       insF k a (fCh ts) (fCh tss)
     both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)

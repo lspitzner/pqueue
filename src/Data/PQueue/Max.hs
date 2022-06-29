@@ -143,6 +143,7 @@ instance Read a => Read (MaxQueue a) where
 instance Ord a => Semigroup (MaxQueue a) where
   (<>) = union
   stimes = stimesMonoid
+  {-# INLINABLE stimes #-}
 #endif
 
 instance Ord a => Monoid (MaxQueue a) where
