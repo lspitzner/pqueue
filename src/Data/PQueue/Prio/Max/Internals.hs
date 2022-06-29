@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -124,6 +126,9 @@ import Text.Read (Lexeme(Ident), lexP, parens, prec,
   readPrec, readListPrec, readListPrecDefault)
 #endif
 
+import Data.Functor.WithIndex
+import Data.Foldable.WithIndex
+import Data.Traversable.WithIndex
 
 #ifndef __GLASGOW_HASKELL__
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
@@ -181,12 +186,18 @@ instance (Read k, Read a) => Read (MaxPQueue k a) where
 instance Functor (MaxPQueue k) where
   fmap f (MaxPQ q) = MaxPQ (fmap f q)
 
+instance FunctorWithIndex k (MaxPQueue k) where
+  imap = mapWithKey
+
 instance Ord k => Foldable (MaxPQueue k) where
   foldr f z (MaxPQ q) = foldr f z q
   foldl f z (MaxPQ q) = foldl f z q
-
   length = size
   null = null
+
+instance Ord k => FoldableWithIndex k (MaxPQueue k) where
+  ifoldr   = foldrWithKey
+  ifoldl f = foldlWithKey (flip f)
 
 -- | Traverses in descending order. 'mapM' is strictly accumulating like
 -- 'mapMWithKey'.
@@ -194,6 +205,9 @@ instance Ord k => Traversable (MaxPQueue k) where
   traverse f (MaxPQ q) = MaxPQ <$> traverse f q
   mapM = mapMWithKey . const
   sequence = mapM id
+
+instance Ord k => TraversableWithIndex k (MaxPQueue k) where
+  itraverse = traverseWithKey
 
 -- | \(O(1)\). Returns the empty priority queue.
 empty :: MaxPQueue k a

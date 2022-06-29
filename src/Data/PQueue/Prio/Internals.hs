@@ -1,5 +1,7 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Data.PQueue.Prio.Internals (
   MinPQueue(..),
@@ -67,6 +69,10 @@ import GHC.Exts (build)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
   readPrec, readListPrec, readListPrecDefault)
 #endif
+
+import Data.Functor.WithIndex
+import Data.Foldable.WithIndex
+import Data.Traversable.WithIndex
 
 #ifndef __GLASGOW_HASKELL__
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
@@ -773,11 +779,18 @@ instance (NFData k, NFData a) => NFData (MinPQueue k a) where
 instance Functor (MinPQueue k) where
   fmap = map
 
+instance FunctorWithIndex k (MinPQueue k) where
+  imap = mapWithKey
+
 instance Ord k => Foldable (MinPQueue k) where
   foldr   = foldrWithKey . const
   foldl f = foldlWithKey (const . f)
   length = size
   null = null
+
+instance Ord k => FoldableWithIndex k (MinPQueue k) where
+  ifoldr   = foldrWithKey
+  ifoldl f = foldlWithKey (flip f)
 
 -- | Traverses in ascending order. 'mapM' is strictly accumulating like
 -- 'mapMWithKey'.
@@ -785,3 +798,6 @@ instance Ord k => Traversable (MinPQueue k) where
   traverse = traverseWithKey . const
   mapM = mapMWithKey . const
   sequence = mapM id
+
+instance Ord k => TraversableWithIndex k (MinPQueue k) where
+  itraverse = traverseWithKey
