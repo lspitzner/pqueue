@@ -1,6 +1,12 @@
 # Revision history for pqueue
 
-## 1.4.2.0  -- 2022-06-19
+## 1.4.3.0 -- 2022-10-30
+
+  * Add instances for [indexed-traversable](https://hackage.haskell.org/package/indexed-traversable).
+    ([#85](https://github.com/lspitzner/pqueue/pull/85))
+  * Add ghc-9.4 support. ([#86](https://github.com/lspitzner/pqueue/pull/86))
+
+## 1.4.2.0 -- 2022-06-19
 
   * Overall performance has improved greatly, especially when there are many
     insertions and/or merges in a row. Insertion, deletion, and merge are now
@@ -25,23 +31,23 @@
   * Fixed `Data.PQueue.Max.map` to work on `MaxQueue`s.
     ([#76](https://github.com/lspitzner/pqueue/pull/76))
 
-## 1.4.1.4  -- 2021-12-04
+## 1.4.1.4 -- 2021-12-04
 
   * Maintenance release for ghc-9.0 & ghc-9.2 support
   * Change nix-setup to use the seaaye tool
 
-## 1.4.1.3  -- 2020-06-06
+## 1.4.1.3 -- 2020-06-06
 
   * Maintenance release
   * Add missing documentation
   * Add nix-expressions for testing against different compilers/package sets
 
-## 1.4.1.2  -- 2018-09-26
+## 1.4.1.2 -- 2018-09-26
 
   * Maintenance release for ghc-8.6
   * Drop support for ghc<7.10
 
-## 1.4.1.1  -- 2018-02-11
+## 1.4.1.1 -- 2018-02-11
 
   * Remove/replace buggy `insertBehind` implementation.
 
@@ -52,35 +58,35 @@
   * Adapt for ghc-8.4, based on the ghc-8.4.1-alpha1 release
   * Drop support for ghc<7.4
 
-## 1.3.2.3  -- 2017-08-01
+## 1.3.2.3 -- 2017-08-01
 
   * Maintenance release for ghc-8.2
 
-## 1.3.2.2  -- 2017-03-12
+## 1.3.2.2 -- 2017-03-12
 
   * Add test-suite from darcs repository for pqueue-1.0.1.
 
-## 1.3.2.1  -- 2017-03-11
+## 1.3.2.1 -- 2017-03-11
 
   * Fix documentation errors
     - complexity on `toList`, `toListU`
     - `PQueue.Prio.Max` had "ascending" instead of "descending" in some places
 
-## 1.3.2    -- 2016-09-28
+## 1.3.2   -- 2016-09-28
 
   * Add function `insertBehind` as a slight variation of `insert` which differs
     in behaviour for elements the compare equal.
 
-## 1.3.1.1  -- 2016-05-21
+## 1.3.1.1 -- 2016-05-21
 
   * Ensure compatibility with ghc-8
   * Minor internal refactors
 
-## 1.3.1    -- 2015-10-03
+## 1.3.1   -- 2015-10-03
 
   * Add `Monoid` instance for `MaxPQueue`
 
-## 1.3.0    -- 2015-06-23
+## 1.3.0   -- 2015-06-23
 
   * Lennart Spitzner starts co-maintaining
   * new git repository at github.com:lspitzner/pqueue
