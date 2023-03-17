@@ -1,37 +1,11 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE BangPatterns #-}
 
-module Data.PQueue.Internals.Down where
+module Data.PQueue.Internals.Down
+  ( getDown
+  ) where
+import Data.Ord (Down (..))
 
-import Control.DeepSeq (NFData(rnf))
-import Data.Foldable (Foldable (..))
-
-#if __GLASGOW_HASKELL__
-import Data.Data (Data)
+#if !MIN_VERSION_base(4,14,0)
+getDown :: Down a -> a
+getDown (Down a) = a
 #endif
-
-newtype Down a = Down { unDown :: a }
-#if __GLASGOW_HASKELL__
-  deriving (Eq, Data)
-#else
-  deriving (Eq)
-#endif
-
-instance NFData a => NFData (Down a) where
-  rnf (Down a) = rnf a
-
-instance Ord a => Ord (Down a) where
-  Down a `compare` Down b = b `compare` a
-  Down a <= Down b = b <= a
-  Down a >= Down b = b >= a
-  Down a < Down b = b < a
-  Down a > Down b = b > a
-
-instance Functor Down where
-  fmap f (Down a) = Down (f a)
-
-instance Foldable Down where
-  foldr f z (Down a) = a `f` z
-  foldl f z (Down a) = z `f` a
-  foldr' f !z (Down a) = a `f` z
-  foldl' f !z (Down a) = z `f` a

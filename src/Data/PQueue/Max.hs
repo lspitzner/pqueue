@@ -94,7 +94,8 @@ import Data.Foldable (foldl')
 
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio
-import Data.PQueue.Internals.Down (Down(..))
+import Data.PQueue.Internals.Down (getDown)
+import Data.Ord (Down(..))
 
 import Prelude hiding (null, map, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter)
 
@@ -171,7 +172,7 @@ findMax = fromMaybe (error "Error: findMax called on empty queue") . getMax
 
 -- | \(O(1)\). The top (maximum) element of the queue, if there is one.
 getMax :: MaxQueue a -> Maybe a
-getMax (MaxQ q) = unDown <$> Min.getMin q
+getMax (MaxQ q) = getDown <$> Min.getMin q
 
 -- | \(O(\log n)\). Deletes the maximum element of the queue. Does nothing on an empty queue.
 deleteMax :: Ord a => MaxQueue a -> MaxQueue a
@@ -210,7 +211,7 @@ unions qs = MaxQ (Min.unions [q | MaxQ q <- qs])
 
 -- | \(O(k \log n)\)/. Returns the @(k+1)@th largest element of the queue.
 (!!) :: Ord a => MaxQueue a -> Int -> a
-MaxQ q !! n = unDown ((Min.!!) q n)
+MaxQ q !! n = getDown ((Min.!!) q n)
 
 {-# INLINE take #-}
 -- | \(O(k \log n)\)/. Returns the list of the @k@ largest elements of the queue, in descending order, or
@@ -224,25 +225,25 @@ drop k (MaxQ q) = MaxQ (Min.drop k q)
 
 -- | \(O(k \log n)\)/. Equivalent to @(take k queue, drop k queue)@.
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
-splitAt k (MaxQ q) = (fmap unDown xs, MaxQ q') where
+splitAt k (MaxQ q) = (fmap getDown xs, MaxQ q') where
   (xs, q') = Min.splitAt k q
 
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
 takeWhile :: Ord a => (a -> Bool) -> MaxQueue a -> [a]
-takeWhile p (MaxQ q) = fmap unDown (Min.takeWhile (p . unDown) q)
+takeWhile p (MaxQ q) = fmap getDown (Min.takeWhile (p . getDown) q)
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
 dropWhile :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
-dropWhile p (MaxQ q) = MaxQ (Min.dropWhile (p . unDown) q)
+dropWhile p (MaxQ q) = MaxQ (Min.dropWhile (p . getDown) q)
 
 -- | 'span', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
 -- satisfy @p@ and second element is the remainder of the queue.
 --
 span :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
-span p (MaxQ q) = (fmap unDown xs, MaxQ q') where
-  (xs, q') = Min.span (p . unDown) q
+span p (MaxQ q) = (fmap getDown xs, MaxQ q') where
+  (xs, q') = Min.span (p . getDown) q
 
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
@@ -252,13 +253,13 @@ break p = span (not . p)
 
 -- | \(O(n)\). Returns a queue of those elements which satisfy the predicate.
 filter :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
-filter p (MaxQ q) = MaxQ (Min.filter (p . unDown) q)
+filter p (MaxQ q) = MaxQ (Min.filter (p . getDown) q)
 
 -- | \(O(n)\). Returns a pair of queues, where the left queue contains those elements that satisfy the predicate,
 -- and the right queue contains those that do not.
 partition :: Ord a => (a -> Bool) -> MaxQueue a -> (MaxQueue a, MaxQueue a)
 partition p (MaxQ q) = (MaxQ q0, MaxQ q1)
-  where  (q0, q1) = Min.partition (p . unDown) q
+  where  (q0, q1) = Min.partition (p . getDown) q
 
 -- | \(O(n)\). Maps a function over the elements of the queue, and collects the 'Just' values.
 mapMaybe :: Ord b => (a -> Maybe b) -> MaxQueue a -> MaxQueue b
@@ -267,7 +268,7 @@ mapMaybe f (MaxQ q) = MaxQ (Min.mapMaybe (\(Down x) -> Down <$> f x) q)
 -- | \(O(n)\). Maps a function over the elements of the queue, and separates the 'Left' and 'Right' values.
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MaxQueue a -> (MaxQueue b, MaxQueue c)
 mapEither f (MaxQ q) = (MaxQ q0, MaxQ q1)
-  where  (q0, q1) = Min.mapEither (either (Left . Down) (Right . Down) . f . unDown) q
+  where  (q0, q1) = Min.mapEither (either (Left . Down) (Right . Down) . f . getDown) q
 
 -- | \(O(n)\). Creates a new priority queue containing the images of the elements of this queue.
 -- Equivalent to @'fromList' . 'Data.List.map' f . toList@.
@@ -287,7 +288,7 @@ foldrU f z (MaxQ q) = Min.foldrU (flip (foldr f)) z q
 --
 -- @since 1.4.2
 foldMapU :: Monoid m => (a -> m) -> MaxQueue a -> m
-foldMapU f (MaxQ q) = Min.foldMapU (f . unDown) q
+foldMapU f (MaxQ q) = Min.foldMapU (f . getDown) q
 
 -- | \(O(n)\). Unordered left fold on a priority queue. This is rarely
 -- what you want; 'foldrU' and 'foldlU'' are more likely to perform
@@ -309,7 +310,7 @@ elemsU = toListU
 {-# INLINE toListU #-}
 -- | \(O(n)\). Returns a list of the elements of the priority queue, in no particular order.
 toListU :: MaxQueue a -> [a]
-toListU (MaxQ q) = fmap unDown (Min.toListU q)
+toListU (MaxQ q) = fmap getDown (Min.toListU q)
 
 -- | \(O(n \log n)\). Performs a right-fold on the elements of a priority queue in ascending order.
 -- @'foldrAsc' f z q == 'foldlDesc' (flip f) z q@.
@@ -346,7 +347,7 @@ toDescList q = build (\c nil -> foldrDesc c nil q)
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
-toList (MaxQ q) = fmap unDown (Min.toList q)
+toList (MaxQ q) = fmap getDown (Min.toList q)
 
 {-# INLINE fromAscList #-}
 -- | \(O(n)\). Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.

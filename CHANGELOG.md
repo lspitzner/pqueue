@@ -1,5 +1,10 @@
 # Revision history for pqueue
 
+## 1.5.0
+
+  * Remove `Data.PQueue.Internals.Down.Down`. Use the usual `Data.Ord.Down`
+    instead.
+
 ## 1.4.3.0 -- 2022-10-30
 
   * Add instances for [indexed-traversable](https://hackage.haskell.org/package/indexed-traversable).

@@ -98,7 +98,8 @@ import Data.Semigroup (Semigroup((<>)))
 import qualified Data.List as List
 
 import qualified BinomialQueue.Min as MinQ
-import Data.PQueue.Internals.Down
+import Data.PQueue.Internals.Down (getDown)
+import Data.Ord (Down (..))
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
@@ -115,7 +116,7 @@ findMax = fromMaybe (error "Error: findMax called on empty queue") . getMax
 
 -- | \(O(1)\). The top (maximum) element of the queue, if there is one.
 getMax :: Ord a => MaxQueue a -> Maybe a
-getMax (MaxQueue q) = unDown <$> MinQ.getMin q
+getMax (MaxQueue q) = getDown <$> MinQ.getMin q
 
 -- | \(O(\log n)\). Deletes the maximum element. If the queue is empty, does nothing.
 deleteMax :: Ord a => MaxQueue a -> MaxQueue a
@@ -142,19 +143,19 @@ q !! n = (List.!!) (toDescList q) n
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
 takeWhile :: Ord a => (a -> Bool) -> MaxQueue a -> [a]
-takeWhile p = fmap unDown . MinQ.takeWhile (p . unDown) . unMaxQueue
+takeWhile p = fmap getDown . MinQ.takeWhile (p . getDown) . unMaxQueue
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
 dropWhile :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
-dropWhile p = MaxQueue . MinQ.dropWhile (p . unDown) . unMaxQueue
+dropWhile p = MaxQueue . MinQ.dropWhile (p . getDown) . unMaxQueue
 
 -- | 'span', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
 -- satisfy @p@ and second element is the remainder of the queue.
 span :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
 span p (MaxQueue queue)
-  | (front, rear) <- MinQ.span (p . unDown) queue
-  = (fmap unDown front, MaxQueue rear)
+  | (front, rear) <- MinQ.span (p . getDown) queue
+  = (fmap getDown front, MaxQueue rear)
 
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
@@ -177,11 +178,11 @@ drop n (MaxQueue queue) = MaxQueue (MinQ.drop n queue)
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
 splitAt n (MaxQueue queue)
   | (l, r) <- MinQ.splitAt n queue
-  = (fmap unDown l, MaxQueue r)
+  = (fmap getDown l, MaxQueue r)
 
 -- | \(O(n)\). Returns the queue with all elements not satisfying @p@ removed.
 filter :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
-filter p = MaxQueue . MinQ.filter (p . unDown) . unMaxQueue
+filter p = MaxQueue . MinQ.filter (p . getDown) . unMaxQueue
 
 -- | \(O(n)\). Returns a pair where the first queue contains all elements satisfying @p@, and the second queue
 -- contains all elements not satisfying @p@.
@@ -189,7 +190,7 @@ partition :: Ord a => (a -> Bool) -> MaxQueue a -> (MaxQueue a, MaxQueue a)
 partition p = go . unMaxQueue
   where
     go queue
-      | (l, r) <- MinQ.partition (p . unDown) queue
+      | (l, r) <- MinQ.partition (p . getDown) queue
       = (MaxQueue l, MaxQueue r)
 
 -- | \(O(n)\). Creates a new priority queue containing the images of the elements of this queue.
@@ -202,13 +203,13 @@ map f = MaxQueue . MinQ.map (fmap f) . unMaxQueue
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
-toList = fmap unDown . MinQ.toAscList . unMaxQueue
+toList = fmap getDown . MinQ.toAscList . unMaxQueue
 
 toAscList :: Ord a => MaxQueue a -> [a]
-toAscList = fmap unDown . MinQ.toDescList . unMaxQueue
+toAscList = fmap getDown . MinQ.toDescList . unMaxQueue
 
 toDescList :: Ord a => MaxQueue a -> [a]
-toDescList = fmap unDown . MinQ.toAscList . unMaxQueue
+toDescList = fmap getDown . MinQ.toAscList . unMaxQueue
 
 -- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in descending order.
 foldrDesc :: Ord a => (a -> b -> b) -> b -> MaxQueue a -> b
@@ -245,7 +246,7 @@ elemsU = toListU
 
 -- | Convert to a list in an arbitrary order.
 toListU :: MaxQueue a -> [a]
-toListU = fmap unDown . MinQ.toListU . unMaxQueue
+toListU = fmap getDown . MinQ.toListU . unMaxQueue
 
 -- | Get the number of elements in a 'MaxQueue'.
 size :: MaxQueue a -> Int
@@ -255,7 +256,7 @@ empty :: MaxQueue a
 empty = MaxQueue MinQ.empty
 
 foldMapU :: Monoid m => (a -> m) -> MaxQueue a -> m
-foldMapU f = MinQ.foldMapU (f . unDown) . unMaxQueue
+foldMapU f = MinQ.foldMapU (f . getDown) . unMaxQueue
 
 seqSpine :: MaxQueue a -> b -> b
 seqSpine = MinQ.seqSpine . unMaxQueue
@@ -267,7 +268,7 @@ foldlU' :: (b -> a -> b) -> b -> MaxQueue a -> b
 foldlU' f b = MinQ.foldlU' (\acc (Down a) -> f acc a) b . unMaxQueue
 
 foldrU :: (a -> b -> b) -> b -> MaxQueue a -> b
-foldrU c n = MinQ.foldrU (c . unDown) n . unMaxQueue
+foldrU c n = MinQ.foldrU (c . getDown) n . unMaxQueue
 
 null :: MaxQueue a -> Bool
 null = MinQ.null . unMaxQueue
@@ -276,13 +277,13 @@ singleton :: a -> MaxQueue a
 singleton = MaxQueue . MinQ.singleton . Down
 
 mapMaybe :: Ord b => (a -> Maybe b) -> MaxQueue a -> MaxQueue b
-mapMaybe f = MaxQueue . MinQ.mapMaybe (fmap Down . f . unDown) . unMaxQueue
+mapMaybe f = MaxQueue . MinQ.mapMaybe (fmap Down . f . getDown) . unMaxQueue
 
 insert :: Ord a => a -> MaxQueue a -> MaxQueue a
 insert a (MaxQueue q) = MaxQueue (MinQ.insert (Down a) q)
 
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MaxQueue a -> (MaxQueue b, MaxQueue c)
-mapEither f (MaxQueue q) = case MinQ.mapEither (bimap Down Down . f . unDown) q of
+mapEither f (MaxQueue q) = case MinQ.mapEither (bimap Down Down . f . getDown) q of
   (l, r) -> (MaxQueue l, MaxQueue r)
 
 union :: Ord a => MaxQueue a -> MaxQueue a -> MaxQueue a
