@@ -1,8 +1,15 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
+#ifdef __GLASGOW_HASKELL__
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
+#endif
 
 module Data.PQueue.Internals (
   MinQueue (..),
+#ifdef __GLASGOW_HASKELL__
+  pattern (:<),
+#endif
   BinomHeap,
   BinomForest(..),
   BinomTree(..),
@@ -81,6 +88,24 @@ fromBare xs = case BQ.minView xs of
   Nothing -> Empty
 
 #ifdef __GLASGOW_HASKELL__
+infixr 5 :<
+
+-- | A bidirectional pattern synonym for working with the minimum view of a
+-- 'MinPQueue'. Using @:<@ to construct a queue performs an insertion.
+--
+-- @since 1.5.0
+#  if __GLASGOW_HASKELL__ >= 800
+pattern (:<) :: Ord a => a -> MinQueue a -> MinQueue a
+#  else
+pattern (:<) :: () => Ord a => a -> MinQueue a -> MinQueue a
+#  endif
+pattern a :< q <- (minView -> Just (a, q))
+  where
+    a :< q = insert a q
+
+-- | Treats the priority queue as an empty queue or a minimal element and a
+-- priority queue. The constructors, conceptually, are 'Empty' and '(:<)'. All
+-- constructed queues maintain the queue invariants.
 instance (Ord a, Data a) => Data (MinQueue a) where
   gfoldl f z q = case minView q of
     Nothing      -> z Empty
@@ -88,8 +113,8 @@ instance (Ord a, Data a) => Data (MinQueue a) where
 
   gunfold k z c = case constrIndex c of
     1 -> z Empty
-    2 -> k (k (z insertMinQ))
-    _ -> error "gunfold"
+    2 -> k (k (z insert))
+    _ -> error "gunfold: invalid constructor for MinQueue"
 
   dataCast1 x = gcast1 x
 
@@ -103,8 +128,8 @@ queueDataType :: DataType
 queueDataType = mkDataType "Data.PQueue.Min.MinQueue" [emptyConstr, consConstr]
 
 emptyConstr, consConstr :: Constr
-emptyConstr = mkConstr queueDataType "empty" [] Prefix
-consConstr  = mkConstr queueDataType "<|" [] Infix
+emptyConstr = mkConstr queueDataType "Empty" [] Prefix
+consConstr  = mkConstr queueDataType "(:<)" [] Infix
 
 #endif
 

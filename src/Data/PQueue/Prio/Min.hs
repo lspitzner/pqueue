@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -29,7 +30,13 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Prio.Min (
+#if __GLASGOW_HASKELL__ >= 802
+  MinPQueue (Data.PQueue.Prio.Min.Empty, (:<)),
+#elif defined (__GLASGOW_HASKELL__)
   MinPQueue,
+  pattern Empty,
+  pattern (:<),
+#endif
   -- * Construction
   empty,
   singleton,
@@ -128,7 +135,9 @@ import Data.Maybe (fromMaybe)
 import Data.Semigroup (Semigroup((<>)))
 #endif
 
-import Data.PQueue.Prio.Internals
+import Data.PQueue.Prio.Internals hiding (MinPQueue (..))
+import Data.PQueue.Prio.Internals (MinPQueue)
+import qualified Data.PQueue.Prio.Internals as Internals
 
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
 
@@ -137,6 +146,15 @@ import GHC.Exts (build)
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
+#endif
+
+#ifdef __GLASGOW_HASKELL__
+-- | A bidirectional pattern synonym for an empty priority queue.
+pattern Empty :: MinPQueue k a
+pattern Empty = Internals.Empty
+{-# INLINE Empty #-}
+
+{-# COMPLETE Empty, (:<) #-}
 #endif
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d

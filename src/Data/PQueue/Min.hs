@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP #-}
+#ifdef __GLASGOW_HASKELL__
+{-# LANGUAGE PatternSynonyms #-}
+#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -24,7 +27,13 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Min (
+#if __GLASGOW_HASKELL__ >= 802
+  MinQueue (Data.PQueue.Min.Empty, (Data.PQueue.Internals.:<)),
+#elif defined (__GLASGOW_HASKELL__)
   MinQueue,
+  pattern Empty,
+  pattern (:<),
+#endif
   -- * Basic operations
   empty,
   null,
@@ -92,7 +101,9 @@ import Data.Semigroup (Semigroup((<>)))
 
 import qualified Data.List as List
 
-import Data.PQueue.Internals
+import Data.PQueue.Internals hiding (MinQueue (..))
+import Data.PQueue.Internals (MinQueue (MinQueue))
+import qualified Data.PQueue.Internals as Internals
 import qualified BinomialQueue.Internals as BQ
 import qualified Data.PQueue.Prio.Internals as Prio
 
@@ -101,6 +112,14 @@ import GHC.Exts (build)
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
+#endif
+
+#ifdef __GLASGOW_HASKELL__
+pattern Empty :: MinQueue a
+pattern Empty = Internals.Empty
+{-# INLINE Empty #-}
+
+{-# COMPLETE Empty, (:<) #-}
 #endif
 
 -- | \(O(1)\). Returns the minimum element. Throws an error on an empty queue.
@@ -220,7 +239,7 @@ elemsU = toListU
 
 -- | Constructs a priority queue out of the keys of the specified 'Prio.MinPQueue'.
 keysQueue :: Prio.MinPQueue k a -> MinQueue k
-keysQueue Prio.Empty = Empty
+keysQueue Prio.Empty = Internals.Empty
 keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (BQ.MinQueue (keysF (const Zero) ts))
 
 keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
