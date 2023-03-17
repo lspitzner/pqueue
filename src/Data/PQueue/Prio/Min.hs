@@ -151,6 +151,8 @@ build f = f (:) []
 
 #ifdef __GLASGOW_HASKELL__
 -- | A bidirectional pattern synonym for an empty priority queue.
+--
+-- @since 1.5.0
 pattern Empty :: MinPQueue k a
 pattern Empty = Internals.Empty
 # if __GLASGOW_HASKELL__ >= 902
@@ -160,7 +162,11 @@ pattern Empty = Internals.Empty
 infixr 5 :<
 
 -- | A bidirectional pattern synonym for working with the minimum view of a
--- 'MinPQueue'. Using @:<@ to construct a queue performs an insertion.
+-- 'MinPQueue'. Using @:<@ to construct a queue performs an insertion in
+-- \(O(1)\) amortized time. When matching on @(k, a) :< q@, forcing @q@ takes
+-- \(O(\log n)\) time.
+--
+-- @since 1.5.0
 # if __GLASGOW_HASKELL__ >= 800
 pattern (:<) :: Ord k => (k, a) -> MinPQueue k a -> MinPQueue k a
 # else

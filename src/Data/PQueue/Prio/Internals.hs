@@ -97,20 +97,20 @@ instance (Ord k, Data k, Data a) => Data (MinPQueue k a) where
     2 -> k (k (z (\(key, val) -> insert key val)))
     _ -> error "gunfold: invalid constructor for MinPQueue"
 
-  dataCast1 x = gcast1 x
-
   toConstr q
     | null q = emptyConstr
     | otherwise = consConstr
 
   dataTypeOf _ = queueDataType
+  dataCast1 f  = gcast1 f
+  dataCast2 f  = gcast2 f
 
 queueDataType :: DataType
 queueDataType = mkDataType "Data.PQueue.Prio.Min.MinPQueue" [emptyConstr, consConstr]
 
 emptyConstr, consConstr :: Constr
 emptyConstr = mkConstr queueDataType "Empty" [] Prefix
-consConstr  = mkConstr queueDataType "(:<)" [] Infix
+consConstr  = mkConstr queueDataType ":<" [] Infix
 #endif
 
 #if MIN_VERSION_base(4,9,0)

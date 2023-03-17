@@ -109,7 +109,7 @@ queueDataType = mkDataType "Data.PQueue.Min.MinQueue" [emptyConstr, consConstr]
 
 emptyConstr, consConstr :: Constr
 emptyConstr = mkConstr queueDataType "Empty" [] Prefix
-consConstr  = mkConstr queueDataType "(:<)" [] Infix
+consConstr  = mkConstr queueDataType ":<" [] Infix
 
 #endif
 
