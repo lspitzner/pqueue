@@ -1,15 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
-#ifdef __GLASGOW_HASKELL__
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
-#endif
 
 module Data.PQueue.Internals (
   MinQueue (..),
-#ifdef __GLASGOW_HASKELL__
-  pattern (:<),
-#endif
   BinomHeap,
   BinomForest(..),
   BinomTree(..),
@@ -88,24 +81,11 @@ fromBare xs = case BQ.minView xs of
   Nothing -> Empty
 
 #ifdef __GLASGOW_HASKELL__
-infixr 5 :<
-
--- | A bidirectional pattern synonym for working with the minimum view of a
--- 'MinPQueue'. Using @:<@ to construct a queue performs an insertion.
---
--- @since 1.5.0
-#  if __GLASGOW_HASKELL__ >= 800
-pattern (:<) :: Ord a => a -> MinQueue a -> MinQueue a
-#  else
-pattern (:<) :: () => Ord a => a -> MinQueue a -> MinQueue a
-#  endif
-pattern a :< q <- (minView -> Just (a, q))
-  where
-    a :< q = insert a q
 
 -- | Treats the priority queue as an empty queue or a minimal element and a
--- priority queue. The constructors, conceptually, are 'Empty' and '(:<)'. All
--- constructed queues maintain the queue invariants.
+-- priority queue. The constructors, conceptually, are 'Data.PQueue.Min.Empty'
+-- and '(Data.PQueue.Min.:<)'. All constructed queues maintain the queue
+-- invariants.
 instance (Ord a, Data a) => Data (MinQueue a) where
   gfoldl f z q = case minView q of
     Nothing      -> z Empty

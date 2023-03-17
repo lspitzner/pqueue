@@ -2,14 +2,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-#ifdef __GLASGOW_HASKELL__
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
-#endif
 
 module Data.PQueue.Prio.Internals (
   MinPQueue(..),
-  pattern (:<),
   BinomForest(..),
   BinomHeap,
   BinomTree(..),
@@ -86,22 +81,9 @@ build f = f (:) []
 
 #if __GLASGOW_HASKELL__
 
-infixr 5 :<
-
--- | A bidirectional pattern synonym for working with the minimum view of a
--- 'MinPQueue'. Using @:<@ to construct a queue performs an insertion.
-#  if __GLASGOW_HASKELL__ >= 800
-pattern (:<) :: Ord k => (k, a) -> MinPQueue k a -> MinPQueue k a
-#  else
-pattern (:<) :: () => Ord k => (k, a) -> MinPQueue k a -> MinPQueue k a
-#  endif
-pattern ka :< q <- (minViewWithKey -> Just (ka, q))
-  where
-    (k, a) :< q = insert k a q
-
 -- | Treats the priority queue as an empty queue or a minimal
 -- key-value pair and a priority queue. The constructors, conceptually,
--- are 'Empty' and '(:<)'.
+-- are 'Data.PQueue.Prio.Min.Empty' and '(Data.PQueue.Prio.Min.:<)'.
 --
 -- 'gfoldl' is nondeterministic; any minimal pair may be chosen as
 -- the first. All constructed queues maintain the queue invariants.

@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -34,7 +35,7 @@ module Data.PQueue.Prio.Min (
   MinPQueue (Data.PQueue.Prio.Min.Empty, (:<)),
 #elif defined (__GLASGOW_HASKELL__)
   MinPQueue,
-  pattern Empty,
+  pattern Data.PQueue.Prio.Min.Empty,
   pattern (:<),
 #endif
   -- * Construction
@@ -152,7 +153,25 @@ build f = f (:) []
 -- | A bidirectional pattern synonym for an empty priority queue.
 pattern Empty :: MinPQueue k a
 pattern Empty = Internals.Empty
-{-# INLINE Empty #-}
+# if __GLASGOW_HASKELL__ >= 902
+{-# INLINE CONLIKE Empty #-}
+# endif
+
+infixr 5 :<
+
+-- | A bidirectional pattern synonym for working with the minimum view of a
+-- 'MinPQueue'. Using @:<@ to construct a queue performs an insertion.
+# if __GLASGOW_HASKELL__ >= 800
+pattern (:<) :: Ord k => (k, a) -> MinPQueue k a -> MinPQueue k a
+# else
+pattern (:<) :: () => Ord k => (k, a) -> MinPQueue k a -> MinPQueue k a
+# endif
+pattern ka :< q <- (minViewWithKey -> Just (ka, q))
+  where
+    (k, a) :< q = insert k a q
+# if __GLASGOW_HASKELL__ >= 902
+{-# INLINE (:<) #-}
+# endif
 
 {-# COMPLETE Empty, (:<) #-}
 #endif

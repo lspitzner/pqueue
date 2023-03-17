@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 #ifdef __GLASGOW_HASKELL__
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 #endif
 
 -----------------------------------------------------------------------------
@@ -28,10 +29,10 @@
 -----------------------------------------------------------------------------
 module Data.PQueue.Min (
 #if __GLASGOW_HASKELL__ >= 802
-  MinQueue (Data.PQueue.Min.Empty, (Data.PQueue.Internals.:<)),
+  MinQueue (Data.PQueue.Min.Empty, (:<)),
 #elif defined (__GLASGOW_HASKELL__)
   MinQueue,
-  pattern Empty,
+  pattern Data.PQueue.Min.Empty,
   pattern (:<),
 #endif
   -- * Basic operations
@@ -117,7 +118,27 @@ build f = f (:) []
 #ifdef __GLASGOW_HASKELL__
 pattern Empty :: MinQueue a
 pattern Empty = Internals.Empty
-{-# INLINE Empty #-}
+# if __GLASGOW_HASKELL__ >= 902
+{-# INLINE CONLIKE Empty #-}
+# endif
+
+infixr 5 :<
+
+-- | A bidirectional pattern synonym for working with the minimum view of a
+-- 'MinPQueue'. Using @:<@ to construct a queue performs an insertion.
+--
+-- @since 1.5.0
+# if __GLASGOW_HASKELL__ >= 800
+pattern (:<) :: Ord a => a -> MinQueue a -> MinQueue a
+# else
+pattern (:<) :: () => Ord a => a -> MinQueue a -> MinQueue a
+# endif
+pattern a :< q <- (minView -> Just (a, q))
+  where
+    a :< q = insert a q
+# if __GLASGOW_HASKELL__ >= 902
+{-# INLINE (:<) #-}
+# endif
 
 {-# COMPLETE Empty, (:<) #-}
 #endif
