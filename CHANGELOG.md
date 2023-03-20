@@ -6,7 +6,7 @@
     ([#92](http://github.com/lspitzner/pqueue/pull/92))
 
   * Make the `Data` instances respect the queue invariants. Make the
-    `Constructor`s match the pattern synonyms. Make the `Data` instance for
+    `Constr`s match the pattern synonyms. Make the `Data` instance for
     `MinPQueue` work "incrementally", like the one for `MinQueue`.
     ([#92](http://github.com/lspitzner/pqueue/pull/92))
 
