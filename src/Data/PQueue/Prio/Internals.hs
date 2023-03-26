@@ -80,22 +80,37 @@ build f = f (:) []
 #endif
 
 #if __GLASGOW_HASKELL__
-instance (Data k, Data a, Ord k) => Data (MinPQueue k a) where
-  gfoldl f z m = z fromList `f` foldrWithKey (curry (:)) [] m
-  toConstr _   = fromListConstr
-  gunfold k z c  = case constrIndex c of
-    1 -> k (z fromList)
-    _ -> error "gunfold"
+
+-- | Treats the priority queue as an empty queue or a minimal
+-- key-value pair and a priority queue. The constructors, conceptually,
+-- are 'Data.PQueue.Prio.Min.Empty' and '(Data.PQueue.Prio.Min.:<)'.
+--
+-- 'gfoldl' is nondeterministic; any minimal pair may be chosen as
+-- the first. All constructed queues maintain the queue invariants.
+instance (Ord k, Data k, Data a) => Data (MinPQueue k a) where
+  gfoldl f z q = case minViewWithKey q of
+    Nothing      -> z Empty
+    Just (x, q') -> z (\(k, a) -> insert k a) `f` x `f` q'
+
+  gunfold k z c = case constrIndex c of
+    1 -> z Empty
+    2 -> k (k (z (\(key, val) -> insert key val)))
+    _ -> error "gunfold: invalid constructor for MinPQueue"
+
+  toConstr q
+    | null q = emptyConstr
+    | otherwise = consConstr
+
   dataTypeOf _ = queueDataType
   dataCast1 f  = gcast1 f
   dataCast2 f  = gcast2 f
 
 queueDataType :: DataType
-queueDataType = mkDataType "Data.PQueue.Prio.Min.MinPQueue" [fromListConstr]
+queueDataType = mkDataType "Data.PQueue.Prio.Min.MinPQueue" [emptyConstr, consConstr]
 
-fromListConstr :: Constr
-fromListConstr = mkConstr queueDataType "fromList" [] Prefix
-
+emptyConstr, consConstr :: Constr
+emptyConstr = mkConstr queueDataType "Empty" [] Prefix
+consConstr  = mkConstr queueDataType ":<" [] Infix
 #endif
 
 #if MIN_VERSION_base(4,9,0)
@@ -147,8 +162,8 @@ second' f (a, b) = (a, f b)
 
 infixr 8 .:
 
--- | A priority queue where values of type @a@ are annotated with keys of type @k@.
--- The queue supports extracting the element with minimum key.
+-- | A priority queue where keys of type @k@ are annotated with values of type
+-- @a@.  The queue supports extracting the key-value pair with minimum key.
 data MinPQueue k a = Empty | MinPQ {-# UNPACK #-} !Int !k a !(BinomHeap k a)
 
 data BinomForest rk k a =

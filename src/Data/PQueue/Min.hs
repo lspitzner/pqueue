@@ -1,4 +1,8 @@
 {-# LANGUAGE CPP #-}
+#ifdef __GLASGOW_HASKELL__
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
+#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -24,7 +28,13 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Min (
+#if __GLASGOW_HASKELL__ >= 802
+  MinQueue (Data.PQueue.Min.Empty, (:<)),
+#elif defined (__GLASGOW_HASKELL__)
   MinQueue,
+  pattern Data.PQueue.Min.Empty,
+  pattern (:<),
+#endif
   -- * Basic operations
   empty,
   null,
@@ -92,7 +102,9 @@ import Data.Semigroup (Semigroup((<>)))
 
 import qualified Data.List as List
 
-import Data.PQueue.Internals
+import Data.PQueue.Internals hiding (MinQueue (..))
+import Data.PQueue.Internals (MinQueue (MinQueue))
+import qualified Data.PQueue.Internals as Internals
 import qualified BinomialQueue.Internals as BQ
 import qualified Data.PQueue.Prio.Internals as Prio
 
@@ -101,6 +113,39 @@ import GHC.Exts (build)
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
+#endif
+
+#ifdef __GLASGOW_HASKELL__
+-- | A bidirectional pattern synonym for an empty priority queue.
+--
+-- @since 1.5.0
+pattern Empty :: MinQueue a
+pattern Empty = Internals.Empty
+# if __GLASGOW_HASKELL__ >= 902
+{-# INLINE CONLIKE Empty #-}
+# endif
+
+infixr 5 :<
+
+-- | A bidirectional pattern synonym for working with the minimum view of a
+-- 'MinPQueue'.  Using @:<@ to construct a queue performs an insertion in
+-- \(O(1)\) amortized time. When matching on @a :< q@, forcing @q@ takes
+-- \(O(\log n)\) time.
+--
+-- @since 1.5.0
+# if __GLASGOW_HASKELL__ >= 800
+pattern (:<) :: Ord a => a -> MinQueue a -> MinQueue a
+# else
+pattern (:<) :: () => Ord a => a -> MinQueue a -> MinQueue a
+# endif
+pattern a :< q <- (minView -> Just (a, q))
+  where
+    a :< q = insert a q
+# if __GLASGOW_HASKELL__ >= 902
+{-# INLINE (:<) #-}
+# endif
+
+{-# COMPLETE Empty, (:<) #-}
 #endif
 
 -- | \(O(1)\). Returns the minimum element. Throws an error on an empty queue.
@@ -220,7 +265,7 @@ elemsU = toListU
 
 -- | Constructs a priority queue out of the keys of the specified 'Prio.MinPQueue'.
 keysQueue :: Prio.MinPQueue k a -> MinQueue k
-keysQueue Prio.Empty = Empty
+keysQueue Prio.Empty = Internals.Empty
 keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (BQ.MinQueue (keysF (const Zero) ts))
 
 keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k

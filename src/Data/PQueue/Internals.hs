@@ -81,6 +81,11 @@ fromBare xs = case BQ.minView xs of
   Nothing -> Empty
 
 #ifdef __GLASGOW_HASKELL__
+
+-- | Treats the priority queue as an empty queue or a minimal element and a
+-- priority queue. The constructors, conceptually, are 'Data.PQueue.Min.Empty'
+-- and '(Data.PQueue.Min.:<)'. All constructed queues maintain the queue
+-- invariants.
 instance (Ord a, Data a) => Data (MinQueue a) where
   gfoldl f z q = case minView q of
     Nothing      -> z Empty
@@ -88,8 +93,8 @@ instance (Ord a, Data a) => Data (MinQueue a) where
 
   gunfold k z c = case constrIndex c of
     1 -> z Empty
-    2 -> k (k (z insertMinQ))
-    _ -> error "gunfold"
+    2 -> k (k (z insert))
+    _ -> error "gunfold: invalid constructor for MinQueue"
 
   dataCast1 x = gcast1 x
 
@@ -103,8 +108,8 @@ queueDataType :: DataType
 queueDataType = mkDataType "Data.PQueue.Min.MinQueue" [emptyConstr, consConstr]
 
 emptyConstr, consConstr :: Constr
-emptyConstr = mkConstr queueDataType "empty" [] Prefix
-consConstr  = mkConstr queueDataType "<|" [] Infix
+emptyConstr = mkConstr queueDataType "Empty" [] Prefix
+consConstr  = mkConstr queueDataType ":<" [] Infix
 
 #endif
 

@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -29,7 +31,13 @@
 -- these functions.
 -----------------------------------------------------------------------------
 module Data.PQueue.Prio.Min (
+#if __GLASGOW_HASKELL__ >= 802
+  MinPQueue (Data.PQueue.Prio.Min.Empty, (:<)),
+#elif defined (__GLASGOW_HASKELL__)
   MinPQueue,
+  pattern Data.PQueue.Prio.Min.Empty,
+  pattern (:<),
+#endif
   -- * Construction
   empty,
   singleton,
@@ -128,7 +136,9 @@ import Data.Maybe (fromMaybe)
 import Data.Semigroup (Semigroup((<>)))
 #endif
 
-import Data.PQueue.Prio.Internals
+import Data.PQueue.Prio.Internals hiding (MinPQueue (..))
+import Data.PQueue.Prio.Internals (MinPQueue)
+import qualified Data.PQueue.Prio.Internals as Internals
 
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
 
@@ -137,6 +147,39 @@ import GHC.Exts (build)
 #else
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build f = f (:) []
+#endif
+
+#ifdef __GLASGOW_HASKELL__
+-- | A bidirectional pattern synonym for an empty priority queue.
+--
+-- @since 1.5.0
+pattern Empty :: MinPQueue k a
+pattern Empty = Internals.Empty
+# if __GLASGOW_HASKELL__ >= 902
+{-# INLINE CONLIKE Empty #-}
+# endif
+
+infixr 5 :<
+
+-- | A bidirectional pattern synonym for working with the minimum view of a
+-- 'MinPQueue'. Using @:<@ to construct a queue performs an insertion in
+-- \(O(1)\) amortized time. When matching on @(k, a) :< q@, forcing @q@ takes
+-- \(O(\log n)\) time.
+--
+-- @since 1.5.0
+# if __GLASGOW_HASKELL__ >= 800
+pattern (:<) :: Ord k => (k, a) -> MinPQueue k a -> MinPQueue k a
+# else
+pattern (:<) :: () => Ord k => (k, a) -> MinPQueue k a -> MinPQueue k a
+# endif
+pattern ka :< q <- (minViewWithKey -> Just (ka, q))
+  where
+    (k, a) :< q = insert k a q
+# if __GLASGOW_HASKELL__ >= 902
+{-# INLINE (:<) #-}
+# endif
+
+{-# COMPLETE Empty, (:<) #-}
 #endif
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
