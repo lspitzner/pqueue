@@ -343,9 +343,10 @@ toListUApp (MinQueue _ x ts) app = x : BQ.foldrU (:) app ts
 --
 -- Note: The spine of a 'MinQueue' is stored somewhat lazily. Most operations
 -- take great care to prevent chains of thunks from accumulating along the
--- spine to the detriment of performance. However, @mapU@ can leave expensive
--- thunks in the structure and repeated applications of that function can
--- create thunk chains.
+-- spine to the detriment of performance. The only one that doesn't,
+-- 'mapU', does not benefit from forcing the spine anyway. Forcing the spine
+-- of the result just forces the creation of thunks for all the elements.
+{-# DEPRECATED seqSpine "This function is no longer useful." #-}
 seqSpine :: MinQueue a -> b -> b
 seqSpine Empty z = z
 seqSpine (MinQueue _ _ ts) z = BQ.seqSpine ts z

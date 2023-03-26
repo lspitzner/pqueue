@@ -577,10 +577,12 @@ toListU (MaxPQ q) = fmap (first' unDown) (Q.toListU q)
 
 -- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
--- Note: The spine of a 'MaxPQueue' is stored somewhat lazily. Most operations
+-- Note: The spine of a 'MinPQueue' is stored somewhat lazily. Most operations
 -- take great care to prevent chains of thunks from accumulating along the
--- spine to the detriment of performance. However, 'mapKeysMonotonic' can leave
--- expensive thunks in the structure and repeated applications of that function
--- can create thunk chains.
+-- spine to the detriment of performance. The only ones that don't,
+-- 'mapKeysMonotonic', 'mapWithKey', 'traverseWithKey', etc., do not benefit
+-- from forcing the spine anyway. Forcing the spine just forces the creation
+-- of thunks for all the elements.
+{-# DEPRECATED seqSpine "This function is no longer useful." #-}
 seqSpine :: MaxPQueue k a -> b -> b
 seqSpine (MaxPQ q) = Q.seqSpine q

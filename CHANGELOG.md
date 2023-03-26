@@ -2,6 +2,8 @@
 
 ## 1.5.0
 
+  * Deprecate `seqSpine`. Changes in version 1.4.2.0 made it useless.
+
   * Add pattern synonyms to work with `MinQueue` and `MinPQueue`.
     ([#92](http://github.com/lspitzner/pqueue/pull/92))
 

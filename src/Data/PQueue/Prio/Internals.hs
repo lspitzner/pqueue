@@ -758,9 +758,11 @@ mapKeysMonoF f fCh ts0 = case ts0 of
 --
 -- Note: The spine of a 'MinPQueue' is stored somewhat lazily. Most operations
 -- take great care to prevent chains of thunks from accumulating along the
--- spine to the detriment of performance. However, 'mapKeysMonotonic' can leave
--- expensive thunks in the structure and repeated applications of that function
--- can create thunk chains.
+-- spine to the detriment of performance. The only ones that don't,
+-- 'mapKeysMonotonic', 'mapWithKey', 'traverseWithKey', etc., do not benefit
+-- from forcing the spine anyway. Forcing the spine just forces the creation
+-- of thunks for all the elements.
+{-# DEPRECATED seqSpine "This function is no longer useful." #-}
 seqSpine :: MinPQueue k a -> b -> b
 seqSpine Empty z0 = z0
 seqSpine (MinPQ _ _ _ ts0) z0 = ts0 `seqSpineF` z0 where
