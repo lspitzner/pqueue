@@ -226,6 +226,7 @@ insert k a (MaxPQ q) = MaxPQ (Q.insert (Down k) a q)
 -- Insert an element with the specified key into the priority queue,
 -- putting it behind elements whose key compares equal to the
 -- inserted one.
+{-# DEPRECATED insertBehind "This function is not reliable." #-}
 insertBehind :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
 insertBehind k a (MaxPQ q) = MaxPQ (Q.insertBehind (Down k) a q)
 

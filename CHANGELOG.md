@@ -2,6 +2,11 @@
 
 ## 1.5.0
 
+  * Deprecate `insertBehind`. This function does not play nicely with merges,
+    we lack tests to verify it works properly without merges, it imposes a
+    substantial maintenance burden on the rest of the package, and it is quite
+    slow. ([#35](https://github.com/lspitzner/pqueue/issues/35))
+
   * Add pattern synonyms to work with `MinQueue` and `MinPQueue`.
     ([#92](http://github.com/lspitzner/pqueue/pull/92))
 
