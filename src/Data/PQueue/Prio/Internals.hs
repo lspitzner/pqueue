@@ -24,6 +24,7 @@ module Data.PQueue.Prio.Internals (
   updateMinWithKeyA',
   minViewWithKey,
   mapWithKey,
+  mapWithKey',
   mapKeysMonotonic,
   mapMaybeWithKey,
   mapEitherWithKey,
@@ -43,8 +44,10 @@ module Data.PQueue.Prio.Internals (
   foldlWithKeyU,
   foldlWithKeyU',
   traverseWithKey,
+  traverseWithKey',
   mapMWithKey,
   traverseWithKeyU,
+  traverseWithKeyU',
   seqSpine,
   mapForest,
   unions
@@ -341,6 +344,12 @@ minViewWithKey (MinPQ n k a ts) = Just ((k, a), extractHeap n ts)
 -- | \(O(n)\). Map a function over all values in the queue.
 mapWithKey :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
 mapWithKey f = runIdentity . traverseWithKeyU (Identity .: f)
+
+-- | \(O(n)\). Map a function over all values in the queue, forcing the results.
+--
+-- @since 1.5.0
+mapWithKey' :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
+mapWithKey' f = runIdentity . traverseWithKeyU' (Identity .: f)
 
 -- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when @f@ is strictly
 -- monotonic. /The precondition is not checked./ This function has better performance than
@@ -688,6 +697,15 @@ traverseWithKey f q = case minViewWithKey q of
   Nothing      -> pure empty
   Just ((k, a), q')  -> liftA2 (insertMin k) (f k a) (traverseWithKey f q')
 
+-- | A version of 'traverseWithKey' that forces all the results before
+-- installing them in a queue.
+--
+-- @since 1.5.0
+traverseWithKey' :: (Ord k, Applicative f) => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
+traverseWithKey' f q = case minViewWithKey q of
+  Nothing      -> pure empty
+  Just ((k, a), q')  -> liftA2 (insertMin k) (f k a) (traverseWithKey' f q')
+
 -- | A strictly accumulating version of 'traverseWithKey'. This works well in
 -- 'IO' and strict @State@, and is likely what you want for other "strict" monads,
 -- where @⊥ >>= pure () = ⊥@.
@@ -709,6 +727,16 @@ traverseWithKeyU :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinP
 traverseWithKeyU _ Empty = pure Empty
 traverseWithKeyU f (MinPQ n k a ts) = liftA2 (MinPQ n k) (f k a) (traverseForest f (const (pure Zero)) ts)
 
+-- | \(O(n)\). An unordered traversal over a priority queue, in no particular order.
+-- While there is no guarantee in which order the elements are traversed, the resulting
+-- priority queue will be perfectly valid. The results are forced before they are installed
+-- in the queue.
+--
+-- @since 1.5.0
+traverseWithKeyU' :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
+traverseWithKeyU' _ Empty = pure Empty
+traverseWithKeyU' f (MinPQ n k a ts) = liftA2 (\ !b !q' -> MinPQ n k b q') (f k a) (traverseForest' f (const (pure Zero)) ts)
+
 {-# SPECIALIZE traverseForest :: (k -> a -> Identity b) -> (rk k a -> Identity (rk k b)) -> BinomForest rk k a ->
   Identity (BinomForest rk k b) #-}
 traverseForest :: (Applicative f) => (k -> a -> f b) -> (rk k a -> f (rk k b)) -> BinomForest rk k a -> f (BinomForest rk k b)
@@ -720,6 +748,18 @@ traverseForest f fCh ts0 = case ts0 of
   where
     fCh' (Succ (BinomTree k a ts) tss)
       = Succ <$> (BinomTree k <$> f k a <*> fCh ts) <*> fCh tss
+
+{-# SPECIALIZE traverseForest' :: (k -> a -> Identity b) -> (rk k a -> Identity (rk k b)) -> BinomForest rk k a ->
+  Identity (BinomForest rk k b) #-}
+traverseForest' :: Applicative f => (k -> a -> f b) -> (rk k a -> f (rk k b)) -> BinomForest rk k a -> f (BinomForest rk k b)
+traverseForest' f fCh ts0 = case ts0 of
+  Nil       -> pure Nil
+  Skip ts'  -> (Skip $!) <$> traverseForest f fCh' ts'
+  Cons (BinomTree k a ts) tss
+    -> liftA3 (\ !p !q -> Cons (BinomTree k p q)) (f k a) (fCh ts) (traverseForest' f fCh' tss)
+  where
+    fCh' (Succ (BinomTree k a ts) tss)
+      = liftA3 (\ !p !q -> Succ (BinomTree k p q)) (f k a) (fCh ts) (fCh tss)
 
 -- | Unordered right fold on a binomial forest.
 foldrWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b

@@ -57,6 +57,7 @@ module Data.PQueue.Prio.Max (
   -- ** Map
   map,
   mapWithKey,
+  mapWithKey',
   mapKeys,
   mapKeysMonotonic,
   -- ** Fold
@@ -64,6 +65,7 @@ module Data.PQueue.Prio.Max (
   foldlWithKey,
   -- ** Traverse
   traverseWithKey,
+  traverseWithKey',
   mapMWithKey,
   -- * Subsets
   -- ** Indexed
@@ -110,6 +112,7 @@ module Data.PQueue.Prio.Max (
   foldlWithKeyU',
   traverseU,
   traverseWithKeyU,
+  traverseWithKeyU',
   keysU,
   elemsU,
   assocsU,
