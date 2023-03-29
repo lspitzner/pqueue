@@ -136,7 +136,7 @@ maxView (MaxQueue q) = case MinQ.minView q of
 (!!) :: Ord a => MaxQueue a -> Int -> a
 q !! n  | n >= size q
     = error "BinomialQueue.Max.!!: index too large"
-q !! n = (List.!!) (toDescList q) n
+q !! n = toDescList q List.!! n
 
 {-# INLINE takeWhile #-}
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
