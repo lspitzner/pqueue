@@ -125,22 +125,13 @@ deleteFindMin = fromMaybe (error "Error: deleteFindMin called on empty queue") .
 (!!) :: Ord a => MinQueue a -> Int -> a
 q !! n  | n >= size q
     = error "Data.PQueue.Min.!!: index too large"
-q !! n = (List.!!) (toAscList q) n
+q !! n = toAscList q List.!! n
 
 {-# INLINE takeWhile #-}
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
 takeWhile :: Ord a => (a -> Bool) -> MinQueue a -> [a]
-takeWhile p = foldWhileFB p . toAscList
-
-{-# INLINE foldWhileFB #-}
--- | Equivalent to Data.List.takeWhile, but is a better producer.
-foldWhileFB :: (a -> Bool) -> [a] -> [a]
-foldWhileFB p xs0 = build (\c nil -> let
-  consWhile x xs
-    | p x    = x `c` xs
-    | otherwise  = nil
-  in foldr consWhile nil xs0)
+takeWhile p = List.takeWhile p . toAscList
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
 dropWhile :: Ord a => (a -> Bool) -> MinQueue a -> MinQueue a

@@ -316,8 +316,7 @@ takeWhile = takeWhileWithKey . const
 -- | Takes the longest possible prefix of elements satisfying the predicate.
 -- (@'takeWhile' p q == 'List.takeWhile' (uncurry p) ('toAscList' q)@)
 takeWhileWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> [(k, a)]
-takeWhileWithKey p0 = takeWhileFB (uncurry' p0) . toAscList where
-  takeWhileFB p xs = build (\c n -> foldr (\x z -> if p x then x `c` z else n) n xs)
+takeWhileWithKey p0 = List.takeWhile (uncurry' p0) . toAscList
 
 -- | Removes the longest possible prefix of elements satisfying the predicate.
 dropWhile :: Ord k => (a -> Bool) -> MinPQueue k a -> MinPQueue k a
