@@ -704,7 +704,7 @@ traverseWithKey f q = case minViewWithKey q of
 traverseWithKey' :: (Ord k, Applicative f) => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKey' f q = case minViewWithKey q of
   Nothing      -> pure empty
-  Just ((k, a), q')  -> liftA2 (insertMin k) (f k a) (traverseWithKey' f q')
+  Just ((k, a), q')  -> liftA2 (insertMin k $!) (f k a) (traverseWithKey' f q')
 
 -- | A strictly accumulating version of 'traverseWithKey'. This works well in
 -- 'IO' and strict @State@, and is likely what you want for other "strict" monads,
@@ -735,7 +735,7 @@ traverseWithKeyU f (MinPQ n k a ts) = liftA2 (MinPQ n k) (f k a) (traverseForest
 -- @since 1.5.0
 traverseWithKeyU' :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKeyU' _ Empty = pure Empty
-traverseWithKeyU' f (MinPQ n k a ts) = liftA2 (\ !b !q' -> MinPQ n k b q') (f k a) (traverseForest' f (const (pure Zero)) ts)
+traverseWithKeyU' f (MinPQ n k a ts) = liftA2 (\ !a' !ts' -> MinPQ n k a' ts') (f k a) (traverseForest' f (const (pure Zero)) ts)
 
 {-# SPECIALIZE traverseForest :: (k -> a -> Identity b) -> (rk k a -> Identity (rk k b)) -> BinomForest rk k a ->
   Identity (BinomForest rk k b) #-}
@@ -756,10 +756,10 @@ traverseForest' f fCh ts0 = case ts0 of
   Nil       -> pure Nil
   Skip ts'  -> (Skip $!) <$> traverseForest f fCh' ts'
   Cons (BinomTree k a ts) tss
-    -> liftA3 (\ !p !q -> Cons (BinomTree k p q)) (f k a) (fCh ts) (traverseForest' f fCh' tss)
+    -> liftA3 (\ !a' !ts' !tss' -> Cons (BinomTree k a' ts') tss') (f k a) (fCh ts) (traverseForest' f fCh' tss)
   where
     fCh' (Succ (BinomTree k a ts) tss)
-      = liftA3 (\ !p !q -> Succ (BinomTree k p q)) (f k a) (fCh ts) (fCh tss)
+      = liftA3 (\ !a' !ts' !tss' -> Succ (BinomTree k a' ts') tss') (f k a) (fCh ts) (fCh tss)
 
 -- | Unordered right fold on a binomial forest.
 foldrWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b
