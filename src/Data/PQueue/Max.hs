@@ -369,10 +369,10 @@ keysQueue (Prio.MaxPQ q) = MaxQ (Min.keysQueue q)
 
 -- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
--- Note: The spine of a 'MaxQueue' is stored somewhat lazily. Most operations
--- take great care to prevent chains of thunks from accumulating along the
--- spine to the detriment of performance. However, 'mapU' can leave expensive
--- thunks in the structure and repeated applications of that function can
--- create thunk chains.
+-- Note: The spine of a 'MaxQueue' is stored somewhat lazily. In earlier
+-- versions of this package, some operations could produce chains of thunks
+-- along the spine, occasionally necessitating manual forcing. Now, all
+-- operations are careful to force enough to avoid this problem.
+{-# DEPRECATED seqSpine "This function is no longer necessary or useful." #-}
 seqSpine :: MaxQueue a -> b -> b
 seqSpine (MaxQ q) = Min.seqSpine q
