@@ -536,8 +536,8 @@ instance Functor rk => Functor (BinomTree rk) where
 
 instance Functor rk => Functor (BinomForest rk) where
   fmap _ Nil = Nil
-  fmap f (Skip ts) = Skip (fmap f ts)
-  fmap f (Cons t ts) = Cons (fmap f t) (fmap f ts)
+  fmap f (Skip ts) = Skip $! fmap f ts
+  fmap f (Cons t ts) = Cons (fmap f t) $! fmap f ts
 
 instance Foldr Zero where
   foldr_ _ z ~Zero = z
