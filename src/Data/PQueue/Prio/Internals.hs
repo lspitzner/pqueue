@@ -615,9 +615,9 @@ extract = start
 mapForest :: (k -> a -> b) -> (rk k a -> rk k b) -> BinomForest rk k a -> BinomForest rk k b
 mapForest f fCh ts0 = case ts0 of
   Nil      -> Nil
-  Skip ts' -> Skip (mapForest f fCh' ts')
+  Skip ts' -> Skip $! mapForest f fCh' ts'
   Cons (BinomTree k a ts) tss
-           -> Cons (BinomTree k (f k a) (fCh ts)) (mapForest f fCh' tss)
+           -> Cons (BinomTree k (f k a) (fCh ts)) $! mapForest f fCh' tss
   where fCh' (Succ (BinomTree k a ts) tss)
            = Succ (BinomTree k (f k a) (fCh ts)) (fCh tss)
 
@@ -715,12 +715,12 @@ traverseWithKeyU f (MinPQ n k a ts) = liftA2 (MinPQ n k) (f k a) (traverseForest
 traverseForest :: (Applicative f) => (k -> a -> f b) -> (rk k a -> f (rk k b)) -> BinomForest rk k a -> f (BinomForest rk k b)
 traverseForest f fCh ts0 = case ts0 of
   Nil       -> pure Nil
-  Skip ts'  -> Skip <$> traverseForest f fCh' ts'
+  Skip ts'  -> (Skip $!) <$> traverseForest f fCh' ts'
   Cons (BinomTree k a ts) tss
-    -> liftA3 (\p q -> Cons (BinomTree k p q)) (f k a) (fCh ts) (traverseForest f fCh' tss)
+    -> liftA3 (\a' ts' tss' -> Cons (BinomTree k a' ts') $! tss') (f k a) (fCh ts) (traverseForest f fCh' tss)
   where
     fCh' (Succ (BinomTree k a ts) tss)
-      = Succ <$> (BinomTree k <$> f k a <*> fCh ts) <*> fCh tss
+      = liftA3 (\a' ts' -> Succ (BinomTree k a' ts')) (f k a) (fCh ts) (fCh tss)
 
 -- | Unordered right fold on a binomial forest.
 foldrWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b
@@ -748,20 +748,20 @@ foldlWithKeyF_ f fCh ts0 = case ts0 of
 mapKeysMonoF :: (k -> k') -> (rk k a -> rk k' a) -> BinomForest rk k a -> BinomForest rk k' a
 mapKeysMonoF f fCh ts0 = case ts0 of
   Nil    -> Nil
-  Skip ts'  -> Skip (mapKeysMonoF f fCh' ts')
+  Skip ts'  -> Skip $! mapKeysMonoF f fCh' ts'
   Cons (BinomTree k a ts) ts'
-    -> Cons (BinomTree (f k) a (fCh ts)) (mapKeysMonoF f fCh' ts')
+    -> Cons (BinomTree (f k) a (fCh ts)) $! mapKeysMonoF f fCh' ts'
   where
     fCh' (Succ (BinomTree k a ts) tss) =
       Succ (BinomTree (f k) a (fCh ts)) (fCh tss)
 
 -- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
--- Note: The spine of a 'MinPQueue' is stored somewhat lazily. Most operations
--- take great care to prevent chains of thunks from accumulating along the
--- spine to the detriment of performance. However, 'mapKeysMonotonic' can leave
--- expensive thunks in the structure and repeated applications of that function
--- can create thunk chains.
+-- Note: The spine of a 'MinPQueue' is stored somewhat lazily. In earlier
+-- versions of this package, some operations could produce chains of thunks
+-- along the spine, occasionally necessitating manual forcing. Now, all
+-- operations are careful to force enough to avoid this problem.
+{-# DEPRECATED seqSpine "This function is no longer necessary or useful." #-}
 seqSpine :: MinPQueue k a -> b -> b
 seqSpine Empty z0 = z0
 seqSpine (MinPQ _ _ _ ts0) z0 = ts0 `seqSpineF` z0 where

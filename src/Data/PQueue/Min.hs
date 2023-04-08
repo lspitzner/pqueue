@@ -262,7 +262,7 @@ keysQueue (Prio.MinPQ n k _ ts) = MinQueue n k (BQ.MinQueue (keysF (const Zero) 
 keysF :: (pRk k a -> rk k) -> Prio.BinomForest pRk k a -> BinomForest rk k
 keysF f ts0 = case ts0 of
   Prio.Nil       -> Nil
-  Prio.Skip ts'  -> Skip (keysF f' ts')
+  Prio.Skip ts'  -> Skip $! keysF f' ts'
   Prio.Cons (Prio.BinomTree k _ ts) ts'
-    -> Cons (BinomTree k (f ts)) (keysF f' ts')
+    -> Cons (BinomTree k (f ts)) $! keysF f' ts'
   where  f' (Prio.Succ (Prio.BinomTree k _ ts) tss) = Succ (BinomTree k (f ts)) (f tss)
