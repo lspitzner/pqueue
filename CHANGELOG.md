@@ -2,6 +2,12 @@
 
 ## 1.5.0
 
+  * Make mapping and traversal functions force the full data structure spine.
+    This should make performance more predictable, and removes the last
+    remaining reasons to use the `seqSpine` functions. As these are no longer
+    useful, deprecate them.
+    ([#103](https://github.com/lspitzner/pqueue/pull/103))
+
   * Deprecate `insertBehind`. This function does not play nicely with merges,
     we lack tests to verify it works properly without merges, it imposes a
     substantial maintenance burden on the rest of the package, and it is quite
