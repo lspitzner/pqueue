@@ -128,7 +128,7 @@ pattern Empty = Internals.Empty
 infixr 5 :<
 
 -- | A bidirectional pattern synonym for working with the minimum view of a
--- 'MinPQueue'.  Using @:<@ to construct a queue performs an insertion in
+-- 'Prio.MinPQueue'.  Using @:<@ to construct a queue performs an insertion in
 -- \(O(1)\) amortized time. When matching on @a :< q@, forcing @q@ takes
 -- \(O(\log n)\) time.
 --
@@ -204,7 +204,7 @@ take :: Ord a => Int -> MinQueue a -> [a]
 take n = List.take n . toAscList
 
 -- | \(O(k \log n)\)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the smallest @k@ elements deleted,
--- or an empty queue if @k >= size 'queue'@.
+-- or an empty queue if @k >= 'size' queue@.
 drop :: Ord a => Int -> MinQueue a -> MinQueue a
 drop n queue = n `seq` case minView queue of
   Just (_, queue')
