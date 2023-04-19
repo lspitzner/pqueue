@@ -43,6 +43,7 @@ module Data.PQueue.Prio.Max.Internals (
   -- ** Map
   map,
   mapWithKey,
+  mapWithKey',
   mapKeys,
   mapKeysMonotonic,
   -- ** Fold
@@ -50,6 +51,7 @@ module Data.PQueue.Prio.Max.Internals (
   foldlWithKey,
   -- ** Traverse
   traverseWithKey,
+  traverseWithKey',
   mapMWithKey,
   -- * Subsets
   -- ** Indexed
@@ -96,6 +98,7 @@ module Data.PQueue.Prio.Max.Internals (
   foldlWithKeyU',
   traverseU,
   traverseWithKeyU,
+  traverseWithKeyU',
   keysU,
   elemsU,
   assocsU,
@@ -335,6 +338,13 @@ map = mapWithKey . const
 mapWithKey :: (k -> a -> b) -> MaxPQueue k a -> MaxPQueue k b
 mapWithKey f (MaxPQ q) = MaxPQ (Q.mapWithKey (f . unDown) q)
 
+-- | \(O(n)\). A version of 'mapWithKey' that forces all the elements before
+-- installing them in the result queue.
+--
+-- @since 1.5.0
+mapWithKey' :: (k -> a -> b) -> MaxPQueue k a -> MaxPQueue k b
+mapWithKey' f (MaxPQ q) = MaxPQ (Q.mapWithKey' (f . unDown) q)
+
 -- | \(O(n)\). Map a function over all values in the queue.
 mapKeys :: Ord k' => (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
 mapKeys f (MaxPQ q) = MaxPQ (Q.mapKeys (fmap f) q)
@@ -367,6 +377,13 @@ foldlWithKey f z0 (MaxPQ q) = Q.foldlWithKey (\z -> f z . unDown) z0 q
 -- If you are working in a strict monad, consider using 'mapMWithKey'.
 traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
 traverseWithKey f (MaxPQ q) = MaxPQ <$> Q.traverseWithKey (f . unDown) q
+
+-- | A version of 'traverseWithKey' that forces each element before
+-- installing it in a result queue.
+--
+-- @since 1.5.0
+traverseWithKey' :: (Ord k, Applicative f) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
+traverseWithKey' f (MaxPQ q) = MaxPQ <$> Q.traverseWithKey' (f . unDown) q
 
 -- | A strictly accumulating version of 'traverseWithKey'. This works well in
 -- 'IO' and strict @State@, and is likely what you want for other "strict" monads,
@@ -551,14 +568,21 @@ foldlWithKeyU' f z0 (MaxPQ q) = Q.foldlWithKeyU' (\z -> f z . unDown) z0 q
 -- | \(O(n)\). An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
-traverseU :: (Applicative f) => (a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
+traverseU :: Applicative f => (a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
 traverseU = traverseWithKeyU . const
 
 -- | \(O(n)\). An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
-traverseWithKeyU :: (Applicative f) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
+traverseWithKeyU :: Applicative f => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
 traverseWithKeyU f (MaxPQ q) = MaxPQ <$> Q.traverseWithKeyU (f . unDown) q
+
+-- | A version of 'traverseWithKeyU' that forces each value before installing
+-- it in a result queue.
+--
+-- @since 1.5.0
+traverseWithKeyU' :: Applicative f => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
+traverseWithKeyU' f (MaxPQ q) = MaxPQ <$> Q.traverseWithKeyU' (f . unDown) q
 
 -- | \(O(n)\). Return all keys of the queue in no particular order.
 keysU :: MaxPQueue k a -> [k]

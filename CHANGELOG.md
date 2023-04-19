@@ -21,6 +21,8 @@
     `MinPQueue` work "incrementally", like the one for `MinQueue`.
     ([#92](http://github.com/lspitzner/pqueue/pull/92))
 
+  * Add strict maps and traversals.
+
 ## 1.4.3.0 -- 2022-10-30
 
   * Add instances for [indexed-traversable](https://hackage.haskell.org/package/indexed-traversable).
