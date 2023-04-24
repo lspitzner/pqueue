@@ -356,7 +356,7 @@ extractBin = start
       No     -> No
       Yes ex -> Yes (incrExtract ex)
     start (Cons t@(BinomTree x ts) f) = Yes $ case go x f of
-      No -> Extract x ts (Skip f)
+      No -> Extract x ts (skip f)
       Yes ex -> incrExtract' t ex
 
     go :: Ord a => a -> BinomForest rk a -> MExtract rk a
@@ -369,8 +369,15 @@ extractBin = start
           No -> No
           Yes ex -> Yes (incrExtract' t ex)
       | otherwise = case go x f of
-          No -> Yes (Extract x ts (Skip f))
+          No -> Yes (Extract x ts (skip f))
           Yes ex -> Yes (incrExtract' t ex)
+
+-- | When the heap size is a power of two and we extract from it, we have
+-- to shrink the spine by one. This function takes care of that.
+skip :: BinomForest (Succ rk) a -> BinomForest rk a
+skip Nil = Nil
+skip f = Skip f
+{-# INLINE skip #-}
 
 mapMaybeQueue :: Ord b => (a -> Maybe b) -> (rk a -> MinQueue b) -> MinQueue b -> BinomForest rk a -> MinQueue b
 mapMaybeQueue f fCh q0 forest = q0 `seq` case forest of
