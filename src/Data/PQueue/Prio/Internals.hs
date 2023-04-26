@@ -576,7 +576,7 @@ incrExtract (Extract minKey minVal (Succ kChild kChildren) ts)
 
 incrExtract' :: Ord k => BinomTree rk k a -> Extract (Succ rk) k a -> Extract rk k a
 incrExtract' t (Extract minKey minVal (Succ kChild kChildren) ts)
-  = Extract minKey minVal kChildren (Skip $! incr (t `meld` kChild) ts)
+  = Extract minKey minVal kChildren (Skip $! incr' (t `meld` kChild) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes

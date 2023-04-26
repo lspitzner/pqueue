@@ -141,10 +141,9 @@ instance Ord a => Ord (MinQueue a) where
 --
 -- The Skip constructor must be lazy to obtain the desired amortized bounds.
 -- The forest field of the Cons constructor /could/ be made strict, but that
--- would be worse for heavily persistent use and not obviously better
--- otherwise. In particular, if Cons is strict, then inserting into a forest
--- that begins with a Skip will force the next node, which otherwise wouldn't
--- be involved in the operation and which may or may not be in the CPU cache.
+-- would be worse for heavily persistent use. According to our benchmarks, it
+-- doesn't make a significant or consistent difference even in non-persistent
+-- code (heap sort and k-way merge).
 --
 -- Debit invariant:
 --
@@ -333,21 +332,17 @@ incrExtract :: Extract (Succ rk) a -> Extract rk a
 incrExtract (Extract minKey (Succ kChild kChildren) ts)
   = Extract minKey kChildren (Cons kChild ts)
 
--- Note: We used to apply Skip lazily here, for fear that the incr application
--- might cause a cascade of thunks to be forced. However, that is not actually
--- possible. If ts starts with a Skip, then we simply replace it without
--- forcing its child. The only way the forest in an 'Extract' can start with a
--- Cons is if it was produced by 'incrExtract'. But in that case, its next node
--- came from an 'Extract', and is therefore already in WHNF. So if the 'incr'
--- application here sees a Cons (forcing its next node), the force will be a
--- no-op.
---
--- Question: should we use incr' here instead of incr? That's not so obvious
--- to me. Doing so would avoid the cost of building thunks to suspend carries,
--- but it would essentially force an extra carry propagation pass.
+-- Note: We used to apply Skip lazily here, and to use the lazy incr, for fear
+-- that the potential cascade of carries would be more expensive than leaving
+-- those carries suspended and letting subsequent operations force them.
+-- However, konsumlamm's benchmarks indicated that doing these strictly was
+-- faster. Note that even if we chose to go back to incr (rather than incr'),
+-- it's even more clearly worse to apply Skip lazily— forcing the result of
+-- incr in this context doesn't cause a cascade, because the child of any Cons
+-- will come from an Extract, and therefore be in WHNF already.
 incrExtract' :: Ord a => BinomTree rk a -> Extract (Succ rk) a -> Extract rk a
 incrExtract' t (Extract minKey (Succ kChild kChildren) ts)
-  = Extract minKey kChildren (Skip $! incr (t `joinBin` kChild) ts)
+  = Extract minKey kChildren (Skip $! incr' (t `joinBin` kChild) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
