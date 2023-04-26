@@ -574,14 +574,9 @@ incrExtract :: Extract (Succ rk) k a -> Extract rk k a
 incrExtract (Extract minKey minVal (Succ kChild kChildren) ts)
   = Extract minKey minVal kChildren (Cons kChild ts)
 
--- Why are we so lazy here? The idea, right or not, is to avoid a potentially
--- expensive second pass to propagate carries. Instead, carry propagation gets
--- fused (operationally) with successive operations. If the next operation is
--- union or minView, this doesn't save anything, but if some insertions follow,
--- it might be faster this way.
 incrExtract' :: Ord k => BinomTree rk k a -> Extract (Succ rk) k a -> Extract rk k a
 incrExtract' t (Extract minKey minVal (Succ kChild kChildren) ts)
-  = Extract minKey minVal kChildren (Skip $ incr (t `meld` kChild) ts)
+  = Extract minKey minVal kChildren (Skip $! incr' (t `meld` kChild) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes

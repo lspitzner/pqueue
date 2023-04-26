@@ -141,8 +141,9 @@ instance Ord a => Ord (MinQueue a) where
 --
 -- The Skip constructor must be lazy to obtain the desired amortized bounds.
 -- The forest field of the Cons constructor /could/ be made strict, but that
--- would be worse for heavily persistent use and not obviously better
--- otherwise.
+-- would be worse for heavily persistent use. According to our benchmarks, it
+-- doesn't make a significant or consistent difference even in non-persistent
+-- code (heap sort and k-way merge).
 --
 -- Debit invariant:
 --
@@ -331,9 +332,17 @@ incrExtract :: Extract (Succ rk) a -> Extract rk a
 incrExtract (Extract minKey (Succ kChild kChildren) ts)
   = Extract minKey kChildren (Cons kChild ts)
 
+-- Note: We used to apply Skip lazily here, and to use the lazy incr, for fear
+-- that the potential cascade of carries would be more expensive than leaving
+-- those carries suspended and letting subsequent operations force them.
+-- However, our benchmarks indicated that doing these strictly was
+-- faster. Note that even if we chose to go back to incr (rather than incr'),
+-- it's even more clearly worse to apply Skip lazily— forcing the result of
+-- incr in this context doesn't cause a cascade, because the child of any Cons
+-- will come from an Extract, and therefore be in WHNF already.
 incrExtract' :: Ord a => BinomTree rk a -> Extract (Succ rk) a -> Extract rk a
 incrExtract' t (Extract minKey (Succ kChild kChildren) ts)
-  = Extract minKey kChildren (Skip $ incr (t `joinBin` kChild) ts)
+  = Extract minKey kChildren (Skip $! incr' (t `joinBin` kChild) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
