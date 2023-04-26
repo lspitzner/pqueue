@@ -335,7 +335,7 @@ incrExtract (Extract minKey (Succ kChild kChildren) ts)
 -- Note: We used to apply Skip lazily here, and to use the lazy incr, for fear
 -- that the potential cascade of carries would be more expensive than leaving
 -- those carries suspended and letting subsequent operations force them.
--- However, konsumlamm's benchmarks indicated that doing these strictly was
+-- However, our benchmarks indicated that doing these strictly was
 -- faster. Note that even if we chose to go back to incr (rather than incr'),
 -- it's even more clearly worse to apply Skip lazily— forcing the result of
 -- incr in this context doesn't cause a cascade, because the child of any Cons
