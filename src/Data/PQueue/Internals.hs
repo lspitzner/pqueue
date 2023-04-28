@@ -37,7 +37,7 @@ module Data.PQueue.Internals (
   foldlU',
 --   traverseU,
   seqSpine,
-  unions
+  unions,
   ) where
 
 import BinomialQueue.Internals

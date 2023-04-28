@@ -1,6 +1,10 @@
+{-# language CPP #-}
+
+{-# language BangPatterns #-}
 {-# language ExtendedDefaultRules #-}
 {-# language ScopedTypeVariables #-}
 {-# language TupleSections #-}
+{-# language ViewPatterns #-}
 
 module Main (main) where
 
@@ -17,8 +21,21 @@ import qualified Data.PQueue.Max as Max
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max as PMax
 import qualified Data.PQueue.Prio.Min as PMin
+import qualified Validity.PQueue.Min as VMin
+import qualified Validity.PQueue.Prio.Min as VPMin
+#if MIN_VERSION_containers(0,6,0)
+import Data.Containers.ListUtils (nubIntOn)
+#else
+import qualified Data.IntSet as IntSet
+#endif
 
 default (Int)
+
+validMinQueue :: Ord a => Min.MinQueue a -> Property
+validMinQueue q = VMin.validShape q .&&. VMin.validSize q .&&. VMin.validOrder q
+
+validPMinQueue :: Ord k => PMin.MinPQueue k a -> Property
+validPMinQueue q = VPMin.validShape q .&&. VPMin.validSize q .&&. VPMin.validOrder q
 
 main :: IO ()
 main = defaultMain $ testGroup "pqueue"
@@ -28,7 +45,11 @@ main = defaultMain $ testGroup "pqueue"
       [ testProperty "empty" $ Min.getMin Min.empty === Nothing
       , testProperty "non-empty" $ \(NonEmpty xs) -> Min.getMin (Min.fromList xs) === Just (minimum xs)
       ]
-    , testProperty "minView" $ \xs -> Min.minView (Min.fromList xs) === fmap (second Min.fromList) (List.uncons (List.sort xs))
+    , testProperty "minView" $ \xs -> case Min.minView (Min.fromList xs) of
+        Nothing -> xs === []
+        Just (the_min, xs') ->
+           validMinQueue xs' .&&.
+           the_min : Min.toList xs' === List.sort xs
     , testProperty "insert" $ \x xs -> Min.insert x (Min.fromList xs) === Min.fromList (x : xs)
     , testProperty "union" $ \xs ys -> Min.union (Min.fromList xs) (Min.fromList ys) === Min.fromList (xs ++ ys)
     , testProperty "filter" $ \xs -> Min.filter even (Min.fromList xs) === Min.fromList (List.filter even xs)
@@ -106,7 +127,11 @@ main = defaultMain $ testGroup "pqueue"
       [ testProperty "Just" $ \xs -> PMin.updateMinA (Identity . Just) (PMin.fromList xs) === Identity (PMin.fromList xs)
       , testProperty "Nothing" $ \(NonEmpty (xs :: [(Int, ())])) -> PMin.updateMinA (Identity . const Nothing) (PMin.fromList xs) === Identity (PMin.fromList (tail (List.sort xs)))
       ]
-    , testProperty "minViewWithKey" $ \(xs :: [(Int, ())]) -> PMin.minViewWithKey (PMin.fromList xs) === fmap (second PMin.fromList) (List.uncons (List.sort xs))
+    , testProperty "minViewWithKey" $ \(nubIntOn fst -> (xs :: [(Int, Int)])) -> case PMin.minViewWithKey (PMin.fromList xs) of
+        Nothing -> xs === []
+        Just ((the_min, the_min_val), xs') ->
+           validPMinQueue xs' .&&.
+           (the_min, the_min_val) : PMin.toList xs' === List.sort xs
     , testProperty "map" $ \(xs :: [(Int, ())]) -> PMin.map id (PMin.fromList xs) === PMin.fromList xs
     , testProperty "mapKeysMonotonic" $ \xs -> PMin.mapKeysMonotonic (+ 1) (PMin.fromList xs) === PMin.fromList (List.map (first (+ 1)) xs)
     , testProperty "take" $ \n (xs :: [(Int, ())]) -> PMin.take n (PMin.fromList xs) === List.take n (List.sort xs)
@@ -191,3 +216,21 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "compare" $ \(xs :: [(Int, ())]) ys -> (compare `on` PMax.fromList) xs ys === (compare `on` (List.sort . List.map Down)) xs ys
     ]
   ]
+
+#if !MIN_VERSION_containers(0,6,0)
+-- Copied from containers. There's some mess relating to RULES we don't
+-- bother porting over, but I think it's best not to risk messing with
+-- what we know works.
+nubIntOn :: (a -> Int) -> [a] -> [a]
+nubIntOn f = \xs -> nubIntOnExcluding f IntSet.empty xs
+{-# INLINE nubIntOn #-}
+
+nubIntOnExcluding :: (a -> Int) -> IntSet.IntSet -> [a] -> [a]
+nubIntOnExcluding f = go
+  where
+    go _ [] = []
+    go s (x:xs)
+      | fx `IntSet.member` s = go s xs
+      | otherwise = x : go (IntSet.insert fx s) xs
+      where !fx = f x
+#endif

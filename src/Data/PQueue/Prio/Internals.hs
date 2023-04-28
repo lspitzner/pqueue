@@ -590,7 +590,7 @@ extract = start
       No     -> No
       Yes ex -> Yes (incrExtract ex)
     start (Cons t@(BinomTree k v ts) f) = Yes $ case go k f of
-      No -> Extract k v ts (Skip f)
+      No -> Extract k v ts (skip f)
       Yes ex -> incrExtract' t ex
 
     go :: Ord k => k -> BinomForest rk k a -> MExtract rk k a
@@ -603,8 +603,13 @@ extract = start
           No -> No
           Yes ex -> Yes (incrExtract' t ex)
       | otherwise = case go k f of
-          No -> Yes (Extract k v ts (Skip f))
+          No -> Yes (Extract k v ts (skip f))
           Yes ex -> Yes (incrExtract' t ex)
+
+skip :: BinomForest (Succ rk) k a -> BinomForest rk k a
+skip Nil = Nil
+skip f = Skip f
+{-# INLINE skip #-}
 
 -- | Utility function for mapping over a forest.
 mapForest :: (k -> a -> b) -> (rk k a -> rk k b) -> BinomForest rk k a -> BinomForest rk k b
