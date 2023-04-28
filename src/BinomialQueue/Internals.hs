@@ -19,6 +19,7 @@ module BinomialQueue.Internals (
   minView,
   singleton,
   insert,
+  insertEager,
   union,
   unionPlusOne,
   mapMaybe,
@@ -209,6 +210,14 @@ singleton x = MinQueue (Cons (tip x) Nil)
 insert :: Ord a => a -> MinQueue a -> MinQueue a
 insert x (MinQueue ts) = MinQueue (incr (tip x) ts)
 
+-- | \(O(\log n)\), but a fast \(O(1)\) average when inserting repeatedly in
+-- an empty queue or at least around \(O(\log n)\) times into a nonempty one.
+-- Insert an element into the priority queue. This is good for 'fromList'-like
+-- operations.
+insertEager :: Ord a => a -> MinQueue a -> MinQueue a
+insertEager x (MinQueue ts) = MinQueue (incr' (tip x) ts)
+{-# INLINE insertEager #-}
+
 -- | Amortized \(O(\log \min(n,m))\), worst-case \(O(\log \max(n,m))\). Take the union of two priority queues.
 union :: Ord a => MinQueue a -> MinQueue a -> MinQueue a
 union (MinQueue f1) (MinQueue f2) = MinQueue (merge f1 f2)
@@ -219,11 +228,24 @@ unions = foldl' union empty
 
 -- | \(O(n)\). Map elements and collect the 'Just' results.
 mapMaybe :: Ord b => (a -> Maybe b) -> MinQueue a -> MinQueue b
-mapMaybe f (MinQueue ts) = mapMaybeQueue f (const empty) empty ts
+mapMaybe f = flip foldlU' empty $ \q a ->
+  case f a of
+    Nothing -> q
+    Just b -> insertEager b q
+-- This seems to be needed for specialization.
+{-# INLINABLE mapMaybe #-}
 
 -- | \(O(n)\). Map elements and separate the 'Left' and 'Right' results.
 mapEither :: (Ord b, Ord c) => (a -> Either b c) -> MinQueue a -> (MinQueue b, MinQueue c)
-mapEither f (MinQueue ts) = mapEitherQueue f (const (empty, empty)) (empty, empty) ts
+mapEither f = fromPartition .
+  foldlU'
+    (\(Partition ls rs) a ->
+        case f a of
+          Left b -> Partition (insertEager b ls) rs
+          Right b -> Partition ls (insertEager b rs))
+    (Partition empty empty)
+-- This seems to be needed for specialization.
+{-# INLINABLE mapEither #-}
 
 -- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
 -- as in 'fmap'. If it is not, the result is undefined.
@@ -379,28 +401,9 @@ skip Nil = Nil
 skip f = Skip f
 {-# INLINE skip #-}
 
-mapMaybeQueue :: Ord b => (a -> Maybe b) -> (rk a -> MinQueue b) -> MinQueue b -> BinomForest rk a -> MinQueue b
-mapMaybeQueue f fCh q0 forest = q0 `seq` case forest of
-  Nil    -> q0
-  Skip forest'  -> mapMaybeQueue f fCh' q0 forest'
-  Cons t forest'  -> mapMaybeQueue f fCh' (union (mapMaybeT t) q0) forest'
-  where fCh' (Succ t tss) = union (mapMaybeT t) (fCh tss)
-        mapMaybeT (BinomTree x0 ts) = maybe (fCh ts) (\x -> insert x (fCh ts)) (f x0)
-
-type Partition a b = (MinQueue a, MinQueue b)
-
-mapEitherQueue :: (Ord b, Ord c) => (a -> Either b c) -> (rk a -> Partition b c) -> Partition b c ->
-  BinomForest rk a -> Partition b c
-mapEitherQueue f0 fCh (q00, q10) ts0 = q00 `seq` q10 `seq` case ts0 of
-  Nil        -> (q00, q10)
-  Skip ts'   -> mapEitherQueue f0 fCh' (q00, q10) ts'
-  Cons t ts' -> mapEitherQueue f0 fCh' (both union union (partitionT t) (q00, q10)) ts'
-  where  both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)
-         fCh' (Succ t tss) = both union union (partitionT t) (fCh tss)
-         partitionT (BinomTree x ts) = case fCh ts of
-           (q0, q1) -> case f0 x of
-             Left b  -> (insert b q0, q1)
-             Right c  -> (q0, insert c q1)
+data Partition a b = Partition !(MinQueue a) !(MinQueue b)
+fromPartition :: Partition a b -> (MinQueue a, MinQueue b)
+fromPartition (Partition p q) = (p, q)
 
 {-# INLINE tip #-}
 -- | Constructs a binomial tree of rank 0.
@@ -452,9 +455,7 @@ insertMax' t (Cons (BinomTree x ts) f) = Skip $! insertMax' (BinomTree x (Succ t
 {-# INLINABLE fromList #-}
 -- | \(O(n)\). Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MinQueue a
-fromList xs = MinQueue (foldl' go Nil xs)
-  where
-    go fr x = incr' (tip x) fr
+fromList xs = foldl' (flip insertEager) empty xs
 
 -- | Given two binomial forests starting at rank @rk@, takes their union.
 -- Each successive application of this function costs \(O(1)\), so applying it

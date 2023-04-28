@@ -3,6 +3,7 @@ import Test.Tasty.Bench
 
 import qualified KWay.MergeAlg as KWay
 import qualified HeapSort as HS
+import qualified Data.PQueue.Min as P
 
 kWay :: Int -> Int -> Benchmark
 kWay i n = bench
@@ -14,9 +15,19 @@ hSort n = bench
   ("Heap sort with " ++ show n ++ " elements")
   (nf (HS.heapSortRandoms n) $ mkStdGen (-7750349139967535027))
 
+filterQ :: Int -> Benchmark
+filterQ n = bench
+  ("filter with " ++ show n ++ " elements")
+  (whnf (P.drop 1 . P.filter (>0) . (P.fromList :: [Int] -> P.MinQueue Int) . take n . randoms) $ mkStdGen 977209486631198655)
+
+partitionQ :: Int -> Benchmark
+partitionQ n = bench
+  ("partition with " ++ show n ++ " elements")
+  (whnf (P.drop 1 . snd . P.partition (>0) . (P.fromList :: [Int] -> P.MinQueue Int) . take n . randoms) $ mkStdGen 781928047937198)
+
 main :: IO ()
-main = defaultMain
-  [ bgroup "heapSort"
+main = defaultMain [
+    bgroup "heapSort"
       [ hSort (10^3)
       , hSort (10^4)
       , hSort (10^5)
@@ -34,5 +45,19 @@ main = defaultMain
       , kWay (3*10^6) 1000
       , kWay (2*10^6) 2000
       , kWay (4*10^6) 100
+      ]
+  , bgroup "filter"
+      [ filterQ (10^3)
+      , filterQ (10^4)
+      , filterQ (10^5)
+      , filterQ (10^6)
+      , filterQ (3*10^6)
+      ]
+  , bgroup "partition"
+      [ partitionQ (10^3)
+      , partitionQ (10^4)
+      , partitionQ (10^5)
+      , partitionQ (10^6)
+      , partitionQ (3*10^6)
       ]
   ]

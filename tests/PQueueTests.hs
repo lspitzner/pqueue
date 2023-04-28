@@ -9,9 +9,11 @@
 module Main (main) where
 
 import Data.Bifunctor (bimap, first, second)
+import qualified Data.Either as Either
 import Data.Function (on)
 import Data.Functor.Identity
 import qualified Data.List as List
+import qualified Data.Maybe as Maybe
 import Data.Ord (Down(..))
 
 import Test.Tasty
@@ -23,11 +25,6 @@ import qualified Data.PQueue.Prio.Max as PMax
 import qualified Data.PQueue.Prio.Min as PMin
 import qualified Validity.PQueue.Min as VMin
 import qualified Validity.PQueue.Prio.Min as VPMin
-#if MIN_VERSION_containers(0,6,0)
-import Data.Containers.ListUtils (nubIntOn)
-#else
-import qualified Data.IntSet as IntSet
-#endif
 
 default (Int)
 
@@ -52,8 +49,26 @@ main = defaultMain $ testGroup "pqueue"
            the_min : Min.toList xs' === List.sort xs
     , testProperty "insert" $ \x xs -> Min.insert x (Min.fromList xs) === Min.fromList (x : xs)
     , testProperty "union" $ \xs ys -> Min.union (Min.fromList xs) (Min.fromList ys) === Min.fromList (xs ++ ys)
-    , testProperty "filter" $ \xs -> Min.filter even (Min.fromList xs) === Min.fromList (List.filter even xs)
-    , testProperty "partition" $ \xs -> Min.partition even (Min.fromList xs) === bimap Min.fromList Min.fromList (List.partition even xs)
+    , testProperty "filter" $ \xs ->
+        let xs' = Min.filter even (Min.fromList xs)
+        in validMinQueue xs' .&&.
+           Min.toList xs' === List.sort (List.filter even xs)
+    , testProperty "partition" $ \xs ->
+        let xs' = Min.fromList xs
+            (ys, zs) = Min.partition even xs'
+        in validMinQueue ys .&&.
+           validMinQueue zs .&&.
+           (Min.toList ys, Min.toList zs) === bimap List.sort List.sort (List.partition even xs)
+    , testProperty "mapMaybe" $ \(Fn f) xs ->
+        let xs' :: Min.MinQueue Char
+            xs' = Min.mapMaybe f (Min.fromList xs)
+        in validMinQueue xs' .&&.
+           Min.toList xs' === List.sort (Maybe.mapMaybe f xs)
+    , testProperty "mapEither" $ \(Fn f) xs ->
+        let (ys, zs) = Min.mapEither f (Min.fromList xs)
+        in validMinQueue ys .&&.
+           validMinQueue zs .&&.
+           (Min.toList ys, Min.toList zs) === bimap List.sort List.sort (Either.partitionEithers . List.map f $ xs)
     , testProperty "map" $ \xs -> Min.map negate (Min.fromList xs) === Min.fromList (List.map negate xs)
     , testProperty "take" $ \n xs -> Min.take n (Min.fromList xs) === List.take n (List.sort xs)
     , testProperty "drop" $ \n xs -> Min.drop n (Min.fromList xs) === Min.fromList (List.drop n (List.sort xs))
@@ -127,11 +142,11 @@ main = defaultMain $ testGroup "pqueue"
       [ testProperty "Just" $ \xs -> PMin.updateMinA (Identity . Just) (PMin.fromList xs) === Identity (PMin.fromList xs)
       , testProperty "Nothing" $ \(NonEmpty (xs :: [(Int, ())])) -> PMin.updateMinA (Identity . const Nothing) (PMin.fromList xs) === Identity (PMin.fromList (tail (List.sort xs)))
       ]
-    , testProperty "minViewWithKey" $ \(nubIntOn fst -> (xs :: [(Int, Int)])) -> case PMin.minViewWithKey (PMin.fromList xs) of
+    , testProperty "minViewWithKey" $ \(xs :: [(Int, Int)]) -> case PMin.minViewWithKey (PMin.fromList xs) of
         Nothing -> xs === []
         Just ((the_min, the_min_val), xs') ->
            validPMinQueue xs' .&&.
-           (the_min, the_min_val) : PMin.toList xs' === List.sort xs
+           List.sort ((the_min, the_min_val) : PMin.toList xs') === List.sort xs
     , testProperty "map" $ \(xs :: [(Int, ())]) -> PMin.map id (PMin.fromList xs) === PMin.fromList xs
     , testProperty "mapKeysMonotonic" $ \xs -> PMin.mapKeysMonotonic (+ 1) (PMin.fromList xs) === PMin.fromList (List.map (first (+ 1)) xs)
     , testProperty "take" $ \n (xs :: [(Int, ())]) -> PMin.take n (PMin.fromList xs) === List.take n (List.sort xs)
@@ -148,10 +163,35 @@ main = defaultMain $ testGroup "pqueue"
       \(Fn2 (f :: Int -> () -> Maybe ())) (xs :: [(Int, ())]) -> PMin.mapMWithKey f (PMin.fromList xs) === fmap PMin.fromList (traverse (\(k, x) -> fmap (k,) (f k x)) xs)
     , testProperty "insert" $ \k xs -> PMin.insert k () (PMin.fromList xs) === PMin.fromList ((k, ()) : xs)
     , testProperty "union" $ \(xs :: [(Int, ())]) ys -> PMin.union (PMin.fromList xs) (PMin.fromList ys) === PMin.fromList (xs ++ ys)
-    , testProperty "filter" $
-      \(xs :: [(Int, ())]) -> PMin.filterWithKey (\k _ -> even k) (PMin.fromList xs) === PMin.fromList (List.filter (even . fst) xs)
-    , testProperty "partition" $
-      \(xs :: [(Int, ())]) -> PMin.partitionWithKey (\k _ -> even k) (PMin.fromList xs) === bimap PMin.fromList PMin.fromList (List.partition (even . fst) xs)
+    , testProperty "filter" $ \(xs :: [(Int, Int)]) ->
+        let
+          -- The probability of a number not being divisible by 3 is 2/3.
+          -- The probability of a number not being divisible by 4 is 3/4.
+          -- So the probability of a number being divisible by neither is
+          -- 1/2.
+          f x y = x `rem` 3 == 0 || y `rem` 4 == 0
+          xs' = PMin.filterWithKey f (PMin.fromList xs)
+        in validPMinQueue xs' .&&.
+           List.sort (PMin.toList xs') === List.sort (List.filter (uncurry f) xs)
+    , testProperty "partition" $ \(xs :: [(Int, Int)]) ->
+        let
+          f x y = x `rem` 3 == 0 || y `rem` 4 == 0
+          (ys, zs) = PMin.partitionWithKey f (PMin.fromList xs)
+        in validPMinQueue ys .&&.
+           validPMinQueue zs .&&.
+           (List.sort (PMin.toList ys), List.sort (PMin.toList zs)) ===
+             bimap List.sort List.sort (List.partition (uncurry f) xs)
+    , testProperty "mapMaybe" $ \(Fn2 f) (xs :: [(Int, Int)]) ->
+        let
+          xs' = PMin.mapMaybeWithKey f (PMin.fromList xs)
+        in validPMinQueue xs' .&&.
+           List.sort (PMin.toList xs') === List.sort (Maybe.mapMaybe (\(k,v) -> fmap (k,) (f k v)) xs)
+    , testProperty "mapEither" $ \(Fn2 f) (xs :: [(Int, Int)]) ->
+        let (ys, zs) = PMin.mapEitherWithKey f (PMin.fromList xs)
+        in validPMinQueue ys .&&.
+           validPMinQueue zs .&&.
+           (List.sort (PMin.toList ys), List.sort (PMin.toList zs)) ===
+             bimap List.sort List.sort (Either.partitionEithers . List.map (\(k,v) -> bimap (k,) (k,) (f k v)) $ xs)
     , testProperty "toAscList" $ \(xs :: [(Int, ())]) -> PMin.toAscList (PMin.fromList xs) === List.sort xs
     , testProperty "toDescList" $ \(xs :: [(Int, ())]) -> PMin.toDescList (PMin.fromList xs) === List.sortOn Down xs
     , testProperty "fromAscList" $ \(xs :: [(Int, ())]) -> PMin.fromAscList (List.sort xs) === PMin.fromList xs
@@ -216,21 +256,3 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "compare" $ \(xs :: [(Int, ())]) ys -> (compare `on` PMax.fromList) xs ys === (compare `on` (List.sort . List.map Down)) xs ys
     ]
   ]
-
-#if !MIN_VERSION_containers(0,6,0)
--- Copied from containers. There's some mess relating to RULES we don't
--- bother porting over, but I think it's best not to risk messing with
--- what we know works.
-nubIntOn :: (a -> Int) -> [a] -> [a]
-nubIntOn f = \xs -> nubIntOnExcluding f IntSet.empty xs
-{-# INLINE nubIntOn #-}
-
-nubIntOnExcluding :: (a -> Int) -> IntSet.IntSet -> [a] -> [a]
-nubIntOnExcluding f = go
-  where
-    go _ [] = []
-    go s (x:xs)
-      | fx `IntSet.member` s = go s xs
-      | otherwise = x : go (IntSet.insert fx s) xs
-      where !fx = f x
-#endif

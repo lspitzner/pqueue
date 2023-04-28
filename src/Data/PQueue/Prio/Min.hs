@@ -143,13 +143,6 @@ import qualified Data.PQueue.Prio.Internals as Internals
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
 
 #ifdef __GLASGOW_HASKELL__
-import GHC.Exts (build)
-#else
-build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
-build f = f (:) []
-#endif
-
-#ifdef __GLASGOW_HASKELL__
 -- | A bidirectional pattern synonym for an empty priority queue.
 --
 -- @since 1.5.0
