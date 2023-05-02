@@ -129,6 +129,8 @@ import Text.Read (Lexeme(Ident), lexP, parens, prec,
 import Data.Functor.WithIndex
 import Data.Foldable.WithIndex
 import Data.Traversable.WithIndex
+import qualified Data.List as List
+import Data.Function (on)
 
 #ifndef __GLASGOW_HASKELL__
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
@@ -138,11 +140,27 @@ build f = f (:) []
 -- | A priority queue where values of type @a@ are annotated with keys of type @k@.
 -- The queue supports extracting the element with maximum key.
 newtype MaxPQueue k a = MaxPQ (MinPQueue (Down k) a)
-# if __GLASGOW_HASKELL__
-  deriving (Eq, Ord, Data)
-# else
-  deriving (Eq, Ord)
-# endif
+#ifdef __GLASGOW_HASKELL__
+  deriving (Data)
+#endif
+
+-- | @ (==) = (==) ``on`` 'List.sort' . 'List.map' 'Data.Ord.Down' . 'toDescList' @
+instance (Ord k, Ord a) => Eq (MaxPQueue k a) where
+-- We define an instance rather than deriving one because old Haddock versions
+-- choked on documentation in deriving clauses. *sigh*. That's fixed with GHC
+-- 8.2.
+  MaxPQ p == MaxPQ q = p == q
+
+-- | @ compare = compare ``on`` 'List.sort' . 'List.map' 'Data.Ord.Down' . 'toDescList' @
+instance (Ord k, Ord a) => Ord (MaxPQueue k a) where
+  compare = compare `on` toFullySortedList
+
+toFullySortedList :: (Ord k, Ord a) => MaxPQueue k a -> [Down (k, a)]
+-- Gosh, this is a mess, but it works.
+toFullySortedList (MaxPQ q) =
+  List.concatMap (List.sortBy (compare `on` Down . snd . unDown)) .
+  List.groupBy ((==) `on` fst . unDown) .
+  List.map (\(Down k, v) -> Down (k, v)) . Q.toAscList $ q
 
 instance (NFData k, NFData a) => NFData (MaxPQueue k a) where
   rnf (MaxPQ q) = rnf q

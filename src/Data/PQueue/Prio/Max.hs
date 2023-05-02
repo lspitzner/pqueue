@@ -21,6 +21,9 @@
 -- are no guarantees about the relative order in which @k1@, @k2@, and their associated
 -- elements are returned. (Unlike Data.Map, we allow multiple elements with the
 -- same key.)
+-- The order in which key-value pairs with the same key are extracted, folded,
+-- or traversed is explicitly unspecified. From a semantic standpoint, it is
+-- simplest to imagine that these operations are nondeterministic.
 --
 -- This implementation offers a number of methods of the form @xxxU@, where @U@ stands for
 -- unordered. No guarantees whatsoever are made on the execution or traversal order of

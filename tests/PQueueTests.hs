@@ -74,8 +74,8 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "foldlU" $ \xs -> Min.foldlU (+) 0 (Min.fromList xs) === sum xs
     , testProperty "foldlU'" $ \xs -> Min.foldlU' (+) 0 (Min.fromList xs) === sum xs
     , testProperty "toListU" $ \xs -> List.sort (Min.toListU (Min.fromList xs)) === List.sort xs
-    , testProperty "==" $ \(xs :: [(Int, ())]) ys -> ((==) `on` Min.fromList) xs ys === ((==) `on` List.sort) xs ys
-    , testProperty "compare" $ \(xs :: [(Int, ())]) ys -> (compare `on` Min.fromList) xs ys === (compare `on` List.sort) xs ys
+    , testProperty "==" $ \(xs :: [(Int, Int)]) ys -> ((==) `on` Min.fromList) xs ys === ((==) `on` List.sort) xs ys
+    , testProperty "compare" $ \(xs :: [(Int, Int)]) ys -> (compare `on` Min.fromList) xs ys === (compare `on` List.sort) xs ys
     ]
   , testGroup "Data.PQueue.Max"
     [ testProperty "size" $ \xs -> Max.size (Max.fromList xs) === length xs
@@ -108,8 +108,8 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "foldlU" $ \xs -> Max.foldlU (+) 0 (Max.fromList xs) === sum xs
     , testProperty "foldlU'" $ \xs -> Max.foldlU' (+) 0 (Max.fromList xs) === sum xs
     , testProperty "toListU" $ \xs -> List.sort (Max.toListU (Max.fromList xs)) === List.sort xs
-    , testProperty "==" $ \(xs :: [(Int, ())]) ys -> ((==) `on` Max.fromList) xs ys === ((==) `on` List.sort) xs ys
-    , testProperty "compare" $ \(xs :: [(Int, ())]) ys -> (compare `on` Max.fromList) xs ys === (compare `on` (List.sort . List.map Down)) xs ys
+    , testProperty "==" $ \(xs :: [(Int, Int)]) ys -> ((==) `on` Max.fromList) xs ys === ((==) `on` List.sort) xs ys
+    , testProperty "compare" $ \(xs :: [(Int, Int)]) ys -> (compare `on` Max.fromList) xs ys === (compare `on` (List.sort . List.map Down)) xs ys
     ]
   , testGroup "Data.PQueue.Prio.Min"
     [ testProperty "size" $ \xs -> PMin.size (PMin.fromList xs) === length xs
@@ -212,8 +212,8 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "traverseU" $
       \(Fn (f :: () -> Maybe ())) (xs :: [(Int, ())]) -> PMax.traverseU f (PMax.fromList xs) === fmap PMax.fromList (traverse (\(k, x) -> fmap (k,) (f x)) xs)
     , testProperty "toListU" $ \xs -> List.sort (PMax.toListU (PMax.fromList xs)) === List.sort xs
-    , testProperty "==" $ \(xs :: [(Int, ())]) ys -> ((==) `on` PMax.fromList) xs ys === ((==) `on` List.sort) xs ys
-    , testProperty "compare" $ \(xs :: [(Int, ())]) ys -> (compare `on` PMax.fromList) xs ys === (compare `on` (List.sort . List.map Down)) xs ys
+    , testProperty "==" $ \(xs :: [(Int, Int)]) ys -> ((==) `on` PMax.fromList) xs ys === ((==) `on` List.sort) xs ys
+    , testProperty "compare" $ \(xs :: [(Int, Int)]) ys -> (compare `on` PMax.fromList) xs ys === (compare `on` (List.sort . List.map Down)) xs ys
     ]
   ]
 

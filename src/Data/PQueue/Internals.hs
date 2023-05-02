@@ -198,8 +198,9 @@ mapEither f (MinQueue _ x ts)
       Left y -> (fromBare (BQ.insert y l), fromBare r)
       Right z -> (fromBare l, fromBare (BQ.insert z r))
 
--- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
--- as in 'fmap'. If it is not, the result is undefined.
+-- | \(O(n)\). Assumes that the function it is given is monotonic, and applies
+-- this function to every element of the priority queue, as in 'fmap'. If it is
+-- not, the result is undefined.
 mapMonotonic :: (a -> b) -> MinQueue a -> MinQueue b
 mapMonotonic = mapU
 
@@ -274,7 +275,7 @@ insertMinQ' x (MinQueue n x' f) = MinQueue (n + 1) x (BQ.insertMinQ' x' f)
 
 -- | @insertMaxQ' x h@ assumes that @x@ compares as greater
 -- than or equal to every element of @h@. It also assumes,
--- and preserves, an extra invariant. See 'insertMax'' for details.
+-- and preserves, an extra invariant. See 'BQ.insertMax'' for details.
 -- tldr: this function can be used safely to build a queue from an
 -- ascending list/array/whatever, but that's about it.
 insertMaxQ' :: a -> MinQueue a -> MinQueue a
@@ -289,6 +290,9 @@ fromList :: Ord a => [a] -> MinQueue a
 -- comparison per element.
 fromList xs = fromBare (BQ.fromList xs)
 
+-- | \(O(n)\). Assumes that the function it is given is monotonic, and applies
+-- this function to every element of the priority queue, as in 'fmap'. If it is
+-- not, the result is undefined.
 mapU :: (a -> b) -> MinQueue a -> MinQueue b
 mapU _ Empty = Empty
 mapU f (MinQueue n x ts) = MinQueue n (f x) (BQ.mapU f ts)

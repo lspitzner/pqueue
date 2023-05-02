@@ -169,7 +169,7 @@ take :: Ord a => Int -> MaxQueue a -> [a]
 take n = List.take n . toDescList
 
 -- | \(O(k \log n)\)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the greatest @k@ elements deleted,
--- or an empty queue if @k >= size 'queue'@.
+-- or an empty queue if @k >= 'size' queue@.
 drop :: Ord a => Int -> MaxQueue a -> MaxQueue a
 drop n (MaxQueue queue) = MaxQueue (MinQ.drop n queue)
 

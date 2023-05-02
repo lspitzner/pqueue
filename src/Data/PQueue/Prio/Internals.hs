@@ -52,6 +52,7 @@ module Data.PQueue.Prio.Internals (
 
 import Control.Applicative (liftA2, liftA3)
 import Control.DeepSeq (NFData(rnf), deepseq)
+import Data.Function (on)
 import Data.Functor.Identity (Identity(Identity, runIdentity))
 import qualified Data.List as List
 import Data.PQueue.Internals.Foldable
@@ -210,37 +211,18 @@ instance IFoldMap t => IFoldMap (BinomForest t) where
   foldMapWithKey_ f (Skip ts) = foldMapWithKey_ f ts
   foldMapWithKey_ f (Cons t ts) = foldMapWithKey_ f t `mappend` foldMapWithKey_ f ts
 
-instance (Ord k, Eq a) => Eq (MinPQueue k a) where
-  MinPQ n1 k1 a1 ts1 == MinPQ n2 k2 a2 ts2 =
-    n1 == n2 && eqExtract k1 a1 ts1 k2 a2 ts2
-  Empty == Empty = True
-  _     == _     = False
+-- | @ (==) = (==) ``on`` 'List.sort' . 'toAscList' @
+instance (Ord k, Ord a) => Eq (MinPQueue k a) where
+  (==) = (==) `on` toFullySortedList
 
-eqExtract :: (Ord k, Eq a) => k -> a -> BinomForest rk k a -> k -> a -> BinomForest rk k a -> Bool
-eqExtract k10 a10 ts10 k20 a20 ts20 =
-  k10 == k20 && a10 == a20 &&
-  case (extract ts10, extract ts20) of
-    (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
-             -> eqExtract k1 a1 ts1' k2 a2 ts2'
-    (No, No) -> True
-    _        -> False
+toFullySortedList :: (Ord k, Ord a) => MinPQueue k a -> [(k, a)]
+-- We break up the list to avoid lots of redundant key comparisons
+-- in sorting.
+toFullySortedList = List.concatMap (List.sortBy (compare `on` snd)) . List.groupBy ((==) `on` fst) . toAscList
 
+-- | @ compare = compare ``on`` 'List.sort' . 'toAscList' @
 instance (Ord k, Ord a) => Ord (MinPQueue k a) where
-  MinPQ _n1 k10 a10 ts10 `compare` MinPQ _n2 k20 a20 ts20 =
-    cmpExtract k10 a10 ts10 k20 a20 ts20
-  Empty `compare` Empty   = EQ
-  Empty `compare` MinPQ{} = LT
-  MinPQ{} `compare` Empty = GT
-
-cmpExtract :: (Ord k, Ord a) => k -> a -> BinomForest rk k a -> k -> a -> BinomForest rk k a -> Ordering
-cmpExtract k10 a10 ts10 k20 a20 ts20 =
-  k10 `compare` k20 <> a10 `compare` a20 <>
-  case (extract ts10, extract ts20) of
-    (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
-                -> cmpExtract k1 a1 ts1' k2 a2 ts2'
-    (No, Yes{}) -> LT
-    (Yes{}, No) -> GT
-    (No, No)    -> EQ
+  compare = compare `on` toFullySortedList
 
 -- | \(O(1)\). Returns the empty priority queue.
 empty :: MinPQueue k a
@@ -343,9 +325,11 @@ minViewWithKey (MinPQ n k a ts) = Just ((k, a), extractHeap n ts)
 mapWithKey :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
 mapWithKey f = runIdentity . traverseWithKeyU (Identity .: f)
 
--- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when @f@ is strictly
--- monotonic. /The precondition is not checked./ This function has better performance than
--- 'mapKeys'.
+-- | \(O(n)\). @'mapKeysMonotonic' f q == 'Data.PQueue.Prio.Min.mapKeys' f q@,
+-- but only works when @f@ is strictly monotonic.
+-- /The precondition is not checked./
+-- This function has better performance than 'Data.PQueue.Prio.Min.mapKeys'.
+
 mapKeysMonotonic :: (k -> k') -> MinPQueue k a -> MinPQueue k' a
 mapKeysMonotonic _ Empty = Empty
 mapKeysMonotonic f (MinPQ n k a ts) = MinPQ n (f k) a (mapKeysMonoF f (const Zero) ts)

@@ -2,6 +2,9 @@
 
 ## 1.5.0
 
+  * Make the `Eq` and `Ord` instances for key-value queues sensible.
+    Document the nondeterministic nature of these queues.
+
   * Make mapping and traversal functions force the full data structure spine.
     This should make performance more predictable, and removes the last
     remaining reasons to use the `seqSpine` functions. As these are no longer
