@@ -48,6 +48,7 @@ library
     Data.PQueue.Internals.Down
     Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals
+    Nattish
   if impl(ghc) {
     default-extensions: DeriveDataTypeable
   }
