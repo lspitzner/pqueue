@@ -185,7 +185,7 @@ unions = foldl' union empty
 -- | \(O(n)\). Map elements and collect the 'Just' results.
 mapMaybe :: Ord b => (a -> Maybe b) -> MinQueue a -> MinQueue b
 mapMaybe _ Empty = Empty
-mapMaybe f (MinQueue _ x ts) = fromBare $ maybe q' (`BQ.insert` q') (f x)
+mapMaybe f (MinQueue _ x ts) = fromBare $ maybe q' (`BQ.insertEager` q') (f x)
   where
     q' = BQ.mapMaybe f ts
 
@@ -195,8 +195,14 @@ mapEither _ Empty = (Empty, Empty)
 mapEither f (MinQueue _ x ts)
   | (l, r) <- BQ.mapEither f ts
   = case f x of
-      Left y -> (fromBare (BQ.insert y l), fromBare r)
-      Right z -> (fromBare l, fromBare (BQ.insert z r))
+      Left y ->
+        let !l' = fromBare (BQ.insertEager y l)
+            !r' = fromBare r
+        in (l', r')
+      Right z ->
+        let !l' = fromBare l
+            !r' = fromBare (BQ.insertEager z r)
+        in (l', r')
 
 -- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
 -- as in 'fmap'. If it is not, the result is undefined.

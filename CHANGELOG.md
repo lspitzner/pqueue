@@ -2,6 +2,16 @@
 
 ## 1.5.0
 
+  * Fix incorrect behavior of `mapMaybe` and `mapEither` for `MinQueue`. These
+    previously worked only for monotonic functions.
+
+  * Fix a performance bug that caused queue performance not to improve
+    when the queue shrinks.
+    ([#109](https://github.com/lspitzner/pqueue/pull/109))
+
+  * Make `minView` more eager, improving performance in typical cases.
+    ([#107](https://github.com/lspitzner/pqueue/pull/107))
+
   * Make mapping and traversal functions force the full data structure spine.
     This should make performance more predictable, and removes the last
     remaining reasons to use the `seqSpine` functions. As these are no longer

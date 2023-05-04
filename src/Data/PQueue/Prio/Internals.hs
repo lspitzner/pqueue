@@ -16,6 +16,7 @@ module Data.PQueue.Prio.Internals (
   singleton,
   insert,
   insertBehind,
+  insertEager,
   union,
   getMin,
   adjustMinWithKey,
@@ -154,12 +155,6 @@ unions = List.foldl' union empty
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (f .: g) x y = f (g x y)
 
-first' :: (a -> b) -> (a, c) -> (b, c)
-first' f (a, c) = (f a, c)
-
-second' :: (b -> c) -> (a, b) -> (a, c)
-second' f (a, b) = (a, f b)
-
 infixr 8 .:
 
 -- | A priority queue where keys of type @k@ are annotated with values of type
@@ -268,6 +263,12 @@ insert k a (MinPQ n k' a' ts)
   | k <= k' = MinPQ (n + 1) k  a  (incrMin (tip k' a') ts)
   | otherwise = MinPQ (n + 1) k' a' (incr (tip k  a ) ts)
 
+insertEager :: Ord k => k -> a -> MinPQueue k a -> MinPQueue k a
+insertEager k a Empty = singleton k a
+insertEager k a (MinPQ n k' a' ts)
+  | k <= k' = MinPQ (n + 1) k a  (insertEagerHeap k' a' ts)
+  | otherwise = MinPQ (n + 1) k' a' (insertEagerHeap k a ts)
+
 -- | \(O(n)\) (an earlier implementation had \(O(1)\) but was buggy).
 -- Insert an element with the specified key into the priority queue,
 -- putting it behind elements whose key compares equal to the
@@ -352,14 +353,41 @@ mapKeysMonotonic f (MinPQ n k a ts) = MinPQ n (f k) a (mapKeysMonoF f (const Zer
 
 -- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybeWithKey :: Ord k => (k -> a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
-mapMaybeWithKey _ Empty            = Empty
-mapMaybeWithKey f (MinPQ _ k a ts) = maybe id (insert k) (f k a) (mapMaybeF f (const Empty) ts)
+mapMaybeWithKey f = fromBare .
+  foldlWithKeyU'
+    (\q k a -> case f k a of
+        Nothing -> q
+        Just b -> insertEagerHeap k b q)
+    Nil
+{-# INLINABLE mapMaybeWithKey #-}
 
 -- | \(O(n)\). Map values and separate the 'Left' and 'Right' results.
 mapEitherWithKey :: Ord k => (k -> a -> Either b c) -> MinPQueue k a -> (MinPQueue k b, MinPQueue k c)
-mapEitherWithKey _ Empty            = (Empty, Empty)
-mapEitherWithKey f (MinPQ _ k a ts) = either (first' . insert k) (second' . insert k) (f k a)
-  (mapEitherF f (const (Empty, Empty)) ts)
+mapEitherWithKey f q
+  | (l, r) <- mapEitherHeap f q
+  , let
+      !l' = fromBare l
+      !r' = fromBare r
+  = (l', r')
+{-# INLINABLE mapEitherWithKey #-}
+
+data Partition k a b = Partition !(BinomHeap k a) !(BinomHeap k b)
+
+fromPartition :: Partition k a b -> (BinomHeap k a, BinomHeap k b)
+fromPartition (Partition p q) = (p, q)
+
+mapEitherHeap :: Ord k => (k -> a -> Either b c) -> MinPQueue k a -> (BinomHeap k b, BinomHeap k c)
+mapEitherHeap f = fromPartition .
+  foldlWithKeyU'
+    (\(Partition ls rs) k a ->
+         case f k a of
+           Left b -> Partition (insertEagerHeap k b ls) rs
+           Right b -> Partition ls (insertEagerHeap k b rs))
+    (Partition Nil Nil)
+
+insertEagerHeap :: Ord k => k -> a -> BinomHeap k a -> BinomHeap k a
+insertEagerHeap k a h = incr' (tip k a) h
+{-# INLINE insertEagerHeap #-}
 
 -- | \(O(n \log n)\). Fold the keys and values in the map, such that
 -- @'foldrWithKey' f z q == 'List.foldr' ('uncurry' f) z ('toAscList' q)@.
@@ -436,10 +464,13 @@ insertMax' k a (MinPQ n k' a' ts) = MinPQ (n + 1) k' a' (incrMax' (tip k a) ts)
 {-# INLINE fromList #-}
 -- | \(O(n)\). Constructs a priority queue from an unordered list.
 fromList :: Ord k => [(k, a)] -> MinPQueue k a
--- We build a forest first and then extract its minimum at the end.
--- Why not just build the 'MinQueue' directly? This way saves us one
--- comparison per element.
-fromList xs = case extract (fromListHeap xs) of
+-- We build a forest first and then extract its minimum at the end.  Why not
+-- just build the 'MinQueue' directly? This way typically saves us one
+-- comparison per element, which roughly halves comparisons.
+fromList xs = fromBare (fromListHeap xs)
+
+fromBare :: Ord k => BinomHeap k a -> MinPQueue k a
+fromBare xs = case extract xs of
   No -> Empty
   -- Should we track the size as we go instead? That saves O(log n)
   -- at the end, but it needs an extra register all along the way.
@@ -451,7 +482,7 @@ fromList xs = case extract (fromListHeap xs) of
 fromListHeap :: Ord k => [(k, a)] -> BinomHeap k a
 fromListHeap xs = List.foldl' go Nil xs
   where
-    go fr (k, a) = incr' (tip k a) fr
+    go fr (k, a) = insertEagerHeap k a fr
 
 sizeHeap :: BinomHeap k a -> Int
 sizeHeap = go 0 1
@@ -620,33 +651,6 @@ mapForest f fCh ts0 = case ts0 of
            -> Cons (BinomTree k (f k a) (fCh ts)) $! mapForest f fCh' tss
   where fCh' (Succ (BinomTree k a ts) tss)
            = Succ (BinomTree k (f k a) (fCh ts)) (fCh tss)
-
--- | Utility function for mapping a 'Maybe' function over a forest.
-mapMaybeF :: Ord k => (k -> a -> Maybe b) -> (rk k a -> MinPQueue k b) ->
-  BinomForest rk k a -> MinPQueue k b
-mapMaybeF f fCh ts0 = case ts0 of
-  Nil    -> Empty
-  Skip ts'  -> mapMaybeF f fCh' ts'
-  Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapMaybeF f fCh' ts')
-  where  insF k a = maybe id (insert k) (f k a) .: union
-         fCh' (Succ (BinomTree k a ts) tss) =
-           insF k a (fCh ts) (fCh tss)
-
--- | Utility function for mapping an 'Either' function over a forest.
-mapEitherF :: Ord k => (k -> a -> Either b c) -> (rk k a -> (MinPQueue k b, MinPQueue k c)) ->
-  BinomForest rk k a -> (MinPQueue k b, MinPQueue k c)
-mapEitherF f0 fCh ts0 = case ts0 of
-  Nil    -> (Empty, Empty)
-  Skip ts'  -> mapEitherF f0 fCh' ts'
-  Cons (BinomTree k a ts) ts'
-      -> insF k a (fCh ts) (mapEitherF f0 fCh' ts')
-  where
-    insF k a = either (first' . insert k) (second' . insert k) (f0 k a) .:
-      (union `both` union)
-    fCh' (Succ (BinomTree k a ts) tss) =
-      insF k a (fCh ts) (fCh tss)
-    both f g (x1, x2) (y1, y2) = (f x1 y1, g x2 y2)
 
 -- | \(O(n)\). An unordered right fold over the elements of the queue, in no particular order.
 foldrWithKeyU :: (k -> a -> b -> b) -> b -> MinPQueue k a -> b
