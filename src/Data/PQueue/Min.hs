@@ -128,7 +128,7 @@ pattern Empty = Internals.Empty
 infixr 5 :<
 
 -- | A bidirectional pattern synonym for working with the minimum view of a
--- 'MinPQueue'.  Using @:<@ to construct a queue performs an insertion in
+-- 'MinQueue'.  Using @:<@ to construct a queue performs an insertion in
 -- \(O(1)\) amortized time. When matching on @a :< q@, forcing @q@ takes
 -- \(O(\log n)\) time.
 --
