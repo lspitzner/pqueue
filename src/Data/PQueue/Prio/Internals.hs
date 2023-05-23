@@ -310,7 +310,7 @@ minViewWithKey (MinPQ n k a ts) = Just ((k, a), extractHeap n ts)
 
 -- | \(O(n)\). Map a function over all values in the queue.
 mapWithKey :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
-mapWithKey f = runIdentity . traverseWithKeyU (Identity .: f)
+mapWithKey f = runIdentity . traverseWithKeyU (coerce f)
 
 -- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when
 -- @f@ is (weakly) monotonic. /The precondition is not checked./ This function
