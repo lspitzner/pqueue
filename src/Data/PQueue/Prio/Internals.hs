@@ -312,32 +312,42 @@ minViewWithKey (MinPQ n k a ts) = Just ((k, a), extractHeap n ts)
 mapWithKey :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
 mapWithKey f = runIdentity . traverseWithKeyU (Identity .: f)
 
--- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when @f@ is strictly
--- monotonic. /The precondition is not checked./ This function has better performance than
--- 'mapKeys'.
+-- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when
+-- @f@ is (weakly) monotonic. /The precondition is not checked./ This function
+-- has better performance than 'mapKeys'.
 --
 -- Note: if the given function returns bottom for any of the keys in the queue, then the
 -- portion of the queue which is bottom is /unspecified/.
 mapKeysMonotonic :: (k -> k') -> MinPQueue k a -> MinPQueue k' a
 mapKeysMonotonic _ Empty = Empty
-mapKeysMonotonic f (MinPQ n k a ts) = MinPQ n (f k) a (mapKeysMonoHeap f ts)
+mapKeysMonotonic f (MinPQ n k a ts) = MinPQ n (f k) a $! mapKeysMonoHeap f ts
 
 mapKeysMonoHeap :: forall k k' a. (k -> k') -> BinomHeap k a -> BinomHeap k' a
 mapKeysMonoHeap f = mapKeysMonoForest Zeroy
   where
     mapKeysMonoForest :: Ranky rk -> BinomForest rk k a -> BinomForest rk k' a
     mapKeysMonoForest !_rky Nil = Nil
-    mapKeysMonoForest !rky (Skip rest) = Skip $ mapKeysMonoForest (Succy rky) rest
-    mapKeysMonoForest !rky (Cons t rest) = Cons (mapKeysMonoTree rky t) $ mapKeysMonoForest (Succy rky) rest
+    mapKeysMonoForest !rky (Skip rest) = Skip $! mapKeysMonoForest (Succy rky) rest
+    mapKeysMonoForest !rky (Cons t rest) = Cons (mapKeysMonoTree rky t) $! mapKeysMonoForest (Succy rky) rest
 
     {-# INLINE mapKeysMonoTree #-}
     mapKeysMonoTree :: Ranky rk -> BinomTree rk k a -> BinomTree rk k' a
-    mapKeysMonoTree !rky (BinomTree k ts) = BinomTree (f k) (mapKeysMonoTrees rky ts)
+    mapKeysMonoTree Zeroy (BinomTree k (Zero a)) =
+      -- We've reached a value, which we must not force.
+      BinomTree (f k) (Zero a)
+      -- We're not at a value; we force the result.
+    mapKeysMonoTree rky (BinomTree k ts) = BinomTree (f k) $! mapKeysMonoTrees rky ts
 
     mapKeysMonoTrees :: Ranky rk -> rk k a -> rk k' a
-    mapKeysMonoTrees Zeroy (Zero a) = Zero a
+    mapKeysMonoTrees Zeroy (Zero a) =
+      -- Don't force the value!
+      Zero a
+    mapKeysMonoTrees (Succy Zeroy) (Succ t (Zero a)) =
+      -- Don't force the value!
+      Succ (mapKeysMonoTree Zeroy t) (Zero a)
     mapKeysMonoTrees (Succy rky) (Succ t ts) =
-      Succ (mapKeysMonoTree rky t) (mapKeysMonoTrees rky ts)
+      -- Whew, no values; force the trees.
+      Succ (mapKeysMonoTree rky t) $! mapKeysMonoTrees rky ts
 
 -- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybeWithKey :: Ord k => (k -> a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
@@ -706,37 +716,47 @@ type Ranky = Nattish Zero Succ
 -- | \(O(n)\). An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
+{-# INLINABLE traverseWithKeyU #-}
 traverseWithKeyU :: forall f k a b. Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKeyU _ Empty = pure Empty
-traverseWithKeyU f (MinPQ n k a ts) = liftA2 (MinPQ n k) (f k a) (traverseHeapU f ts)
+traverseWithKeyU f (MinPQ n k a ts) = liftA2 (\a' !ts' -> MinPQ n k a' ts') (f k a) (traverseHeapU f ts)
 
+{-# INLINABLE traverseHeapU #-}
 traverseHeapU :: forall f k a b. Applicative f => (k -> a -> f b) -> BinomHeap k a -> f (BinomHeap k b)
 traverseHeapU f = traverseForest Zeroy
   where
     traverseForest :: Ranky rk -> BinomForest rk k a -> f (BinomForest rk k b)
     traverseForest !_rky Nil = pure Nil
-    traverseForest !rky (Skip rest) = Skip <$> traverseForest (Succy rky) rest
+    traverseForest !rky (Skip rest) = (Skip $!) <$> traverseForest (Succy rky) rest
     traverseForest !rky (Cons t rest) =
-      liftA2 Cons (traverseTree rky t) (traverseForest (Succy rky) rest)
+      liftA2 (\ !t' !rest' -> Cons t' rest') (traverseTree rky t) (traverseForest (Succy rky) rest)
 
     {-# INLINE traverseTree #-}
     traverseTree :: Ranky rk -> BinomTree rk k a -> f (BinomTree rk k b)
-    traverseTree !rky (BinomTree k ts) = BinomTree k <$> traverseTrees rky k ts
+    traverseTree Zeroy (BinomTree k (Zero a)) =
+      -- We've reached a value, so we don't force the result.
+      BinomTree k . Zero <$> f k a
+    traverseTree rky (BinomTree k ts) =
+      -- We're not at a value, so we force the tree list.
+      (BinomTree k $!) <$> traverseTrees rky k ts
 
     traverseTrees :: Ranky rk -> k -> rk k a -> f (rk k b)
-    traverseTrees Zeroy !k (Zero a) = Zero <$> f k a
+    traverseTrees Zeroy !k (Zero a) =
+      -- We're at a value, so we don't force the result.
+      Zero <$> f k a
+    traverseTrees (Succy Zeroy) !k2 (Succ (BinomTree k1 (Zero a1)) (Zero a2)) =
+      -- The right subtree is a value, so we don't force it.
+      liftA2 (\b1 b2 -> Succ (BinomTree k1 (Zero b1)) (Zero b2)) (f k1 a1) (f k2 a2)
     traverseTrees (Succy rky) !k (Succ t ts) =
-      liftA2 Succ (traverseTree rky t) (traverseTrees rky k ts)
+      -- Whew; no values. We're safe to force.
+      liftA2 (\ !t' !ts' -> Succ t' ts') (traverseTree rky t) (traverseTrees rky k ts)
 
 -- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
 -- Note: The spine of a 'MinPQueue' is stored somewhat lazily. In earlier
--- versions of this package, various operations could produce chains of thunks
--- along the spine, occasionally necessitating manual forcing. Now, almost all
--- operations are careful to force enough to avoid this problem. The only
--- exceptions are 'mapKeysMonotonic', 'mapWithKey', 'traverseWithKeyU',
--- and the unkeyed versions of those operations, none of which benefit from
--- having their spines forced.
+-- versions of this package, some operations could produce chains of thunks
+-- along the spine, occasionally necessitating manual forcing. Now, all
+-- operations are careful to force enough to avoid this problem.
 {-# DEPRECATED seqSpine "This function is no longer necessary or useful." #-}
 seqSpine :: MinPQueue k a -> b -> b
 seqSpine Empty z0 = z0
