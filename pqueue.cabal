@@ -91,11 +91,13 @@ test-suite test
     Data.PQueue.Internals.Down
     Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals
+    Nattish
 
     Validity.BinomialQueue
     Validity.PQueue.Min
     Validity.PQueue.Prio.BinomialQueue
     Validity.PQueue.Prio.Min
+    Validity.PQueue.Prio.Max
   if impl(ghc) {
     default-extensions: DeriveDataTypeable
   }
