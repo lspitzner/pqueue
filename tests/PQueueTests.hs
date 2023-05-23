@@ -88,7 +88,14 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "toDescList" $ \xs -> Min.toDescList (Min.fromList xs) === List.sortOn Down xs
     , testProperty "fromAscList" $ \xs -> Min.fromAscList (List.sort xs) === Min.fromList xs
     , testProperty "fromDescList" $ \xs -> Min.fromDescList (List.sortOn Down xs) === Min.fromList xs
-    , testProperty "mapU" $ \xs -> Min.mapU (+ 1) (Min.fromList xs) === Min.fromList (List.map (+ 1) xs)
+    , testProperty "mapU" $ \xs ->
+        let
+          -- Monotonic, but not strictly so
+          fun x
+            | even x = x
+            | otherwise = x + 1
+          res = Min.mapU fun (Min.fromList xs)
+        in validMinQueue res .&&. Min.toList res === List.map fun (List.sort xs)
     , testProperty "foldrU" $ \xs -> Min.foldrU (+) 0 (Min.fromList xs) === sum xs
     , testProperty "foldlU" $ \xs -> Min.foldlU (+) 0 (Min.fromList xs) === sum xs
     , testProperty "foldlU'" $ \xs -> Min.foldlU' (+) 0 (Min.fromList xs) === sum xs
