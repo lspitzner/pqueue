@@ -339,9 +339,7 @@ mapKeysMonoHeap f = mapKeysMonoForest Zeroy
     mapKeysMonoTree rky (BinomTree k ts) = BinomTree (f k) $! mapKeysMonoTrees rky ts
 
     mapKeysMonoTrees :: Ranky rk -> rk k a -> rk k' a
-    mapKeysMonoTrees Zeroy (Zero a) =
-      -- Don't force the value!
-      Zero a
+    mapKeysMonoTrees Zeroy (Zero a) = Zero a
     mapKeysMonoTrees (Succy Zeroy) (Succ t (Zero a)) =
       -- Don't force the value!
       Succ (mapKeysMonoTree Zeroy t) (Zero a)
