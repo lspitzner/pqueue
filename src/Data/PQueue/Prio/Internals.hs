@@ -336,16 +336,15 @@ mapKeysMonoHeap f = mapKeysMonoForest Zeroy
       -- We've reached a value, which we must not force.
       BinomTree (f k) (Zero a)
       -- We're not at a value; we force the result.
-    mapKeysMonoTree rky (BinomTree k ts) = BinomTree (f k) $! mapKeysMonoTrees rky ts
+    mapKeysMonoTree (Succy rky) (BinomTree k ts) = BinomTree (f k) $! mapKeysMonoTrees rky ts
 
-    mapKeysMonoTrees :: Ranky rk -> rk k a -> rk k' a
-    mapKeysMonoTrees Zeroy (Zero a) = Zero a
-    mapKeysMonoTrees (Succy Zeroy) (Succ t (Zero a)) =
+    mapKeysMonoTrees :: Ranky rk -> Succ rk k a -> Succ rk k' a
+    mapKeysMonoTrees Zeroy (Succ t (Zero a)) =
       -- Don't force the value!
       Succ (mapKeysMonoTree Zeroy t) (Zero a)
     mapKeysMonoTrees (Succy rky) (Succ t ts) =
       -- Whew, no values; force the trees.
-      Succ (mapKeysMonoTree rky t) $! mapKeysMonoTrees rky ts
+      Succ (mapKeysMonoTree (Succy rky) t) $! mapKeysMonoTrees rky ts
 
 -- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybeWithKey :: Ord k => (k -> a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
@@ -734,20 +733,17 @@ traverseHeapU f = traverseForest Zeroy
     traverseTree Zeroy (BinomTree k (Zero a)) =
       -- We've reached a value, so we don't force the result.
       BinomTree k . Zero <$> f k a
-    traverseTree rky (BinomTree k ts) =
+    traverseTree (Succy rky) (BinomTree k ts) =
       -- We're not at a value, so we force the tree list.
       (BinomTree k $!) <$> traverseTrees rky k ts
 
-    traverseTrees :: Ranky rk -> k -> rk k a -> f (rk k b)
-    traverseTrees Zeroy !k (Zero a) =
-      -- We're at a value, so we don't force the result.
-      Zero <$> f k a
-    traverseTrees (Succy Zeroy) !k2 (Succ (BinomTree k1 (Zero a1)) (Zero a2)) =
+    traverseTrees :: Ranky rk -> k -> Succ rk k a -> f (Succ rk k b)
+    traverseTrees Zeroy !k2 (Succ (BinomTree k1 (Zero a1)) (Zero a2)) =
       -- The right subtree is a value, so we don't force it.
       liftA2 (\b1 b2 -> Succ (BinomTree k1 (Zero b1)) (Zero b2)) (f k1 a1) (f k2 a2)
     traverseTrees (Succy rky) !k (Succ t ts) =
       -- Whew; no values. We're safe to force.
-      liftA2 (\ !t' !ts' -> Succ t' ts') (traverseTree rky t) (traverseTrees rky k ts)
+      liftA2 (\ !t' !ts' -> Succ t' ts') (traverseTree (Succy rky) t) (traverseTrees rky k ts)
 
 -- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
