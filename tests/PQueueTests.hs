@@ -25,6 +25,7 @@ import qualified Data.PQueue.Prio.Max as PMax
 import qualified Data.PQueue.Prio.Min as PMin
 import qualified Validity.PQueue.Min as VMin
 import qualified Validity.PQueue.Prio.Min as VPMin
+import qualified Validity.PQueue.Prio.Max as VPMax
 
 default (Int)
 
@@ -33,6 +34,9 @@ validMinQueue q = VMin.validShape q .&&. VMin.validSize q .&&. VMin.validOrder q
 
 validPMinQueue :: Ord k => PMin.MinPQueue k a -> Property
 validPMinQueue q = VPMin.validShape q .&&. VPMin.validSize q .&&. VPMin.validOrder q
+
+validPMaxQueue :: Ord k => PMax.MaxPQueue k a -> Property
+validPMaxQueue q = VPMax.validShape q .&&. VPMax.validSize q .&&. VPMax.validOrder q
 
 main :: IO ()
 main = defaultMain $ testGroup "pqueue"
@@ -84,7 +88,14 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "toDescList" $ \xs -> Min.toDescList (Min.fromList xs) === List.sortOn Down xs
     , testProperty "fromAscList" $ \xs -> Min.fromAscList (List.sort xs) === Min.fromList xs
     , testProperty "fromDescList" $ \xs -> Min.fromDescList (List.sortOn Down xs) === Min.fromList xs
-    , testProperty "mapU" $ \xs -> Min.mapU (+ 1) (Min.fromList xs) === Min.fromList (List.map (+ 1) xs)
+    , testProperty "mapU" $ \xs ->
+        let
+          -- Monotonic, but not strictly so
+          fun x
+            | even x = x
+            | otherwise = x + 1
+          res = Min.mapU fun (Min.fromList xs)
+        in validMinQueue res .&&. Min.toList res === List.map fun (List.sort xs)
     , testProperty "foldrU" $ \xs -> Min.foldrU (+) 0 (Min.fromList xs) === sum xs
     , testProperty "foldlU" $ \xs -> Min.foldlU (+) 0 (Min.fromList xs) === sum xs
     , testProperty "foldlU'" $ \xs -> Min.foldlU' (+) 0 (Min.fromList xs) === sum xs
@@ -148,7 +159,14 @@ main = defaultMain $ testGroup "pqueue"
            validPMinQueue xs' .&&.
            List.sort ((the_min, the_min_val) : PMin.toList xs') === List.sort xs
     , testProperty "map" $ \(xs :: [(Int, ())]) -> PMin.map id (PMin.fromList xs) === PMin.fromList xs
-    , testProperty "mapKeysMonotonic" $ \xs -> PMin.mapKeysMonotonic (+ 1) (PMin.fromList xs) === PMin.fromList (List.map (first (+ 1)) xs)
+    , testProperty "mapKeysMonotonic" $ \xs ->
+        let
+          -- Monotonic, but not strictly so
+          fun x
+            | even x = x
+            | otherwise = x + 1
+          res = PMin.mapKeysMonotonic fun (PMin.fromList xs)
+        in validPMinQueue res .&&. List.sort (PMin.toList res) === List.sort (List.map (first fun) xs)
     , testProperty "take" $ \n (xs :: [(Int, ())]) -> PMin.take n (PMin.fromList xs) === List.take n (List.sort xs)
     , testProperty "drop" $ \n (xs :: [(Int, ())]) -> PMin.drop n (PMin.fromList xs) === PMin.fromList (List.drop n (List.sort xs))
     , testProperty "splitAt" $ \n (xs :: [(Int, ())]) -> PMin.splitAt n (PMin.fromList xs) === second PMin.fromList (List.splitAt n (List.sort xs))
@@ -223,7 +241,14 @@ main = defaultMain $ testGroup "pqueue"
       ]
     , testProperty "minViewWithKey" $ \(xs :: [(Int, ())]) -> PMax.maxViewWithKey (PMax.fromList xs) === fmap (second PMax.fromList) (List.uncons (List.sortOn Down xs))
     , testProperty "map" $ \(xs :: [(Int, ())]) -> PMax.map id (PMax.fromList xs) === PMax.fromList xs
-    , testProperty "mapKeysMonotonic" $ \xs -> PMax.mapKeysMonotonic (+ 1) (PMax.fromList xs) === PMax.fromList (List.map (first (+ 1)) xs)
+    , testProperty "mapKeysMonotonic" $ \xs ->
+        let
+          -- Monotonic, but not strictly so
+          fun x
+            | even x = x
+            | otherwise = x + 1
+          res = PMax.mapKeysMonotonic fun (PMax.fromList xs)
+        in validPMaxQueue res .&&. List.sort (PMax.toList res) === List.sort (List.map (first fun) xs)
     , testProperty "take" $ \n (xs :: [(Int, ())]) -> PMax.take n (PMax.fromList xs) === List.take n (List.sortOn Down xs)
     , testProperty "drop" $ \n (xs :: [(Int, ())]) -> PMax.drop n (PMax.fromList xs) === PMax.fromList (List.drop n (List.sortOn Down xs))
     , testProperty "splitAt" $ \n (xs :: [(Int, ())]) -> PMax.splitAt n (PMax.fromList xs) === second PMax.fromList (List.splitAt n (List.sortOn Down xs))

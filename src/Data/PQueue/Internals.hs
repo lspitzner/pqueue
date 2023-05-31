@@ -295,6 +295,9 @@ fromList :: Ord a => [a] -> MinQueue a
 -- comparison per element.
 fromList xs = fromBare (BQ.fromList xs)
 
+-- | \(O(n)\). Assumes that the function it is given is (weakly) monotonic, and
+-- applies this function to every element of the priority queue, as in 'fmap'.
+-- If the function is not monotonic, the result is undefined.
 mapU :: (a -> b) -> MinQueue a -> MinQueue b
 mapU _ Empty = Empty
 mapU f (MinQueue n x ts) = MinQueue n (f x) (BQ.mapU f ts)

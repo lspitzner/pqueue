@@ -24,7 +24,7 @@ precedesProperlyF the_min (Cons t ts) = precedesProperlyTree the_min t
 -- | Takes an element and a tree. Checks that the tree is in heap order
 -- and that the element is less than or equal to all elements of the tree.
 precedesProperlyTree :: (Ord k, TreeValidity rk) => k -> BinomTree rk k a -> Bool
-precedesProperlyTree the_min (BinomTree k a ts) = the_min <= k && precedesProperlyRk k ts
+precedesProperlyTree the_min (BinomTree k ts) = the_min <= k && precedesProperlyRk k ts
   
 -- | A helper class for order validity checking
 class TreeValidity rk where
@@ -33,7 +33,7 @@ class TreeValidity rk where
   -- elements of the collection.
   precedesProperlyRk :: Ord k => k -> rk k a -> Bool
 instance TreeValidity Zero where
-  precedesProperlyRk _ ~Zero = True
+  precedesProperlyRk _ (Zero _) = True
 instance TreeValidity rk => TreeValidity (Succ rk) where
   precedesProperlyRk the_min (Succ t q) =
     precedesProperlyTree the_min t &&

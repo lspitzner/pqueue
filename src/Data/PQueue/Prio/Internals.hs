@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Data.PQueue.Prio.Internals (
   MinPQueue(..),
@@ -47,26 +49,25 @@ module Data.PQueue.Prio.Internals (
   mapMWithKey,
   traverseWithKeyU,
   seqSpine,
-  mapForest,
   unions
   ) where
 
-import Control.Applicative (liftA2, liftA3)
+import Control.Applicative (liftA2, liftA3, Const (..))
 import Control.DeepSeq (NFData(rnf), deepseq)
+import Data.Coerce (coerce)
 import Data.Functor.Identity (Identity(Identity, runIdentity))
 import qualified Data.List as List
-import Data.PQueue.Internals.Foldable
 
 #if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup(..), stimesMonoid)
+import Data.Semigroup (Semigroup(..), stimesMonoid, Endo (..), Dual (..))
 #else
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), Endo (..), Dual (..))
 #endif
 
 import Prelude hiding (null, map)
 #ifdef __GLASGOW_HASKELL__
 import Data.Data
-import GHC.Exts (build)
+import GHC.Exts (build, inline)
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
   readPrec, readListPrec, readListPrecDefault)
 #endif
@@ -74,6 +75,7 @@ import Text.Read (Lexeme(Ident), lexP, parens, prec,
 import Data.Functor.WithIndex
 import Data.Foldable.WithIndex
 import Data.Traversable.WithIndex
+import Nattish (Nattish (..))
 
 #ifndef __GLASGOW_HASKELL__
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
@@ -167,43 +169,9 @@ data BinomForest rk k a =
   Cons {-# UNPACK #-} !(BinomTree rk k a) (BinomForest (Succ rk) k a)
 type BinomHeap = BinomForest Zero
 
-data BinomTree rk k a = BinomTree !k a !(rk k a)
-data Zero k a = Zero
-data Succ rk k a = Succ {-# UNPACK #-} !(BinomTree rk k a) !(rk k a)
-
-instance IFoldl' Zero where
-  foldlWithKey'_ _ z ~Zero = z
-
-instance IFoldMap Zero where
-  foldMapWithKey_ _ ~Zero = mempty
-
-instance IFoldl' t => IFoldl' (Succ t) where
-  foldlWithKey'_ f z (Succ t rk) = foldlWithKey'_ f z' rk
-    where
-      !z' = foldlWithKey'_ f z t
-
-instance IFoldMap t => IFoldMap (Succ t) where
-  foldMapWithKey_ f (Succ t rk) = foldMapWithKey_ f t `mappend` foldMapWithKey_ f rk
-
-instance IFoldl' rk => IFoldl' (BinomTree rk) where
-  foldlWithKey'_ f !z (BinomTree k a rk) = foldlWithKey'_ f ft rk
-    where
-      !ft = f z k a
-
-instance IFoldMap rk => IFoldMap (BinomTree rk) where
-  foldMapWithKey_ f (BinomTree k a rk) = f k a `mappend` foldMapWithKey_ f rk
-
-instance IFoldl' t => IFoldl' (BinomForest t) where
-  foldlWithKey'_ _f z Nil = z
-  foldlWithKey'_ f !z (Skip ts) = foldlWithKey'_ f z ts
-  foldlWithKey'_ f !z (Cons t ts) = foldlWithKey'_ f ft ts
-    where
-      !ft = foldlWithKey'_ f z t
-
-instance IFoldMap t => IFoldMap (BinomForest t) where
-  foldMapWithKey_ _f Nil = mempty
-  foldMapWithKey_ f (Skip ts) = foldMapWithKey_ f ts
-  foldMapWithKey_ f (Cons t ts) = foldMapWithKey_ f t `mappend` foldMapWithKey_ f ts
+data BinomTree rk k a = BinomTree !k (rk k a)
+newtype Zero k a = Zero a
+data Succ rk k a = Succ {-# UNPACK #-} !(BinomTree rk k a) (rk k a)
 
 instance (Ord k, Eq a) => Eq (MinPQueue k a) where
   MinPQ n1 k1 a1 ts1 == MinPQ n2 k2 a2 ts2 =
@@ -211,11 +179,11 @@ instance (Ord k, Eq a) => Eq (MinPQueue k a) where
   Empty == Empty = True
   _     == _     = False
 
-eqExtract :: (Ord k, Eq a) => k -> a -> BinomForest rk k a -> k -> a -> BinomForest rk k a -> Bool
+eqExtract :: (Ord k, Eq a) => k -> a -> BinomHeap k a -> k -> a -> BinomHeap k a -> Bool
 eqExtract k10 a10 ts10 k20 a20 ts20 =
   k10 == k20 && a10 == a20 &&
   case (extract ts10, extract ts20) of
-    (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
+    (Yes (Extract k1 (Zero a1) ts1'), Yes (Extract k2 (Zero a2) ts2'))
              -> eqExtract k1 a1 ts1' k2 a2 ts2'
     (No, No) -> True
     _        -> False
@@ -227,11 +195,11 @@ instance (Ord k, Ord a) => Ord (MinPQueue k a) where
   Empty `compare` MinPQ{} = LT
   MinPQ{} `compare` Empty = GT
 
-cmpExtract :: (Ord k, Ord a) => k -> a -> BinomForest rk k a -> k -> a -> BinomForest rk k a -> Ordering
+cmpExtract :: (Ord k, Ord a) => k -> a -> BinomHeap k a -> k -> a -> BinomHeap k a -> Ordering
 cmpExtract k10 a10 ts10 k20 a20 ts20 =
   k10 `compare` k20 <> a10 `compare` a20 <>
   case (extract ts10, extract ts20) of
-    (Yes (Extract k1 a1 _ ts1'), Yes (Extract k2 a2 _ ts2'))
+    (Yes (Extract k1 (Zero a1) ts1'), Yes (Extract k2 (Zero a2) ts2'))
                 -> cmpExtract k1 a1 ts1' k2 a2 ts2'
     (No, Yes{}) -> LT
     (Yes{}, No) -> GT
@@ -342,14 +310,41 @@ minViewWithKey (MinPQ n k a ts) = Just ((k, a), extractHeap n ts)
 
 -- | \(O(n)\). Map a function over all values in the queue.
 mapWithKey :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
-mapWithKey f = runIdentity . traverseWithKeyU (Identity .: f)
+mapWithKey f = runIdentity . traverseWithKeyU (coerce f)
 
--- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when @f@ is strictly
--- monotonic. /The precondition is not checked./ This function has better performance than
--- 'mapKeys'.
+-- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when
+-- @f@ is (weakly) monotonic. /The precondition is not checked./ This function
+-- has better performance than 'mapKeys'.
+--
+-- Note: if the given function returns bottom for any of the keys in the queue, then the
+-- portion of the queue which is bottom is /unspecified/.
 mapKeysMonotonic :: (k -> k') -> MinPQueue k a -> MinPQueue k' a
 mapKeysMonotonic _ Empty = Empty
-mapKeysMonotonic f (MinPQ n k a ts) = MinPQ n (f k) a (mapKeysMonoF f (const Zero) ts)
+mapKeysMonotonic f (MinPQ n k a ts) = MinPQ n (f k) a $! mapKeysMonoHeap f ts
+
+mapKeysMonoHeap :: forall k k' a. (k -> k') -> BinomHeap k a -> BinomHeap k' a
+mapKeysMonoHeap f = mapKeysMonoForest Zeroy
+  where
+    mapKeysMonoForest :: Ranky rk -> BinomForest rk k a -> BinomForest rk k' a
+    mapKeysMonoForest !_rky Nil = Nil
+    mapKeysMonoForest !rky (Skip rest) = Skip $! mapKeysMonoForest (Succy rky) rest
+    mapKeysMonoForest !rky (Cons t rest) = Cons (mapKeysMonoTree rky t) $! mapKeysMonoForest (Succy rky) rest
+
+    {-# INLINE mapKeysMonoTree #-}
+    mapKeysMonoTree :: Ranky rk -> BinomTree rk k a -> BinomTree rk k' a
+    mapKeysMonoTree Zeroy (BinomTree k (Zero a)) =
+      -- We've reached a value, which we must not force.
+      BinomTree (f k) (Zero a)
+      -- We're not at a value; we force the result.
+    mapKeysMonoTree (Succy rky) (BinomTree k ts) = BinomTree (f k) $! mapKeysMonoTrees rky ts
+
+    mapKeysMonoTrees :: Ranky rk -> Succ rk k a -> Succ rk k' a
+    mapKeysMonoTrees Zeroy (Succ t (Zero a)) =
+      -- Don't force the value!
+      Succ (mapKeysMonoTree Zeroy t) (Zero a)
+    mapKeysMonoTrees (Succy rky) (Succ t ts) =
+      -- Whew, no values; force the trees.
+      Succ (mapKeysMonoTree (Succy rky) t) $! mapKeysMonoTrees rky ts
 
 -- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybeWithKey :: Ord k => (k -> a -> Maybe b) -> MinPQueue k a -> MinPQueue k b
@@ -397,8 +392,8 @@ foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> MinPQueue k a -> b
 foldrWithKey _ z Empty = z
 foldrWithKey f z (MinPQ _ k0 a0 ts0) = f k0 a0 (foldF ts0) where
   foldF ts = case extract ts of
-    Yes (Extract k a _ ts') -> f k a (foldF ts')
-    _                       -> z
+    Yes (Extract k (Zero a) ts') -> f k a (foldF ts')
+    No                           -> z
 
 -- | \(O(n \log n)\). Fold the keys and values in the map, such that
 -- @'foldlWithKey' f z q == 'List.foldl' ('uncurry' . f) z ('toAscList' q)@.
@@ -408,8 +403,8 @@ foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MinPQueue k a -> b
 foldlWithKey _ z Empty = z
 foldlWithKey f z0 (MinPQ _ k0 a0 ts0) = foldF (f z0 k0 a0) ts0 where
   foldF z ts = case extract ts of
-    Yes (Extract k a _ ts') -> foldF (f z k a) ts'
-    _                       -> z
+    Yes (Extract k (Zero a) ts') -> foldF (f z k a) ts'
+    No                           -> z
 
 {-# INLINABLE [1] toAscList #-}
 -- | \(O(n \log n)\). Return all (key, value) pairs in ascending order by key.
@@ -476,7 +471,7 @@ fromBare xs = case extract xs of
   -- at the end, but it needs an extra register all along the way.
   -- The nodes should probably all be in L1 cache already thanks to the
   -- extractHeap.
-  Yes (Extract k v ~Zero f) -> MinPQ (sizeHeap f + 1) k v f
+  Yes (Extract k (Zero v) f) -> MinPQ (sizeHeap f + 1) k v f
 
 {-# INLINE fromListHeap #-}
 fromListHeap :: Ord k => [(k, a)] -> BinomHeap k a
@@ -495,13 +490,13 @@ sizeHeap = go 0 1
 -- | \(O(1)\). Returns a binomial tree of rank zero containing this
 -- key and value.
 tip :: k -> a -> BinomTree Zero k a
-tip k a = BinomTree k a Zero
+tip k a = BinomTree k (Zero a)
 
 -- | \(O(1)\). Takes the union of two binomial trees of the same rank.
 meld :: Ord k => BinomTree rk k a -> BinomTree rk k a -> BinomTree (Succ rk) k a
-meld t1@(BinomTree k1 v1 ts1) t2@(BinomTree k2 v2 ts2)
-  | k1 <= k2 = BinomTree k1 v1 (Succ t2 ts1)
-  | otherwise  = BinomTree k2 v2 (Succ t1 ts2)
+meld t1@(BinomTree k1 ts1) t2@(BinomTree k2 ts2)
+  | k1 <= k2 = BinomTree k1 (Succ t2 ts1)
+  | otherwise  = BinomTree k2 (Succ t1 ts2)
 
 -- | Takes the union of two binomial forests, starting at the same rank. Analogous to binary addition.
 mergeForest :: Ord k => BinomForest rk k a -> BinomForest rk k a -> BinomForest rk k a
@@ -547,31 +542,31 @@ incr' t ts = t `seq` case ts of
 -- is less than all other roots. Analogous to binary incrementation. Equivalent to
 -- @'incr' (\_ _ -> True)@.
 incrMin :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
-incrMin t@(BinomTree k a ts) tss = case tss of
+incrMin t@(BinomTree k ts) tss = case tss of
   Nil          -> Cons t Nil
   Skip tss'    -> Cons t tss'
-  Cons t' tss' -> tss' `seq` Skip (incrMin (BinomTree k a (Succ t' ts)) tss')
+  Cons t' tss' -> tss' `seq` Skip (incrMin (BinomTree k (Succ t' ts)) tss')
 
 -- | Inserts a binomial tree into a binomial forest. Assumes that the root of this tree
 -- is less than all other roots. Analogous to binary incrementation. Equivalent to
 -- @'incr'' (\_ _ -> True)@. Forces the rebuilt portion of the spine.
 incrMin' :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
-incrMin' t@(BinomTree k a ts) tss = case tss of
+incrMin' t@(BinomTree k ts) tss = case tss of
   Nil          -> Cons t Nil
   Skip tss'    -> Cons t tss'
-  Cons t' tss' -> Skip $! incrMin' (BinomTree k a (Succ t' ts)) tss'
+  Cons t' tss' -> Skip $! incrMin' (BinomTree k (Succ t' ts)) tss'
 
 -- | See 'insertMax'' for invariant info.
 incrMax' :: BinomTree rk k a -> BinomForest rk k a -> BinomForest rk k a
 incrMax' t tss = t `seq` case tss of
   Nil          -> Cons t Nil
   Skip tss'    -> Cons t tss'
-  Cons (BinomTree k a ts) tss' -> Skip $! incrMax' (BinomTree k a (Succ t ts)) tss'
+  Cons (BinomTree k ts) tss' -> Skip $! incrMax' (BinomTree k (Succ t ts)) tss'
 
 extractHeap :: Ord k => Int -> BinomHeap k a -> MinPQueue k a
 extractHeap n ts = n `seq` case extract ts of
   No                      -> Empty
-  Yes (Extract k a _ ts') -> MinPQ (n - 1) k a ts'
+  Yes (Extract k (Zero a) ts') -> MinPQ (n - 1) k a ts'
 
 -- | A specialized type intended to organize the return of extract-min queries
 -- from a binomial forest. We walk all the way through the forest, and then
@@ -598,16 +593,16 @@ extractHeap n ts = n `seq` case extract ts of
 --     Note that @forest@ is lazy, so if we discover a smaller key
 --     than @minKey@ later, we haven't wasted significant work.
 
-data Extract rk k a = Extract !k a !(rk k a) !(BinomForest rk k a)
+data Extract rk k a = Extract !k (rk k a) !(BinomForest rk k a)
 data MExtract rk k a = No | Yes {-# UNPACK #-} !(Extract rk k a)
 
 incrExtract :: Extract (Succ rk) k a -> Extract rk k a
-incrExtract (Extract minKey minVal (Succ kChild kChildren) ts)
-  = Extract minKey minVal kChildren (Cons kChild ts)
+incrExtract (Extract minKey (Succ kChild kChildren) ts)
+  = Extract minKey kChildren (Cons kChild ts)
 
 incrExtract' :: Ord k => BinomTree rk k a -> Extract (Succ rk) k a -> Extract rk k a
-incrExtract' t (Extract minKey minVal (Succ kChild kChildren) ts)
-  = Extract minKey minVal kChildren (Skip $! incr' (t `meld` kChild) ts)
+incrExtract' t (Extract minKey (Succ kChild kChildren) ts)
+  = Extract minKey kChildren (Skip $! incr' (t `meld` kChild) ts)
 
 -- | Walks backward from the biggest key in the forest, as far as rank @rk@.
 -- Returns its progress. Each successive application of @extractBin@ takes
@@ -620,8 +615,8 @@ extract = start
     start (Skip f) = case start f of
       No     -> No
       Yes ex -> Yes (incrExtract ex)
-    start (Cons t@(BinomTree k v ts) f) = Yes $ case go k f of
-      No -> Extract k v ts (skip f)
+    start (Cons t@(BinomTree k ts) f) = Yes $ case go k f of
+      No -> Extract k ts (skip f)
       Yes ex -> incrExtract' t ex
 
     go :: Ord k => k -> BinomForest rk k a -> MExtract rk k a
@@ -629,12 +624,12 @@ extract = start
     go min_above (Skip f) = case go min_above f of
       No -> No
       Yes ex -> Yes (incrExtract ex)
-    go min_above (Cons t@(BinomTree k v ts) f)
+    go min_above (Cons t@(BinomTree k ts) f)
       | min_above <= k = case go min_above f of
           No -> No
           Yes ex -> Yes (incrExtract' t ex)
       | otherwise = case go k f of
-          No -> Yes (Extract k v ts (skip f))
+          No -> Yes (Extract k ts (skip f))
           Yes ex -> Yes (incrExtract' t ex)
 
 skip :: BinomForest (Succ rk) k a -> BinomForest rk k a
@@ -642,45 +637,50 @@ skip Nil = Nil
 skip f = Skip f
 {-# INLINE skip #-}
 
--- | Utility function for mapping over a forest.
-mapForest :: (k -> a -> b) -> (rk k a -> rk k b) -> BinomForest rk k a -> BinomForest rk k b
-mapForest f fCh ts0 = case ts0 of
-  Nil      -> Nil
-  Skip ts' -> Skip $! mapForest f fCh' ts'
-  Cons (BinomTree k a ts) tss
-           -> Cons (BinomTree k (f k a) (fCh ts)) $! mapForest f fCh' tss
-  where fCh' (Succ (BinomTree k a ts) tss)
-           = Succ (BinomTree k (f k a) (fCh ts)) (fCh tss)
-
 -- | \(O(n)\). An unordered right fold over the elements of the queue, in no particular order.
 foldrWithKeyU :: (k -> a -> b -> b) -> b -> MinPQueue k a -> b
-foldrWithKeyU _ z Empty            = z
-foldrWithKeyU f z (MinPQ _ k a ts) = f k a (foldrWithKeyF_ f (const id) ts z)
+foldrWithKeyU c n = flip appEndo n . inline foldMapWithKeyU (coerce c)
 
 -- | \(O(n)\). An unordered monoidal fold over the elements of the queue, in no particular order.
 --
 -- @since 1.4.2
-foldMapWithKeyU :: Monoid m => (k -> a -> m) -> MinPQueue k a -> m
-foldMapWithKeyU _ Empty            = mempty
-foldMapWithKeyU f (MinPQ _ k a ts) = f k a `mappend` foldMapWithKey_ f ts
+foldMapWithKeyU :: forall m k a. Monoid m => (k -> a -> m) -> MinPQueue k a -> m
+foldMapWithKeyU = coerce
+  (inline traverseWithKeyU :: (k -> a -> Const m ()) -> MinPQueue k a -> Const m (MinPQueue k ()))
 
 -- | \(O(n)\). An unordered left fold over the elements of the queue, in no
 -- particular order. This is rarely what you want; 'foldrWithKeyU' and
 -- 'foldlWithKeyU'' are more likely to perform well.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
-foldlWithKeyU _ z Empty = z
-foldlWithKeyU f z0 (MinPQ _ k0 a0 ts) = foldlWithKeyF_ (\k a z -> f z k a) (const id) ts (f z0 k0 a0)
+foldlWithKeyU f b = flip appEndo b . getDual .
+  foldMapWithKeyU (\k a -> Dual $ Endo $ \r -> f r k a)
 
 -- | \(O(n)\). An unordered strict left fold over the elements of the queue, in no particular order.
 --
 -- @since 1.4.2
 foldlWithKeyU' :: (b -> k -> a -> b) -> b -> MinPQueue k a -> b
-foldlWithKeyU' _ z Empty = z
-foldlWithKeyU' f !z0 (MinPQ _ k0 a0 ts) = foldlWithKey'_ f (f z0 k0 a0) ts
+foldlWithKeyU' f !b q =
+  case q of
+    Empty -> b
+    MinPQ _n k a ts -> foldlHeapU' f (f b k a) ts
 
--- | \(O(n)\). Map a function over all values in the queue.
-map :: (a -> b) -> MinPQueue k a -> MinPQueue k b
-map = mapWithKey . const
+foldlHeapU' :: forall k a b. (b -> k -> a -> b) -> b -> BinomHeap k a -> b
+foldlHeapU' f = \b -> foldlForest' Zeroy b
+  where
+    foldlForest' :: Ranky rk -> b -> BinomForest rk k a -> b
+    foldlForest' !_rky !acc Nil = acc
+    foldlForest' !rky !acc (Skip rest) = foldlForest' (Succy rky) acc rest
+    foldlForest' !rky !acc (Cons t rest) =
+      foldlForest' (Succy rky) (foldlTree' rky acc t) rest
+
+    {-# INLINE foldlTree' #-}
+    foldlTree' :: Ranky rk -> b -> BinomTree rk k a -> b
+    foldlTree' !rky !acc (BinomTree k ts) = foldlTrees' rky acc k ts
+
+    foldlTrees' :: Ranky rk -> b -> k -> rk k a -> b
+    foldlTrees' Zeroy !acc !k (Zero a) = f acc k a
+    foldlTrees' (Succy rky) !acc !k (Succ t ts) =
+      foldlTrees' rky (foldlTree' rky acc t) k ts
 
 -- | \(O(n \log n)\). Traverses the elements of the queue in ascending order by key.
 -- (@'traverseWithKey' f q == 'fromAscList' <$> 'traverse' ('uncurry' f) ('toAscList' q)@)
@@ -707,57 +707,43 @@ mapMWithKey f = go empty
           let !acc' = insertMax' k b acc
           go acc' q'
 
+-- | Natural numbers revealing whether something is 'Zero' or 'Succ'.
+type Ranky = Nattish Zero Succ
+
 -- | \(O(n)\). An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
-traverseWithKeyU :: Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
+{-# INLINABLE traverseWithKeyU #-}
+traverseWithKeyU :: forall f k a b. Applicative f => (k -> a -> f b) -> MinPQueue k a -> f (MinPQueue k b)
 traverseWithKeyU _ Empty = pure Empty
-traverseWithKeyU f (MinPQ n k a ts) = liftA2 (MinPQ n k) (f k a) (traverseForest f (const (pure Zero)) ts)
+traverseWithKeyU f (MinPQ n k a ts) = liftA2 (\a' !ts' -> MinPQ n k a' ts') (f k a) (traverseHeapU f ts)
 
-{-# SPECIALIZE traverseForest :: (k -> a -> Identity b) -> (rk k a -> Identity (rk k b)) -> BinomForest rk k a ->
-  Identity (BinomForest rk k b) #-}
-traverseForest :: (Applicative f) => (k -> a -> f b) -> (rk k a -> f (rk k b)) -> BinomForest rk k a -> f (BinomForest rk k b)
-traverseForest f fCh ts0 = case ts0 of
-  Nil       -> pure Nil
-  Skip ts'  -> (Skip $!) <$> traverseForest f fCh' ts'
-  Cons (BinomTree k a ts) tss
-    -> liftA3 (\a' ts' tss' -> Cons (BinomTree k a' ts') $! tss') (f k a) (fCh ts) (traverseForest f fCh' tss)
+{-# INLINABLE traverseHeapU #-}
+traverseHeapU :: forall f k a b. Applicative f => (k -> a -> f b) -> BinomHeap k a -> f (BinomHeap k b)
+traverseHeapU f = traverseForest Zeroy
   where
-    fCh' (Succ (BinomTree k a ts) tss)
-      = liftA3 (\a' ts' -> Succ (BinomTree k a' ts')) (f k a) (fCh ts) (fCh tss)
+    traverseForest :: Ranky rk -> BinomForest rk k a -> f (BinomForest rk k b)
+    traverseForest !_rky Nil = pure Nil
+    traverseForest !rky (Skip rest) = (Skip $!) <$> traverseForest (Succy rky) rest
+    traverseForest !rky (Cons t rest) =
+      liftA2 (\ !t' !rest' -> Cons t' rest') (traverseTree rky t) (traverseForest (Succy rky) rest)
 
--- | Unordered right fold on a binomial forest.
-foldrWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b
-foldrWithKeyF_ f fCh ts0 z0 = case ts0 of
-  Nil    -> z0
-  Skip ts'  -> foldrWithKeyF_ f fCh' ts' z0
-  Cons (BinomTree k a ts) ts'
-    -> f k a (fCh ts (foldrWithKeyF_ f fCh' ts' z0))
-  where
-    fCh' (Succ (BinomTree k a ts) tss) z =
-      f k a (fCh ts (fCh tss z))
+    {-# INLINE traverseTree #-}
+    traverseTree :: Ranky rk -> BinomTree rk k a -> f (BinomTree rk k b)
+    traverseTree Zeroy (BinomTree k (Zero a)) =
+      -- We've reached a value, so we don't force the result.
+      BinomTree k . Zero <$> f k a
+    traverseTree (Succy rky) (BinomTree k ts) =
+      -- We're not at a value, so we force the tree list.
+      (BinomTree k $!) <$> traverseTrees rky k ts
 
--- | Unordered left fold on a binomial forest.
-foldlWithKeyF_ :: (k -> a -> b -> b) -> (rk k a -> b -> b) -> BinomForest rk k a -> b -> b
-foldlWithKeyF_ f fCh ts0 = case ts0 of
-  Nil    -> id
-  Skip ts'  -> foldlWithKeyF_ f fCh' ts'
-  Cons (BinomTree k a ts) ts'
-    -> foldlWithKeyF_ f fCh' ts' . fCh ts . f k a
-  where
-    fCh' (Succ (BinomTree k a ts) tss) =
-      fCh tss . fCh ts . f k a
-
--- | Maps a monotonic function over the keys in a binomial forest.
-mapKeysMonoF :: (k -> k') -> (rk k a -> rk k' a) -> BinomForest rk k a -> BinomForest rk k' a
-mapKeysMonoF f fCh ts0 = case ts0 of
-  Nil    -> Nil
-  Skip ts'  -> Skip $! mapKeysMonoF f fCh' ts'
-  Cons (BinomTree k a ts) ts'
-    -> Cons (BinomTree (f k) a (fCh ts)) $! mapKeysMonoF f fCh' ts'
-  where
-    fCh' (Succ (BinomTree k a ts) tss) =
-      Succ (BinomTree (f k) a (fCh ts)) (fCh tss)
+    traverseTrees :: Ranky rk -> k -> Succ rk k a -> f (Succ rk k b)
+    traverseTrees Zeroy !k2 (Succ (BinomTree k1 (Zero a1)) (Zero a2)) =
+      -- The right subtree is a value, so we don't force it.
+      liftA2 (\b1 b2 -> Succ (BinomTree k1 (Zero b1)) (Zero b2)) (f k1 a1) (f k2 a2)
+    traverseTrees (Succy rky) !k (Succ t ts) =
+      -- Whew; no values. We're safe to force.
+      liftA2 (\ !t' !ts' -> Succ t' ts') (traverseTree (Succy rky) t) (traverseTrees rky k ts)
 
 -- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
@@ -779,13 +765,13 @@ class NFRank rk where
   rnfRk :: (NFData k, NFData a) => rk k a -> ()
 
 instance NFRank Zero where
-  rnfRk _ = ()
+  rnfRk (Zero a) = rnf a
 
 instance NFRank rk => NFRank (Succ rk) where
   rnfRk (Succ t ts) = t `deepseq` rnfRk ts
 
 instance (NFData k, NFData a, NFRank rk) => NFData (BinomTree rk k a) where
-  rnf (BinomTree k a ts) = k `deepseq` a `deepseq` rnfRk ts
+  rnf (BinomTree k ts) = k `deepseq` rnfRk ts
 
 instance (NFData k, NFData a, NFRank rk) => NFData (BinomForest rk k a) where
   rnf Nil = ()
@@ -797,10 +783,11 @@ instance (NFData k, NFData a) => NFData (MinPQueue k a) where
   rnf (MinPQ _ k a ts) = k `deepseq` a `deepseq` rnf ts
 
 instance Functor (MinPQueue k) where
-  fmap = map
+  fmap = imap . const
 
 instance FunctorWithIndex k (MinPQueue k) where
-  imap = mapWithKey
+  imap = coerce
+    (traverseWithKeyU :: (k -> a -> Identity b) -> MinPQueue k a -> Identity (MinPQueue k b))
 
 instance Ord k => Foldable (MinPQueue k) where
   foldr   = foldrWithKey . const
