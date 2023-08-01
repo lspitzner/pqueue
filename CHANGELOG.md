@@ -1,6 +1,6 @@
 # Revision history for pqueue
 
-## 1.5.0
+## 1.5.0.0 -- 2023-08-08
 
   * Fix incorrect behavior of `mapMaybe` and `mapEither` for `MinQueue`. These
     previously worked only for monotonic functions.
