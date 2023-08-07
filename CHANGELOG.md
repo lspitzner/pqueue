@@ -1,5 +1,10 @@
 # Revision history for pqueue
 
+## x.x.x.x
+
+  * Deprecate `mapU` and replace it by `mapMonotonic` in `Data.PQeueu.Min` and `Data.PQueue.Max`
+    ([#129](https://github.com/lspitzner/pqueue/pull/129))
+
 ## 1.5.0.0 -- 2023-08-08
 
   * Fix incorrect behavior of `mapMaybe` and `mapEither` for `MinQueue`. These
@@ -24,12 +29,12 @@
     slow. ([#35](https://github.com/lspitzner/pqueue/issues/35))
 
   * Add pattern synonyms to work with `MinQueue` and `MinPQueue`.
-    ([#92](http://github.com/lspitzner/pqueue/pull/92))
+    ([#92](https://github.com/lspitzner/pqueue/pull/92))
 
   * Make the `Data` instances respect the queue invariants. Make the
     `Constr`s match the pattern synonyms. Make the `Data` instance for
     `MinPQueue` work "incrementally", like the one for `MinQueue`.
-    ([#92](http://github.com/lspitzner/pqueue/pull/92))
+    ([#92](https://github.com/lspitzner/pqueue/pull/92))
 
 ## 1.4.3.0 -- 2022-10-30
 
