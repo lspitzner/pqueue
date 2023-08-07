@@ -84,6 +84,7 @@ module Data.PQueue.Max (
 
 import Control.DeepSeq (NFData(rnf))
 
+import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
 
 #if MIN_VERSION_base(4,9,0)
@@ -224,13 +225,13 @@ drop k (MaxQ q) = MaxQ (Min.drop k q)
 
 -- | \(O(k \log n)\)/. Equivalent to @(take k queue, drop k queue)@.
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
-splitAt k (MaxQ q) = (fmap unDown xs, MaxQ q') where
+splitAt k (MaxQ q) = (coerce xs, MaxQ q') where
   (xs, q') = Min.splitAt k q
 
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
 takeWhile :: Ord a => (a -> Bool) -> MaxQueue a -> [a]
-takeWhile p (MaxQ q) = fmap unDown (Min.takeWhile (p . unDown) q)
+takeWhile p (MaxQ q) = coerce (Min.takeWhile (p . unDown) q)
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
 dropWhile :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
@@ -241,7 +242,7 @@ dropWhile p (MaxQ q) = MaxQ (Min.dropWhile (p . unDown) q)
 -- satisfy @p@ and second element is the remainder of the queue.
 --
 span :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
-span p (MaxQ q) = (fmap unDown xs, MaxQ q') where
+span p (MaxQ q) = (coerce xs, MaxQ q') where
   (xs, q') = Min.span (p . unDown) q
 
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
@@ -309,7 +310,7 @@ elemsU = toListU
 {-# INLINE toListU #-}
 -- | \(O(n)\). Returns a list of the elements of the priority queue, in no particular order.
 toListU :: MaxQueue a -> [a]
-toListU (MaxQ q) = fmap unDown (Min.toListU q)
+toListU (MaxQ q) = coerce (Min.toListU q)
 
 -- | \(O(n \log n)\). Performs a right-fold on the elements of a priority queue in ascending order.
 -- @'foldrAsc' f z q == 'foldlDesc' (flip f) z q@.
@@ -346,22 +347,22 @@ toDescList q = build (\c nil -> foldrDesc c nil q)
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
-toList (MaxQ q) = fmap unDown (Min.toList q)
+toList (MaxQ q) = coerce (Min.toList q)
 
 {-# INLINE fromAscList #-}
 -- | \(O(n)\). Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
 fromAscList :: [a] -> MaxQueue a
-fromAscList = MaxQ . Min.fromDescList . fmap Down
+fromAscList = MaxQ . Min.fromDescList . coerce
 
 {-# INLINE fromDescList #-}
 -- | \(O(n)\). Constructs a priority queue from a descending list. /Warning/: Does not check the precondition.
 fromDescList :: [a] -> MaxQueue a
-fromDescList = MaxQ . Min.fromAscList . fmap Down
+fromDescList = MaxQ . Min.fromAscList . coerce
 
 {-# INLINE fromList #-}
 -- | \(O(n \log n)\). Constructs a priority queue from an unordered list.
 fromList :: Ord a => [a] -> MaxQueue a
-fromList = MaxQ . Min.fromList . fmap Down
+fromList = MaxQ . Min.fromList . coerce
 
 -- | \(O(n)\). Constructs a priority queue from the keys of a 'Prio.MaxPQueue'.
 keysQueue :: Prio.MaxPQueue k a -> MaxQueue k

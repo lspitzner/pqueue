@@ -87,6 +87,7 @@ module BinomialQueue.Max (
 
 import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
 
+import Data.Coerce (coerce)
 import Data.Foldable (foldl')
 import Data.Maybe (fromMaybe)
 import Data.Bifunctor (bimap)
@@ -142,7 +143,7 @@ q !! n = toDescList q List.!! n
 -- | 'takeWhile', applied to a predicate @p@ and a queue @queue@, returns the
 -- longest prefix (possibly empty) of @queue@ of elements that satisfy @p@.
 takeWhile :: Ord a => (a -> Bool) -> MaxQueue a -> [a]
-takeWhile p = fmap unDown . MinQ.takeWhile (p . unDown) . unMaxQueue
+takeWhile p = coerce . MinQ.takeWhile (p . unDown) . unMaxQueue
 
 -- | 'dropWhile' @p queue@ returns the queue remaining after 'takeWhile' @p queue@.
 dropWhile :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
@@ -154,7 +155,7 @@ dropWhile p = MaxQueue . MinQ.dropWhile (p . unDown) . unMaxQueue
 span :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
 span p (MaxQueue queue)
   | (front, rear) <- MinQ.span (p . unDown) queue
-  = (fmap unDown front, MaxQueue rear)
+  = (coerce front, MaxQueue rear)
 
 -- | 'break', applied to a predicate @p@ and a queue @queue@, returns a tuple where
 -- first element is longest prefix (possibly empty) of @queue@ of elements that
@@ -177,7 +178,7 @@ drop n (MaxQueue queue) = MaxQueue (MinQ.drop n queue)
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
 splitAt n (MaxQueue queue)
   | (l, r) <- MinQ.splitAt n queue
-  = (fmap unDown l, MaxQueue r)
+  = (coerce l, MaxQueue r)
 
 -- | \(O(n)\). Returns the queue with all elements not satisfying @p@ removed.
 filter :: Ord a => (a -> Bool) -> MaxQueue a -> MaxQueue a
@@ -202,13 +203,13 @@ map f = MaxQueue . MinQ.map (fmap f) . unMaxQueue
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
-toList = fmap unDown . MinQ.toAscList . unMaxQueue
+toList = coerce . MinQ.toAscList . unMaxQueue
 
 toAscList :: Ord a => MaxQueue a -> [a]
-toAscList = fmap unDown . MinQ.toDescList . unMaxQueue
+toAscList = coerce . MinQ.toDescList . unMaxQueue
 
 toDescList :: Ord a => MaxQueue a -> [a]
-toDescList = fmap unDown . MinQ.toAscList . unMaxQueue
+toDescList = coerce . MinQ.toAscList . unMaxQueue
 
 -- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in descending order.
 foldrDesc :: Ord a => (a -> b -> b) -> b -> MaxQueue a -> b
@@ -229,15 +230,15 @@ foldlDesc f z (MaxQueue q) = MinQ.foldlAsc (foldl f) z q
 {-# INLINE fromAscList #-}
 -- | \(O(n)\). Constructs a priority queue from an ascending list. /Warning/: Does not check the precondition.
 fromAscList :: [a] -> MaxQueue a
-fromAscList = MaxQueue . MinQ.fromDescList . fmap Down
+fromAscList = MaxQueue . MinQ.fromDescList . coerce
 
 {-# INLINE fromDescList #-}
 -- | \(O(n)\). Constructs a priority queue from a descending list. /Warning/: Does not check the precondition.
 fromDescList :: [a] -> MaxQueue a
-fromDescList = MaxQueue . MinQ.fromAscList . fmap Down
+fromDescList = MaxQueue . MinQ.fromAscList . coerce
 
 fromList :: Ord a => [a] -> MaxQueue a
-fromList = MaxQueue . MinQ.fromList . fmap Down
+fromList = MaxQueue . MinQ.fromList . coerce
 
 -- | Equivalent to 'toListU'.
 elemsU :: MaxQueue a -> [a]
@@ -245,7 +246,7 @@ elemsU = toListU
 
 -- | Convert to a list in an arbitrary order.
 toListU :: MaxQueue a -> [a]
-toListU = fmap unDown . MinQ.toListU . unMaxQueue
+toListU = coerce . MinQ.toListU . unMaxQueue
 
 -- | Get the number of elements in a 'MaxQueue'.
 size :: MaxQueue a -> Int
@@ -276,7 +277,7 @@ singleton :: a -> MaxQueue a
 singleton = MaxQueue . MinQ.singleton . Down
 
 mapMaybe :: Ord b => (a -> Maybe b) -> MaxQueue a -> MaxQueue b
-mapMaybe f = MaxQueue . MinQ.mapMaybe (fmap Down . f . unDown) . unMaxQueue
+mapMaybe f = MaxQueue . MinQ.mapMaybe (coerce f) . unMaxQueue
 
 insert :: Ord a => a -> MaxQueue a -> MaxQueue a
 insert a (MaxQueue q) = MaxQueue (MinQ.insert (Down a) q)
