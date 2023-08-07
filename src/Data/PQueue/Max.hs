@@ -342,7 +342,7 @@ toDescList q = build (\c nil -> foldrDesc c nil q)
 -- I can see no particular reason this does not simply forward to Min.toAscList. (lsp, 2016)
 
 {-# INLINE toList #-}
--- | \(O(n \log n)\). Returns the elements of the priority queue in ascending order. Equivalent to 'toDescList'.
+-- | \(O(n \log n)\). Returns the elements of the priority queue in descending order. Equivalent to 'toDescList'.
 --
 -- If the order of the elements is irrelevant, consider using 'toListU'.
 toList :: Ord a => MaxQueue a -> [a]
