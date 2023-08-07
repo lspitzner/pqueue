@@ -62,6 +62,7 @@ module BinomialQueue.Min (
   mapEither,
   -- * Fold\/Functor\/Traversable variations
   map,
+  mapMonotonic,
   foldrAsc,
   foldlAsc,
   foldrDesc,
@@ -74,7 +75,6 @@ module BinomialQueue.Min (
   fromAscList,
   fromDescList,
   -- * Unordered operations
-  mapU,
   foldrU,
   foldlU,
   foldlU',

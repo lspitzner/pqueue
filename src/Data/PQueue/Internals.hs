@@ -29,7 +29,6 @@ module Data.PQueue.Internals (
   toDescList,
   toListU,
   fromList,
-  mapU,
   fromAscList,
   foldMapU,
   foldrU,
@@ -204,10 +203,13 @@ mapEither f (MinQueue _ x ts)
             !r' = fromBare (BQ.insertEager z r)
         in (l', r')
 
--- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
--- as in 'fmap'. If it is not, the result is undefined.
+-- | \(O(n)\). Assumes that the function it is given is (weakly) monotonic
+-- (meaning that @x <= y@ implies @f x <= f y@), and
+-- applies this function to every element of the priority queue, as in 'fmap'.
+-- If the function is not monotonic, the result is undefined.
 mapMonotonic :: (a -> b) -> MinQueue a -> MinQueue b
-mapMonotonic = mapU
+mapMonotonic _ Empty = Empty
+mapMonotonic f (MinQueue n x ts) = MinQueue n (f x) (BQ.mapMonotonic f ts)
 
 {-# INLINABLE [0] foldrAsc #-}
 -- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in
@@ -294,13 +296,6 @@ fromList :: Ord a => [a] -> MinQueue a
 -- Why not just build the 'MinQueue' directly? This way saves us one
 -- comparison per element.
 fromList xs = fromBare (BQ.fromList xs)
-
--- | \(O(n)\). Assumes that the function it is given is (weakly) monotonic, and
--- applies this function to every element of the priority queue, as in 'fmap'.
--- If the function is not monotonic, the result is undefined.
-mapU :: (a -> b) -> MinQueue a -> MinQueue b
-mapU _ Empty = Empty
-mapU f (MinQueue n x ts) = MinQueue n (f x) (BQ.mapU f ts)
 
 {-# NOINLINE [0] foldrU #-}
 -- | \(O(n)\). Unordered right fold on a priority queue.

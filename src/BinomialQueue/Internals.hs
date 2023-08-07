@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 module BinomialQueue.Internals (
   MinQueue (..),
@@ -37,7 +36,6 @@ module BinomialQueue.Internals (
   toDescList,
   toListU,
   fromList,
-  mapU,
   fromAscList,
   foldMapU,
   foldrU,
@@ -247,10 +245,12 @@ mapEither f = fromPartition .
 -- This seems to be needed for specialization.
 {-# INLINABLE mapEither #-}
 
--- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue,
--- as in 'fmap'. If it is not, the result is undefined.
+-- | \(O(n)\). Assumes that the function it is given is (weakly) monotonic
+-- (meaning that @x <= y@ implies @f x <= f y@), and
+-- applies this function to every element of the priority queue, as in 'fmap'.
+-- If the function is not monotonic, the result is undefined.
 mapMonotonic :: (a -> b) -> MinQueue a -> MinQueue b
-mapMonotonic = mapU
+mapMonotonic f (MinQueue ts) = MinQueue (f <$> ts)
 
 {-# INLINABLE [0] foldrAsc #-}
 -- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in
@@ -648,9 +648,6 @@ instance Foldable rk => Foldable (BinomForest rk) where
 --   traverse f (Skip tss) = Skip <$> traverse f tss
 --   traverse f (Cons t tss) = Cons <$> traverse f t <*> traverse f tss
 
-mapU :: (a -> b) -> MinQueue a -> MinQueue b
-mapU f (MinQueue ts) = MinQueue (f <$> ts)
-
 {-# NOINLINE [0] foldrU #-}
 -- | \(O(n)\). Unordered right fold on a priority queue.
 foldrU :: (a -> b -> b) -> b -> MinQueue a -> b
@@ -696,7 +693,7 @@ toListUApp (MinQueue ts) app = foldr_ (:) app ts
 --
 -- Note: The spine of a 'MinQueue' is stored somewhat lazily. Most operations
 -- take great care to prevent chains of thunks from accumulating along the
--- spine to the detriment of performance. However, @mapU@ can leave expensive
+-- spine to the detriment of performance. However, @mapMonotonic@ can leave expensive
 -- thunks in the structure and repeated applications of that function can
 -- create thunk chains.
 seqSpine :: MinQueue a -> b -> b
