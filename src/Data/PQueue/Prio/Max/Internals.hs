@@ -339,9 +339,12 @@ mapWithKey f (MaxPQ q) = MaxPQ (Q.mapWithKey (f . unDown) q)
 mapKeys :: Ord k' => (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
 mapKeys f (MaxPQ q) = MaxPQ (Q.mapKeys (fmap f) q)
 
--- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when @f@ is strictly
--- monotonic. /The precondition is not checked./ This function has better performance than
--- 'mapKeys'.
+-- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when
+-- @f@ is (weakly) monotonic (meaning that @x <= y@ implies @f x <= f y@).
+-- /The precondition is not checked./ This function has better performance than 'mapKeys'.
+--
+-- Note: if the given function returns bottom for any of the keys in the queue, then the
+-- portion of the queue which is bottom is /unspecified/.
 mapKeysMonotonic :: (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
 mapKeysMonotonic f (MaxPQ q) = MaxPQ (Q.mapKeysMonotonic (fmap f) q)
 

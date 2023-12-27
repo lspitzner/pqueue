@@ -313,8 +313,8 @@ mapWithKey :: (k -> a -> b) -> MinPQueue k a -> MinPQueue k b
 mapWithKey f = runIdentity . traverseWithKeyU (coerce f)
 
 -- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when
--- @f@ is (weakly) monotonic. /The precondition is not checked./ This function
--- has better performance than 'mapKeys'.
+-- @f@ is (weakly) monotonic (meaning that @x <= y@ implies @f x <= f y@).
+-- /The precondition is not checked./ This function has better performance than 'mapKeys'.
 --
 -- Note: if the given function returns bottom for any of the keys in the queue, then the
 -- portion of the queue which is bottom is /unspecified/.

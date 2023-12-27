@@ -74,6 +74,14 @@ main = defaultMain $ testGroup "pqueue"
            validMinQueue zs .&&.
            (Min.toList ys, Min.toList zs) === bimap List.sort List.sort (Either.partitionEithers . List.map f $ xs)
     , testProperty "map" $ \xs -> Min.map negate (Min.fromList xs) === Min.fromList (List.map negate xs)
+    , testProperty "mapMonotonic" $ \xs ->
+        let
+          -- Monotonic, but not strictly so
+          fun x
+            | even x = x
+            | otherwise = x + 1
+          res = Min.mapMonotonic fun (Min.fromList xs)
+        in validMinQueue res .&&. Min.toList res === List.map fun (List.sort xs)
     , testProperty "take" $ \n xs -> Min.take n (Min.fromList xs) === List.take n (List.sort xs)
     , testProperty "drop" $ \n xs -> Min.drop n (Min.fromList xs) === Min.fromList (List.drop n (List.sort xs))
     , testProperty "splitAt" $ \n xs -> Min.splitAt n (Min.fromList xs) === second Min.fromList (List.splitAt n (List.sort xs))
@@ -88,14 +96,6 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "toDescList" $ \xs -> Min.toDescList (Min.fromList xs) === List.sortOn Down xs
     , testProperty "fromAscList" $ \xs -> Min.fromAscList (List.sort xs) === Min.fromList xs
     , testProperty "fromDescList" $ \xs -> Min.fromDescList (List.sortOn Down xs) === Min.fromList xs
-    , testProperty "mapU" $ \xs ->
-        let
-          -- Monotonic, but not strictly so
-          fun x
-            | even x = x
-            | otherwise = x + 1
-          res = Min.mapU fun (Min.fromList xs)
-        in validMinQueue res .&&. Min.toList res === List.map fun (List.sort xs)
     , testProperty "foldrU" $ \xs -> Min.foldrU (+) 0 (Min.fromList xs) === sum xs
     , testProperty "foldlU" $ \xs -> Min.foldlU (+) 0 (Min.fromList xs) === sum xs
     , testProperty "foldlU'" $ \xs -> Min.foldlU' (+) 0 (Min.fromList xs) === sum xs
@@ -115,6 +115,7 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "filter" $ \xs -> Max.filter even (Max.fromList xs) === Max.fromList (List.filter even xs)
     , testProperty "partition" $ \xs -> Max.partition even (Max.fromList xs) === bimap Max.fromList Max.fromList (List.partition even xs)
     , testProperty "map" $ \xs -> Max.map negate (Max.fromList xs) === Max.fromList (List.map negate xs)
+    , testProperty "mapMonotonic" $ \xs -> Max.mapMonotonic (+ 1) (Max.fromList xs) === Max.fromList (List.map (+ 1) xs)
     , testProperty "take" $ \n xs -> Max.take n (Max.fromList xs) === List.take n (List.sortOn Down xs)
     , testProperty "drop" $ \n xs -> Max.drop n (Max.fromList xs) === Max.fromList (List.drop n (List.sortOn Down xs))
     , testProperty "splitAt" $ \n xs -> Max.splitAt n (Max.fromList xs) === second Max.fromList (List.splitAt n (List.sortOn Down xs))
@@ -129,7 +130,6 @@ main = defaultMain $ testGroup "pqueue"
     , testProperty "toDescList" $ \xs -> Max.toDescList (Max.fromList xs) === List.sortOn Down xs
     , testProperty "fromAscList" $ \xs -> Max.fromAscList (List.sort xs) === Max.fromList xs
     , testProperty "fromDescList" $ \xs -> Max.fromDescList (List.sortOn Down xs) === Max.fromList xs
-    , testProperty "mapU" $ \xs -> Max.mapU (+ 1) (Max.fromList xs) === Max.fromList (List.map (+ 1) xs)
     , testProperty "foldrU" $ \xs -> Max.foldrU (+) 0 (Max.fromList xs) === sum xs
     , testProperty "foldlU" $ \xs -> Max.foldlU (+) 0 (Max.fromList xs) === sum xs
     , testProperty "foldlU'" $ \xs -> Max.foldlU' (+) 0 (Max.fromList xs) === sum xs

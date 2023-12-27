@@ -68,6 +68,7 @@ module Data.PQueue.Min (
   mapEither,
   -- * Fold\/Functor\/Traversable variations
   map,
+  mapMonotonic,
   foldrAsc,
   foldlAsc,
   foldrDesc,
@@ -231,6 +232,10 @@ partition p = mapEither (\x -> if p x then Left x else Right x)
 -- Equivalent to @'fromList' . 'Data.List.map' f . toList@.
 map :: Ord b => (a -> b) -> MinQueue a -> MinQueue b
 map f = foldrU (insert . f) empty
+
+{-# DEPRECATED mapU "use mapMonotonic instead" #-}
+mapU :: (a -> b) -> MinQueue a -> MinQueue b
+mapU = mapMonotonic
 
 {-# INLINE toList #-}
 -- | \(O(n \log n)\). Returns the elements of the priority queue in ascending order. Equivalent to 'toAscList'.

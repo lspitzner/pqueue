@@ -59,6 +59,7 @@ module Data.PQueue.Max (
   mapEither,
   -- * Fold\/Functor\/Traversable variations
   map,
+  mapMonotonic,
   foldrAsc,
   foldlAsc,
   foldrDesc,
@@ -275,10 +276,16 @@ mapEither f (MaxQ q) = (MaxQ q0, MaxQ q1)
 map :: Ord b => (a -> b) -> MaxQueue a -> MaxQueue b
 map f (MaxQ q) = MaxQ (Min.map (\(Down x) -> Down (f x)) q)
 
--- | \(O(n)\). Assumes that the function it is given is monotonic, and applies this function to every element of the priority queue.
--- /Does not check the precondition/.
+-- | \(O(n)\). Assumes that the function it is given is (weakly) monotonic
+-- (meaning that @x <= y@ implies @f x <= f y@), and
+-- applies this function to every element of the priority queue, as in 'fmap'.
+-- If the function is not monotonic, the result is undefined.
+mapMonotonic :: (a -> b) -> MaxQueue a -> MaxQueue b
+mapMonotonic f (MaxQ q) = MaxQ (Min.mapMonotonic (\(Down a) -> Down (f a)) q)
+
+{-# DEPRECATED mapU "use mapMonotonic instead" #-}
 mapU :: (a -> b) -> MaxQueue a -> MaxQueue b
-mapU f (MaxQ q) = MaxQ (Min.mapU (\(Down a) -> Down (f a)) q)
+mapU = mapMonotonic
 
 -- | \(O(n)\). Unordered right fold on a priority queue.
 foldrU :: (a -> b -> b) -> b -> MaxQueue a -> b
