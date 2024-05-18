@@ -275,12 +275,12 @@ partitionWithKey :: Ord k => (k -> a -> Bool) -> MinPQueue k a -> (MinPQueue k a
 partitionWithKey p = mapEitherWithKey (\k a -> if p k a then Left a else Right a)
 
 {-# INLINE take #-}
--- | \(O(k \log n)\)/. Takes the first @k@ (key, value) pairs in the queue, or the first @n@ if @k >= n@.
+-- | \(O(k \log n)\). Takes the first @k@ (key, value) pairs in the queue, or the first @n@ if @k >= n@.
 -- (@'take' k q == 'List.take' k ('toAscList' q)@)
 take :: Ord k => Int -> MinPQueue k a -> [(k, a)]
 take n = List.take n . toAscList
 
--- | \(O(k \log n)\)/. Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
+-- | \(O(k \log n)\). Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
 drop :: Ord k => Int -> MinPQueue k a -> MinPQueue k a
 drop n0 q0
   | n0 <= 0  = q0
@@ -291,7 +291,7 @@ drop n0 q0
       | n == 0    = q
       | otherwise = drop' (n - 1) (deleteMin q)
 
--- | \(O(k \log n)\)/. Equivalent to @('take' k q, 'drop' k q)@.
+-- | \(O(k \log n)\). Equivalent to @('take' k q, 'drop' k q)@.
 splitAt :: Ord k => Int -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
 splitAt n q
   | n <= 0     = ([], q)

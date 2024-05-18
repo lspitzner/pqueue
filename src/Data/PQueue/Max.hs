@@ -210,21 +210,21 @@ MaxQ q1 `union` MaxQ q2 = MaxQ (q1 `Min.union` q2)
 unions :: Ord a => [MaxQueue a] -> MaxQueue a
 unions qs = MaxQ (Min.unions [q | MaxQ q <- qs])
 
--- | \(O(k \log n)\)/. Returns the @(k+1)@th largest element of the queue.
+-- | \(O(k \log n)\). Returns the @(k+1)@th largest element of the queue.
 (!!) :: Ord a => MaxQueue a -> Int -> a
 MaxQ q !! n = unDown ((Min.!!) q n)
 
 {-# INLINE take #-}
--- | \(O(k \log n)\)/. Returns the list of the @k@ largest elements of the queue, in descending order, or
+-- | \(O(k \log n)\). Returns the list of the @k@ largest elements of the queue, in descending order, or
 -- all elements of the queue, if @k >= n@.
 take :: Ord a => Int -> MaxQueue a -> [a]
 take k (MaxQ q) = [a | Down a <- Min.take k q]
 
--- | \(O(k \log n)\)/. Returns the queue with the @k@ largest elements deleted, or the empty queue if @k >= n@.
+-- | \(O(k \log n)\). Returns the queue with the @k@ largest elements deleted, or the empty queue if @k >= n@.
 drop :: Ord a => Int -> MaxQueue a -> MaxQueue a
 drop k (MaxQ q) = MaxQ (Min.drop k q)
 
--- | \(O(k \log n)\)/. Equivalent to @(take k queue, drop k queue)@.
+-- | \(O(k \log n)\). Equivalent to @(take k queue, drop k queue)@.
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
 splitAt k (MaxQ q) = (coerce xs, MaxQ q') where
   (xs, q') = Min.splitAt k q

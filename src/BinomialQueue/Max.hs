@@ -132,7 +132,7 @@ maxView (MaxQueue q) = case MinQ.minView q of
   Just (Down a, q') -> Just (a, MaxQueue q')
   Nothing -> Nothing
 
--- | \(O(k \log n)\)/. Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th largest
+-- | \(O(k \log n)\). Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th largest
 -- element in the queue. Equivalent to @toDescList queue !! k@.
 (!!) :: Ord a => MaxQueue a -> Int -> a
 q !! n  | n >= size q
@@ -164,17 +164,17 @@ break :: Ord a => (a -> Bool) -> MaxQueue a -> ([a], MaxQueue a)
 break p = span (not . p)
 
 {-# INLINE take #-}
--- | \(O(k \log n)\)/. 'take' @k@, applied to a queue @queue@, returns a list of the greatest @k@ elements of @queue@,
+-- | \(O(k \log n)\). 'take' @k@, applied to a queue @queue@, returns a list of the greatest @k@ elements of @queue@,
 -- or all elements of @queue@ itself if @k >= 'size' queue@.
 take :: Ord a => Int -> MaxQueue a -> [a]
 take n = List.take n . toDescList
 
--- | \(O(k \log n)\)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the greatest @k@ elements deleted,
+-- | \(O(k \log n)\). 'drop' @k@, applied to a queue @queue@, returns @queue@ with the greatest @k@ elements deleted,
 -- or an empty queue if @k >= size 'queue'@.
 drop :: Ord a => Int -> MaxQueue a -> MaxQueue a
 drop n (MaxQueue queue) = MaxQueue (MinQ.drop n queue)
 
--- | \(O(k \log n)\)/. Equivalent to @('take' k queue, 'drop' k queue)@.
+-- | \(O(k \log n)\). Equivalent to @('take' k queue, 'drop' k queue)@.
 splitAt :: Ord a => Int -> MaxQueue a -> ([a], MaxQueue a)
 splitAt n (MaxQueue queue)
   | (l, r) <- MinQ.splitAt n queue
