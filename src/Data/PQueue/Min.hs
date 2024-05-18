@@ -205,7 +205,7 @@ take :: Ord a => Int -> MinQueue a -> [a]
 take n = List.take n . toAscList
 
 -- | \(O(k \log n)\). 'drop' @k@, applied to a queue @queue@, returns @queue@ with the smallest @k@ elements deleted,
--- or an empty queue if @k >= size 'queue'@.
+-- or an empty queue if @k >= 'size' queue@.
 drop :: Ord a => Int -> MinQueue a -> MinQueue a
 drop n queue = n `seq` case minView queue of
   Just (_, queue')
