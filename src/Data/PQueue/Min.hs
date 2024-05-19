@@ -163,7 +163,7 @@ deleteMin q = case minView q of
 deleteFindMin :: Ord a => MinQueue a -> (a, MinQueue a)
 deleteFindMin = fromMaybe (error "Error: deleteFindMin called on empty queue") . minView
 
--- | \(O(k \log n)\)/. Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th smallest
+-- | \(O(k \log n)\). Index (subscript) operator, starting from 0. @queue !! k@ returns the @(k+1)@th smallest
 -- element in the queue. Equivalent to @toAscList queue !! k@.
 (!!) :: Ord a => MinQueue a -> Int -> a
 q !! n  | n >= size q
@@ -199,20 +199,20 @@ break :: Ord a => (a -> Bool) -> MinQueue a -> ([a], MinQueue a)
 break p = span (not . p)
 
 {-# INLINE take #-}
--- | \(O(k \log n)\)/. 'take' @k@, applied to a queue @queue@, returns a list of the smallest @k@ elements of @queue@,
+-- | \(O(k \log n)\). 'take' @k@, applied to a queue @queue@, returns a list of the smallest @k@ elements of @queue@,
 -- or all elements of @queue@ itself if @k >= 'size' queue@.
 take :: Ord a => Int -> MinQueue a -> [a]
 take n = List.take n . toAscList
 
--- | \(O(k \log n)\)/. 'drop' @k@, applied to a queue @queue@, returns @queue@ with the smallest @k@ elements deleted,
--- or an empty queue if @k >= size 'queue'@.
+-- | \(O(k \log n)\). 'drop' @k@, applied to a queue @queue@, returns @queue@ with the smallest @k@ elements deleted,
+-- or an empty queue if @k >= 'size' queue@.
 drop :: Ord a => Int -> MinQueue a -> MinQueue a
 drop n queue = n `seq` case minView queue of
   Just (_, queue')
     | n > 0  -> drop (n - 1) queue'
   _          -> queue
 
--- | \(O(k \log n)\)/. Equivalent to @('take' k queue, 'drop' k queue)@.
+-- | \(O(k \log n)\). Equivalent to @('take' k queue, 'drop' k queue)@.
 splitAt :: Ord a => Int -> MinQueue a -> ([a], MinQueue a)
 splitAt n queue = n `seq` case minView queue of
   Just (x, queue')

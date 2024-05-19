@@ -388,16 +388,16 @@ mapMWithKey f = go empty
 insertMin' :: k -> a -> MaxPQueue k a -> MaxPQueue k a
 insertMin' k a (MaxPQ q) = MaxPQ (PrioInternals.insertMax' (Down k) a q)
 
--- | \(O(k \log n)\)/. Takes the first @k@ (key, value) pairs in the queue, or the first @n@ if @k >= n@.
+-- | \(O(k \log n)\). Takes the first @k@ (key, value) pairs in the queue, or the first @n@ if @k >= n@.
 -- (@'take' k q == 'List.take' k ('toDescList' q)@)
 take :: Ord k => Int -> MaxPQueue k a -> [(k, a)]
 take k (MaxPQ q) = fmap (first' unDown) (Q.take k q)
 
--- | \(O(k \log n)\)/. Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
+-- | \(O(k \log n)\). Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
 drop :: Ord k => Int -> MaxPQueue k a -> MaxPQueue k a
 drop k (MaxPQ q) = MaxPQ (Q.drop k q)
 
--- | \(O(k \log n)\)/. Equivalent to @('take' k q, 'drop' k q)@.
+-- | \(O(k \log n)\). Equivalent to @('take' k q, 'drop' k q)@.
 splitAt :: Ord k => Int -> MaxPQueue k a -> ([(k, a)], MaxPQueue k a)
 splitAt k (MaxPQ q) = case Q.splitAt k q of
   (xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
