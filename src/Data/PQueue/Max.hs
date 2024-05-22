@@ -86,13 +86,13 @@ module Data.PQueue.Max (
 import Control.DeepSeq (NFData(rnf))
 
 import Data.Coerce (coerce)
+#if !MIN_VERSION_base(4,20,0)
+import Data.Foldable (foldl')
+#endif
 import Data.Maybe (fromMaybe)
-
 #if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
-
-import Data.Foldable (foldl')
 
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio

@@ -94,7 +94,9 @@ module Data.PQueue.Min (
 
 import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
 
+#if !MIN_VERSION_base(4,20,0)
 import Data.Foldable (foldl')
+#endif
 import qualified Data.List as List
 import Data.Maybe (fromMaybe)
 

@@ -46,7 +46,9 @@ module BinomialQueue.Internals (
   ) where
 
 import Control.DeepSeq (NFData(rnf), deepseq)
+#if !MIN_VERSION_base(4,20,0)
 import Data.Foldable (foldl')
+#endif
 import Data.Function (on)
 #if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
