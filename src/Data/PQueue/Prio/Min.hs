@@ -168,7 +168,9 @@ pattern ka :< q <- (minViewWithKey -> Just (ka, q))
 {-# INLINE (:<) #-}
 # endif
 
+# if __GLASGOW_HASKELL__ >= 820
 {-# COMPLETE Empty, (:<) #-}
+# endif
 #endif
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d

@@ -136,7 +136,9 @@ pattern a :< q <- (minView -> Just (a, q))
 {-# INLINE (:<) #-}
 # endif
 
+# if __GLASGOW_HASKELL__ >= 820
 {-# COMPLETE Empty, (:<) #-}
+# endif
 #endif
 
 -- | \(O(1)\). Returns the minimum element. Throws an error on an empty queue.
