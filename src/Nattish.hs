@@ -18,7 +18,9 @@ module Nattish
   ( Nattish (Zeroy, Succy)
   )
   where
+#if __GLASGOW_HASKELL__ >= 904
 import Unsafe.Coerce (unsafeCoerce)
+#endif
 #if __GLASGOW_HASKELL__ >= 800
 import Data.Kind (Type)
 #endif
