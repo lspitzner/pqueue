@@ -132,10 +132,6 @@ module Data.PQueue.Prio.Min (
 import qualified Data.List as List
 import Data.Maybe (fromMaybe)
 
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
-#endif
-
 import Data.PQueue.Prio.Internals hiding (MinPQueue (..))
 import Data.PQueue.Prio.Internals (MinPQueue)
 import qualified Data.PQueue.Prio.Internals as Internals

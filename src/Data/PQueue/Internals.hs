@@ -45,8 +45,6 @@ import BinomialQueue.Internals
   , BinomTree (..)
   , Succ (..)
   , Zero (..)
-  , Extract (..)
-  , MExtract (..)
   )
 import qualified BinomialQueue.Internals as BQ
 import Control.DeepSeq (NFData(rnf), deepseq)
@@ -55,7 +53,6 @@ import Data.Foldable (foldl')
 import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
 
-import Data.PQueue.Internals.Foldable
 #ifdef __GLASGOW_HASKELL__
 import Data.Data
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
