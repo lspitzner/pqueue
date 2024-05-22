@@ -40,7 +40,11 @@ import Data.Kind (Type)
 -- it is very fast to work with.
 
 #if __GLASGOW_HASKELL__ < 904
+#if __GLASGOW_HASKELL__ >= 800
+data Nattish :: k -> (k -> k) -> k -> Type where
+#else
 data Nattish :: k -> (k -> k) -> k -> * where
+#endif
   Zeroy :: Nattish zero succ zero
   Succy :: !(Nattish zero succ n) -> Nattish zero succ (succ n)
 
