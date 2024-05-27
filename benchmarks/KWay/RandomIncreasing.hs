@@ -5,7 +5,6 @@ module KWay.RandomIncreasing where
 
 import System.Random
 import Data.Word
-import Data.List (unfoldr)
 
 data Stream = Stream !Word64 {-# UNPACK #-} !StdGen
 

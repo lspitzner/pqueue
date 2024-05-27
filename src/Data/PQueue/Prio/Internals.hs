@@ -52,7 +52,11 @@ module Data.PQueue.Prio.Internals (
   unions
   ) where
 
-import Control.Applicative (liftA2, liftA3, Const (..))
+#if MIN_VERSION_base(4,18,0)
+import Control.Applicative (Const (..))
+#else
+import Control.Applicative (liftA2, Const (..))
+#endif
 import Control.DeepSeq (NFData(rnf), deepseq)
 import Data.Coerce (coerce)
 import Data.Functor.Identity (Identity(Identity, runIdentity))

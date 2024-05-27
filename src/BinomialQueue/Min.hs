@@ -88,23 +88,13 @@ module BinomialQueue.Min (
 
 import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
 
+#if !MIN_VERSION_base(4,20,0)
 import Data.Foldable (foldl')
+#endif
+import qualified Data.List as List
 import Data.Maybe (fromMaybe)
 
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
-#endif
-
-import qualified Data.List as List
-
 import BinomialQueue.Internals
-
-#ifdef __GLASGOW_HASKELL__
-import GHC.Exts (build)
-#else
-build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
-build f = f (:) []
-#endif
 
 -- | \(O(\log n)\). Returns the minimum element. Throws an error on an empty queue.
 findMin :: Ord a => MinQueue a -> a

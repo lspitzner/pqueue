@@ -74,9 +74,6 @@ library
     -fspec-constr
     -fdicts-strict
     -Wall
-  if impl(ghc >= 8.0)
-    ghc-options:
-      -fno-warn-unused-imports
 
 test-suite test
   hs-source-dirs: src, tests

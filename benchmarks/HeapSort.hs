@@ -1,6 +1,5 @@
 module HeapSort where
 
-import Data.PQueue.Min (MinQueue)
 import qualified Data.PQueue.Min as P
 import System.Random
 

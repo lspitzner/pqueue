@@ -94,27 +94,17 @@ module Data.PQueue.Min (
 
 import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
 
+#if !MIN_VERSION_base(4,20,0)
 import Data.Foldable (foldl')
-import Data.Maybe (fromMaybe)
-
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
 #endif
-
 import qualified Data.List as List
+import Data.Maybe (fromMaybe)
 
 import Data.PQueue.Internals hiding (MinQueue (..))
 import Data.PQueue.Internals (MinQueue (MinQueue))
 import qualified Data.PQueue.Internals as Internals
 import qualified BinomialQueue.Internals as BQ
 import qualified Data.PQueue.Prio.Internals as Prio
-
-#ifdef __GLASGOW_HASKELL__
-import GHC.Exts (build)
-#else
-build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
-build f = f (:) []
-#endif
 
 #ifdef __GLASGOW_HASKELL__
 -- | A bidirectional pattern synonym for an empty priority queue.
@@ -146,7 +136,9 @@ pattern a :< q <- (minView -> Just (a, q))
 {-# INLINE (:<) #-}
 # endif
 
+# if __GLASGOW_HASKELL__ >= 820
 {-# COMPLETE Empty, (:<) #-}
+# endif
 #endif
 
 -- | \(O(1)\). Returns the minimum element. Throws an error on an empty queue.

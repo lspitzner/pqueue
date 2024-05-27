@@ -45,17 +45,16 @@ import BinomialQueue.Internals
   , BinomTree (..)
   , Succ (..)
   , Zero (..)
-  , Extract (..)
-  , MExtract (..)
   )
 import qualified BinomialQueue.Internals as BQ
 import Control.DeepSeq (NFData(rnf), deepseq)
+#if !MIN_VERSION_base(4,20,0)
 import Data.Foldable (foldl')
+#endif
 #if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
 
-import Data.PQueue.Internals.Foldable
 #ifdef __GLASGOW_HASKELL__
 import Data.Data
 import Text.Read (Lexeme(Ident), lexP, parens, prec,

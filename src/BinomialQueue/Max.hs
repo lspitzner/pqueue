@@ -88,25 +88,12 @@ module BinomialQueue.Max (
 import Prelude hiding (null, take, drop, takeWhile, dropWhile, splitAt, span, break, (!!), filter, map)
 
 import Data.Coerce (coerce)
-import Data.Foldable (foldl')
-import Data.Maybe (fromMaybe)
 import Data.Bifunctor (bimap)
-
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
-#endif
-
 import qualified Data.List as List
+import Data.Maybe (fromMaybe)
 
 import qualified BinomialQueue.Min as MinQ
 import Data.PQueue.Internals.Down
-
-#ifdef __GLASGOW_HASKELL__
-import GHC.Exts (build)
-#else
-build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
-build f = f (:) []
-#endif
 
 newtype MaxQueue a = MaxQueue { unMaxQueue :: MinQ.MinQueue (Down a) }
 

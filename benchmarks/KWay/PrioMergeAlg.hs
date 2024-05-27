@@ -7,7 +7,6 @@ module KWay.PrioMergeAlg
   ) where
 
 import qualified Data.PQueue.Prio.Min as P
-import System.Random (StdGen)
 import Data.Word
 import Data.List (unfoldr)
 import KWay.RandomIncreasing

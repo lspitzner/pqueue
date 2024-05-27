@@ -1,6 +1,5 @@
 module PHeapSort where
 
-import Data.PQueue.Prio.Min (MinPQueue)
 import qualified Data.PQueue.Prio.Min as P
 import System.Random
 
