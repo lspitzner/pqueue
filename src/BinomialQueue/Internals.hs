@@ -54,7 +54,7 @@ import Data.Function (on)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
 #endif
 
-import Data.PQueue.Internals.Foldable
+import Data.PQueue.Internals.Classes
 #ifdef __GLASGOW_HASKELL__
 import Data.Data
 import Text.Read (Lexeme(Ident), lexP, parens, prec,
@@ -252,7 +252,7 @@ mapEither f = fromPartition .
 -- applies this function to every element of the priority queue, as in 'fmap'.
 -- If the function is not monotonic, the result is undefined.
 mapMonotonic :: (a -> b) -> MinQueue a -> MinQueue b
-mapMonotonic f (MinQueue ts) = MinQueue (f <$> ts)
+mapMonotonic f (MinQueue ts) = MinQueue (fmap_ f ts)
 
 {-# INLINABLE [0] foldrAsc #-}
 -- | \(O(n \log n)\). Performs a right fold on the elements of a priority queue in
@@ -544,19 +544,19 @@ joinBin t1@(BinomTree x1 ts1) t2@(BinomTree x2 ts2)
   | otherwise  = BinomTree x2 (Succ t1 ts2)
 
 
-instance Functor Zero where
-  fmap _ _ = Zero
+instance Fmap Zero where
+  fmap_ _ _ = Zero
 
-instance Functor rk => Functor (Succ rk) where
-  fmap f (Succ t ts) = Succ (fmap f t) (fmap f ts)
+instance Fmap rk => Fmap (Succ rk) where
+  fmap_ f (Succ t ts) = Succ (fmap_ f t) (fmap_ f ts)
 
-instance Functor rk => Functor (BinomTree rk) where
-  fmap f (BinomTree x ts) = BinomTree (f x) (fmap f ts)
+instance Fmap rk => Fmap (BinomTree rk) where
+  fmap_ f (BinomTree x ts) = BinomTree (f x) (fmap_ f ts)
 
-instance Functor rk => Functor (BinomForest rk) where
-  fmap _ Nil = Nil
-  fmap f (Skip ts) = Skip $! fmap f ts
-  fmap f (Cons t ts) = Cons (fmap f t) $! fmap f ts
+instance Fmap rk => Fmap (BinomForest rk) where
+  fmap_ _ Nil = Nil
+  fmap_ f (Skip ts) = Skip $! fmap_ f ts
+  fmap_ f (Cons t ts) = Cons (fmap_ f t) $! fmap_ f ts
 
 instance Foldr Zero where
   foldr_ _ z ~Zero = z
