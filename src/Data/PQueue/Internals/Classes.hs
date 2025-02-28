@@ -1,12 +1,13 @@
--- | Writing 'Foldable' instances for non-regular (AKA, nested) types in the
--- natural manner leads to full `Foldable` dictionaries being constructed on
+-- | Writing `Foldable`/`Functor` instances for non-regular (AKA, nested) types in the
+-- natural manner leads to full dictionaries being constructed on
 -- each recursive call. This is pretty inefficient. It's better to construct
 -- exactly what we need instead.
-module Data.PQueue.Internals.Foldable
-  ( Foldr (..)
-  , Foldl (..)
-  , FoldMap (..)
-  , Foldl' (..)
+module Data.PQueue.Internals.Classes
+  ( Foldr(..)
+  , Foldl(..)
+  , FoldMap(..)
+  , Foldl'(..)
+  , Fmap(..)
   ) where
 
 class Foldr t where
@@ -20,3 +21,6 @@ class FoldMap t where
 
 class Foldl' t where
   foldl'_ :: (b -> a -> b) -> b -> t a -> b
+
+class Fmap f where
+  fmap_ :: (a -> b) -> f a -> f b

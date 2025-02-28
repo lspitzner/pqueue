@@ -58,8 +58,8 @@ library
     BinomialQueue.Internals
     BinomialQueue.Min
     BinomialQueue.Max
+    Data.PQueue.Internals.Classes
     Data.PQueue.Internals.Down
-    Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals
     Nattish
   if impl(ghc) {
@@ -98,8 +98,8 @@ test-suite test
     BinomialQueue.Internals
     BinomialQueue.Min
     BinomialQueue.Max
+    Data.PQueue.Internals.Classes
     Data.PQueue.Internals.Down
-    Data.PQueue.Internals.Foldable
     Data.PQueue.Prio.Max.Internals
     Nattish
 
