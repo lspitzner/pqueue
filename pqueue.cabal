@@ -16,7 +16,7 @@ bug-reports:        https://github.com/lspitzner/pqueue/issues
 build-type:         Simple
 cabal-version:      >= 1.10
 tested-with:
-  GHC == 9.12.1
+  GHC == 9.12.2
   GHC == 9.10.1
   GHC == 9.8.4
   GHC == 9.6.6
@@ -43,7 +43,7 @@ library
   default-language:
     Haskell2010
   build-depends:
-  { base >= 4.8 && < 4.22
+  { base >= 4.9 && < 4.22
   , deepseq >= 1.3 && < 1.6
   , indexed-traversable >= 0.1 && < 0.2
   }
@@ -82,7 +82,7 @@ test-suite test
   type: exitcode-stdio-1.0
   main-is: PQueueTests.hs
   build-depends:
-  { base >= 4.8 && < 4.21
+  { base >= 4.9 && < 4.22
   , deepseq >= 1.3 && < 1.6
   , indexed-traversable >= 0.1 && < 0.2
   , tasty
@@ -126,11 +126,11 @@ benchmark minqueue-benchmarks
     KWay.RandomIncreasing
   ghc-options:      -O2
   build-depends:
-      base          >= 4.8 && < 5
+      base          >= 4.9 && < 5
     , pqueue
     , deepseq       >= 1.3 && < 1.6
-    , random        >= 1.2 && < 1.3
-    , tasty-bench   >= 0.3 && < 0.4
+    , random        >= 1.2 && < 1.4
+    , tasty-bench   >= 0.3 && < 0.5
 
 benchmark minpqueue-benchmarks
   default-language: Haskell2010
@@ -143,8 +143,8 @@ benchmark minpqueue-benchmarks
     KWay.RandomIncreasing
   ghc-options:      -O2
   build-depends:
-      base          >= 4.8 && < 5
+      base          >= 4.9 && < 5
     , pqueue
     , deepseq       >= 1.3 && < 1.6
-    , random        >= 1.2 && < 1.3
-    , tasty-bench   >= 0.3 && < 0.4
+    , random        >= 1.2 && < 1.4
+    , tasty-bench   >= 0.3 && < 0.5

@@ -90,9 +90,7 @@ import Data.Coerce (coerce)
 import Data.Foldable (foldl')
 #endif
 import Data.Maybe (fromMaybe)
-#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
-#endif
 
 import qualified Data.PQueue.Min as Min
 import qualified Data.PQueue.Prio.Max.Internals as Prio
@@ -141,12 +139,10 @@ instance Read a => Read (MaxQueue a) where
     return (fromDescList xs,t)
 #endif
 
-#if MIN_VERSION_base(4,9,0)
 instance Ord a => Semigroup (MaxQueue a) where
   (<>) = union
   stimes = stimesMonoid
   {-# INLINABLE stimes #-}
-#endif
 
 instance Ord a => Monoid (MaxQueue a) where
   mempty = empty
