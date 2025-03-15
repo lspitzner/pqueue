@@ -62,11 +62,7 @@ import Data.Coerce (coerce)
 import Data.Functor.Identity (Identity(Identity, runIdentity))
 import qualified Data.List as List
 
-#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid, Endo (..), Dual (..))
-#else
-import Data.Monoid ((<>), Endo (..), Dual (..))
-#endif
 
 import Prelude hiding (null, map)
 #ifdef __GLASGOW_HASKELL__
@@ -120,12 +116,10 @@ emptyConstr = mkConstr queueDataType "Empty" [] Prefix
 consConstr  = mkConstr queueDataType ":<" [] Infix
 #endif
 
-#if MIN_VERSION_base(4,9,0)
 instance Ord k => Semigroup (MinPQueue k a) where
   (<>) = union
   stimes = stimesMonoid
   {-# INLINABLE stimes #-}
-#endif
 
 instance Ord k => Monoid (MinPQueue k a) where
   mempty = empty

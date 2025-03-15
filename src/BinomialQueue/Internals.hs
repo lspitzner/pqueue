@@ -50,9 +50,7 @@ import Control.DeepSeq (NFData(rnf), deepseq)
 import Data.Foldable (foldl')
 #endif
 import Data.Function (on)
-#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
-#endif
 
 import Data.PQueue.Internals.Classes
 #ifdef __GLASGOW_HASKELL__
@@ -745,12 +743,10 @@ instance Read a => Read (MinQueue a) where
     return (fromAscList xs,t)
 #endif
 
-#if MIN_VERSION_base(4,9,0)
 instance Ord a => Semigroup (MinQueue a) where
   (<>) = union
   stimes = stimesMonoid
   {-# INLINABLE stimes #-}
-#endif
 
 instance Ord a => Monoid (MinQueue a) where
   mempty = empty

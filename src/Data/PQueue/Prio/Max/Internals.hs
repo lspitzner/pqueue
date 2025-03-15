@@ -111,9 +111,7 @@ import Data.PQueue.Prio.Internals (MinPQueue)
 import qualified Data.PQueue.Prio.Internals as PrioInternals
 import Control.DeepSeq (NFData(rnf))
 
-#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..), stimesMonoid)
-#endif
 
 import Prelude hiding (map, filter, break, span, takeWhile, dropWhile, splitAt, take, drop, (!!), null)
 import qualified Data.Foldable as F
@@ -150,12 +148,10 @@ instance (NFData k, NFData a) => NFData (MaxPQueue k a) where
 first' :: (a -> b) -> (a, c) -> (b, c)
 first' f (a, c) = (f a, c)
 
-#if MIN_VERSION_base(4,9,0)
 instance Ord k => Semigroup (MaxPQueue k a) where
   (<>) = union
   stimes = stimesMonoid
   {-# INLINABLE stimes #-}
-#endif
 
 instance Ord k => Monoid (MaxPQueue k a) where
   mempty = empty
