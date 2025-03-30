@@ -105,6 +105,7 @@ module Data.PQueue.Prio.Max.Internals (
   )
   where
 
+import Data.Coerce
 import Data.Maybe (fromMaybe)
 import Data.PQueue.Internals.Down
 import Data.PQueue.Prio.Internals (MinPQueue)
@@ -144,9 +145,6 @@ newtype MaxPQueue k a = MaxPQ (MinPQueue (Down k) a)
 
 instance (NFData k, NFData a) => NFData (MaxPQueue k a) where
   rnf (MaxPQ q) = rnf q
-
-first' :: (a -> b) -> (a, c) -> (b, c)
-first' f (a, c) = (f a, c)
 
 instance Ord k => Semigroup (MaxPQueue k a) where
   (<>) = union
@@ -211,12 +209,12 @@ empty = MaxPQ Q.empty
 
 -- | \(O(1)\). Constructs a singleton priority queue.
 singleton :: k -> a -> MaxPQueue k a
-singleton k a = MaxPQ (Q.singleton (Down k) a)
+singleton = coerce Q.singleton
 
 -- | Amortized \(O(1)\), worst-case \(O(\log n)\). Inserts
 -- an element with the specified key into the queue.
 insert :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
-insert k a (MaxPQ q) = MaxPQ (Q.insert (Down k) a q)
+insert = coerce Q.insert
 
 -- | \(O(n)\) (an earlier implementation had \(O(1)\) but was buggy).
 -- Insert an element with the specified key into the priority queue,
@@ -224,16 +222,16 @@ insert k a (MaxPQ q) = MaxPQ (Q.insert (Down k) a q)
 -- inserted one.
 {-# DEPRECATED insertBehind "This function is not reliable." #-}
 insertBehind :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
-insertBehind k a (MaxPQ q) = MaxPQ (Q.insertBehind (Down k) a q)
+insertBehind = coerce Q.insertBehind
 
 -- | Amortized \(O(\log \min(n_1,n_2))\), worst-case \(O(\log \max(n_1,n_2))\). Returns the union
 -- of the two specified queues.
 union :: Ord k => MaxPQueue k a -> MaxPQueue k a -> MaxPQueue k a
-MaxPQ q1 `union` MaxPQ q2 = MaxPQ (q1 `Q.union` q2)
+union = coerce Q.union
 
 -- | The union of a list of queues: (@'unions' == 'List.foldl' 'union' 'empty'@).
 unions :: Ord k => [MaxPQueue k a] -> MaxPQueue k a
-unions qs = MaxPQ (Q.unions [q | MaxPQ q <- qs])
+unions = coerce Q.unions
 
 -- | \(O(1)\). Checks if this priority queue is empty.
 null :: MaxPQueue k a -> Bool
@@ -249,13 +247,11 @@ findMax = fromMaybe (error "Error: findMax called on an empty queue") . getMax
 
 -- | \(O(1)\). The maximal (key, element) in the queue, if the queue is nonempty.
 getMax :: MaxPQueue k a -> Maybe (k, a)
-getMax (MaxPQ q) = do
-  (Down k, a) <- Q.getMin q
-  return (k, a)
+getMax = coerce Q.getMin
 
 -- | \(O(\log n)\). Delete and find the element with the maximum key. Calls 'error' if empty.
 deleteMax :: Ord k => MaxPQueue k a -> MaxPQueue k a
-deleteMax (MaxPQ q) = MaxPQ (Q.deleteMin q)
+deleteMax = coerce Q.deleteMin
 
 -- | \(O(\log n)\). Delete and find the element with the maximum key. Calls 'error' if empty.
 deleteFindMax :: Ord k => MaxPQueue k a -> ((k, a), MaxPQueue k a)
@@ -274,14 +270,14 @@ adjustMaxA = adjustMaxWithKeyA . const
 
 -- | \(O(1)\). Alter the value at the maximum key. If the queue is empty, does nothing.
 adjustMaxWithKey :: (k -> a -> a) -> MaxPQueue k a -> MaxPQueue k a
-adjustMaxWithKey f (MaxPQ q) = MaxPQ (Q.adjustMinWithKey (f . unDown) q)
+adjustMaxWithKey = coerce Q.adjustMinWithKey
 
 -- | \(O(1)\) per operation. Alter the value at the maximum key in an
 -- 'Applicative' context. If the queue is empty, does nothing.
 --
 -- @since 1.4.2
 adjustMaxWithKeyA :: Applicative f => (k -> a -> f a) -> MaxPQueue k a -> f (MaxPQueue k a)
-adjustMaxWithKeyA f (MaxPQ q) = PrioInternals.adjustMinWithKeyA' MaxPQ (f . unDown) q
+adjustMaxWithKeyA f (MaxPQ q) = PrioInternals.adjustMinWithKeyA' MaxPQ (coerce f) q
 
 -- | \(O(\log n)\). (Actually \(O(1)\) if there's no deletion.) Update the value at the maximum key.
 -- If the queue is empty, does nothing.
@@ -299,7 +295,7 @@ updateMaxA = updateMaxWithKeyA . const
 -- | \(O(\log n)\). (Actually \(O(1)\) if there's no deletion.) Update the value at the maximum key.
 -- If the queue is empty, does nothing.
 updateMaxWithKey :: Ord k => (k -> a -> Maybe a) -> MaxPQueue k a -> MaxPQueue k a
-updateMaxWithKey f (MaxPQ q) = MaxPQ (Q.updateMinWithKey (f . unDown) q)
+updateMaxWithKey = coerce Q.updateMinWithKey
 
 -- | \(O(\log n)\) per operation. (Actually \(O(1)\) if there's no deletion.) Update
 -- the value at the maximum key in an 'Applicative' context. If the queue is
@@ -307,7 +303,7 @@ updateMaxWithKey f (MaxPQ q) = MaxPQ (Q.updateMinWithKey (f . unDown) q)
 --
 -- @since 1.4.2
 updateMaxWithKeyA :: (Applicative f, Ord k) => (k -> a -> f (Maybe a)) -> MaxPQueue k a -> f (MaxPQueue k a)
-updateMaxWithKeyA f (MaxPQ q) = PrioInternals.updateMinWithKeyA' MaxPQ (f . unDown) q
+updateMaxWithKeyA f (MaxPQ q) = PrioInternals.updateMinWithKeyA' MaxPQ (coerce f) q
 
 -- | \(O(\log n)\). Retrieves the value associated with the maximum key of the queue, and the queue
 -- stripped of that element, or 'Nothing' if passed an empty queue.
@@ -319,9 +315,7 @@ maxView q = do
 -- | \(O(\log n)\). Retrieves the maximal (key, value) pair of the map, and the map stripped of that
 -- element, or 'Nothing' if passed an empty map.
 maxViewWithKey :: Ord k => MaxPQueue k a -> Maybe ((k, a), MaxPQueue k a)
-maxViewWithKey (MaxPQ q) = do
-  ((Down k, a), q') <- Q.minViewWithKey q
-  return ((k, a), MaxPQ q')
+maxViewWithKey = coerce Q.minViewWithKey
 
 -- | \(O(n)\). Map a function over all values in the queue.
 map :: (a -> b) -> MaxPQueue k a -> MaxPQueue k b
@@ -329,11 +323,11 @@ map = mapWithKey . const
 
 -- | \(O(n)\). Map a function over all values in the queue.
 mapWithKey :: (k -> a -> b) -> MaxPQueue k a -> MaxPQueue k b
-mapWithKey f (MaxPQ q) = MaxPQ (Q.mapWithKey (f . unDown) q)
+mapWithKey = coerce Q.mapWithKey
 
 -- | \(O(n)\). Map a function over all values in the queue.
 mapKeys :: Ord k' => (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
-mapKeys f (MaxPQ q) = MaxPQ (Q.mapKeys (fmap f) q)
+mapKeys = coerce Q.mapKeys
 
 -- | \(O(n)\). @'mapKeysMonotonic' f q == 'mapKeys' f q@, but only works when
 -- @f@ is (weakly) monotonic (meaning that @x <= y@ implies @f x <= f y@).
@@ -342,21 +336,21 @@ mapKeys f (MaxPQ q) = MaxPQ (Q.mapKeys (fmap f) q)
 -- Note: if the given function returns bottom for any of the keys in the queue, then the
 -- portion of the queue which is bottom is /unspecified/.
 mapKeysMonotonic :: (k -> k') -> MaxPQueue k a -> MaxPQueue k' a
-mapKeysMonotonic f (MaxPQ q) = MaxPQ (Q.mapKeysMonotonic (fmap f) q)
+mapKeysMonotonic = coerce Q.mapKeysMonotonic
 
 -- | \(O(n \log n)\). Fold the keys and values in the map, such that
 -- @'foldrWithKey' f z q == 'List.foldr' ('uncurry' f) z ('toDescList' q)@.
 --
 -- If you do not care about the traversal order, consider using 'foldrWithKeyU'.
 foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> MaxPQueue k a -> b
-foldrWithKey f z (MaxPQ q) = Q.foldrWithKey (f . unDown) z q
+foldrWithKey f z (MaxPQ q) = Q.foldrWithKey (coerce f) z q
 
 -- | \(O(n \log n)\). Fold the keys and values in the map, such that
 -- @'foldlWithKey' f z q == 'List.foldl' ('uncurry' . f) z ('toDescList' q)@.
 --
 -- If you do not care about the traversal order, consider using 'foldlWithKeyU'.
 foldlWithKey :: Ord k => (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
-foldlWithKey f z0 (MaxPQ q) = Q.foldlWithKey (\z -> f z . unDown) z0 q
+foldlWithKey f z0 (MaxPQ q) = Q.foldlWithKey (coerce f) z0 q
 
 -- | \(O(n \log n)\). Traverses the elements of the queue in descending order by key.
 -- (@'traverseWithKey' f q == 'fromDescList' <$> 'traverse' ('uncurry' f) ('toDescList' q)@)
@@ -365,38 +359,26 @@ foldlWithKey f z0 (MaxPQ q) = Q.foldlWithKey (\z -> f z . unDown) z0 q
 --
 -- If you are working in a strict monad, consider using 'mapMWithKey'.
 traverseWithKey :: (Ord k, Applicative f) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
-traverseWithKey f (MaxPQ q) = MaxPQ <$> Q.traverseWithKey (f . unDown) q
+traverseWithKey f (MaxPQ q) = MaxPQ <$> Q.traverseWithKey (coerce f) q
 
 -- | A strictly accumulating version of 'traverseWithKey'. This works well in
 -- 'IO' and strict @State@, and is likely what you want for other "strict" monads,
 -- where @⊥ >>= pure () = ⊥@.
 mapMWithKey :: (Ord k, Monad m) => (k -> a -> m b) -> MaxPQueue k a -> m (MaxPQueue k b)
-mapMWithKey f = go empty
-  where
-    go !acc q =
-      case maxViewWithKey q of
-        Nothing           -> pure acc
-        Just ((k, a), q') -> do
-          b <- f k a
-          let !acc' = insertMin' k b acc
-          go acc' q'
-
-insertMin' :: k -> a -> MaxPQueue k a -> MaxPQueue k a
-insertMin' k a (MaxPQ q) = MaxPQ (PrioInternals.insertMax' (Down k) a q)
+mapMWithKey f (MaxPQ q) = MaxPQ <$> Q.mapMWithKey (coerce f) q
 
 -- | \(O(k \log n)\). Takes the first @k@ (key, value) pairs in the queue, or the first @n@ if @k >= n@.
 -- (@'take' k q == 'List.take' k ('toDescList' q)@)
 take :: Ord k => Int -> MaxPQueue k a -> [(k, a)]
-take k (MaxPQ q) = fmap (first' unDown) (Q.take k q)
+take = coerce Q.take
 
 -- | \(O(k \log n)\). Deletes the first @k@ (key, value) pairs in the queue, or returns an empty queue if @k >= n@.
 drop :: Ord k => Int -> MaxPQueue k a -> MaxPQueue k a
-drop k (MaxPQ q) = MaxPQ (Q.drop k q)
+drop = coerce Q.drop
 
 -- | \(O(k \log n)\). Equivalent to @('take' k q, 'drop' k q)@.
 splitAt :: Ord k => Int -> MaxPQueue k a -> ([(k, a)], MaxPQueue k a)
-splitAt k (MaxPQ q) = case Q.splitAt k q of
-  (xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
+splitAt = coerce Q.splitAt
 
 -- | Takes the longest possible prefix of elements satisfying the predicate.
 -- (@'takeWhile' p q == 'List.takeWhile' (p . 'snd') ('toDescList' q)@)
@@ -406,7 +388,7 @@ takeWhile = takeWhileWithKey . const
 -- | Takes the longest possible prefix of elements satisfying the predicate.
 -- (@'takeWhile' p q == 'List.takeWhile' (uncurry p) ('toDescList' q)@)
 takeWhileWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> [(k, a)]
-takeWhileWithKey p (MaxPQ q) = fmap (first' unDown) (Q.takeWhileWithKey (p . unDown) q)
+takeWhileWithKey = coerce Q.takeWhileWithKey
 
 -- | Removes the longest possible prefix of elements satisfying the predicate.
 dropWhile :: Ord k => (a -> Bool) -> MaxPQueue k a -> MaxPQueue k a
@@ -414,7 +396,7 @@ dropWhile = dropWhileWithKey . const
 
 -- | Removes the longest possible prefix of elements satisfying the predicate.
 dropWhileWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> MaxPQueue k a
-dropWhileWithKey p (MaxPQ q) = MaxPQ (Q.dropWhileWithKey (p . unDown) q)
+dropWhileWithKey = coerce Q.dropWhileWithKey
 
 -- | Equivalent to @('takeWhile' p q, 'dropWhile' p q)@.
 span :: Ord k => (a -> Bool) -> MaxPQueue k a -> ([(k, a)], MaxPQueue k a)
@@ -426,13 +408,11 @@ break = breakWithKey . const
 
 -- | Equivalent to @'spanWithKey' (\k a -> 'not' (p k a)) q@.
 spanWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> ([(k, a)], MaxPQueue k a)
-spanWithKey p (MaxPQ q) = case Q.spanWithKey (p . unDown) q of
-  (xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
+spanWithKey = coerce Q.spanWithKey
 
 -- | Equivalent to @'spanWithKey' (\k a -> 'not' (p k a)) q@.
 breakWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> ([(k, a)], MaxPQueue k a)
-breakWithKey p (MaxPQ q) = case Q.breakWithKey (p . unDown) q of
-  (xs, q') -> (fmap (first' unDown) xs, MaxPQ q')
+breakWithKey = coerce Q.breakWithKey
 
 -- | \(O(n)\). Filter all values that satisfy the predicate.
 filter :: Ord k => (a -> Bool) -> MaxPQueue k a -> MaxPQueue k a
@@ -440,7 +420,7 @@ filter = filterWithKey . const
 
 -- | \(O(n)\). Filter all values that satisfy the predicate.
 filterWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> MaxPQueue k a
-filterWithKey p (MaxPQ q) = MaxPQ (Q.filterWithKey (p . unDown) q)
+filterWithKey = coerce Q.filterWithKey
 
 -- | \(O(n)\). Partition the queue according to a predicate. The first queue contains all elements
 -- which satisfy the predicate, the second all elements that fail the predicate.
@@ -450,8 +430,7 @@ partition = partitionWithKey . const
 -- | \(O(n)\). Partition the queue according to a predicate. The first queue contains all elements
 -- which satisfy the predicate, the second all elements that fail the predicate.
 partitionWithKey :: Ord k => (k -> a -> Bool) -> MaxPQueue k a -> (MaxPQueue k a, MaxPQueue k a)
-partitionWithKey p (MaxPQ q) = case Q.partitionWithKey (p . unDown) q of
-  (q1, q0) -> (MaxPQ q1, MaxPQ q0)
+partitionWithKey = coerce Q.partitionWithKey
 
 -- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybe :: Ord k => (a -> Maybe b) -> MaxPQueue k a -> MaxPQueue k b
@@ -459,7 +438,7 @@ mapMaybe = mapMaybeWithKey . const
 
 -- | \(O(n)\). Map values and collect the 'Just' results.
 mapMaybeWithKey :: Ord k => (k -> a -> Maybe b) -> MaxPQueue k a -> MaxPQueue k b
-mapMaybeWithKey f (MaxPQ q) = MaxPQ (Q.mapMaybeWithKey (f . unDown) q)
+mapMaybeWithKey = coerce Q.mapMaybeWithKey
 
 -- | \(O(n)\). Map values and separate the 'Left' and 'Right' results.
 mapEither :: Ord k => (a -> Either b c) -> MaxPQueue k a -> (MaxPQueue k b, MaxPQueue k c)
@@ -467,20 +446,19 @@ mapEither = mapEitherWithKey . const
 
 -- | \(O(n)\). Map values and separate the 'Left' and 'Right' results.
 mapEitherWithKey :: Ord k => (k -> a -> Either b c) -> MaxPQueue k a -> (MaxPQueue k b, MaxPQueue k c)
-mapEitherWithKey f (MaxPQ q) = case Q.mapEitherWithKey (f . unDown) q of
-  (qL, qR) -> (MaxPQ qL, MaxPQ qR)
+mapEitherWithKey = coerce Q.mapEitherWithKey
 
 -- | \(O(n)\). Build a priority queue from the list of (key, value) pairs.
 fromList :: Ord k => [(k, a)] -> MaxPQueue k a
-fromList = MaxPQ . Q.fromList . fmap (first' Down)
+fromList = coerce Q.fromList
 
 -- | \(O(n)\). Build a priority queue from an ascending list of (key, value) pairs. /The precondition is not checked./
 fromAscList :: [(k, a)] -> MaxPQueue k a
-fromAscList = MaxPQ . Q.fromDescList . fmap (first' Down)
+fromAscList = coerce Q.fromDescList
 
 -- | \(O(n)\). Build a priority queue from a descending list of (key, value) pairs. /The precondition is not checked./
 fromDescList :: [(k, a)] -> MaxPQueue k a
-fromDescList = MaxPQ . Q.fromAscList . fmap (first' Down)
+fromDescList = coerce Q.fromAscList
 
 -- | \(O(n \log n)\). Return all keys of the queue in descending order.
 keys :: Ord k => MaxPQueue k a -> [k]
@@ -496,11 +474,11 @@ assocs = toDescList
 
 -- | \(O(n \log n)\). Return all (key, value) pairs in ascending order by key.
 toAscList :: Ord k => MaxPQueue k a -> [(k, a)]
-toAscList (MaxPQ q) = fmap (first' unDown) (Q.toDescList q)
+toAscList = coerce Q.toDescList
 
 -- | \(O(n \log n)\). Return all (key, value) pairs in descending order by key.
 toDescList :: Ord k => MaxPQueue k a -> [(k, a)]
-toDescList (MaxPQ q) = fmap (first' unDown) (Q.toAscList q)
+toDescList = coerce Q.toAscList
 
 -- | \(O(n \log n)\). Equivalent to 'toDescList'.
 --
@@ -514,13 +492,13 @@ foldrU = foldrWithKeyU . const
 
 -- | \(O(n)\). An unordered right fold over the elements of the queue, in no particular order.
 foldrWithKeyU :: (k -> a -> b -> b) -> b -> MaxPQueue k a -> b
-foldrWithKeyU f z (MaxPQ q) = Q.foldrWithKeyU (f . unDown) z q
+foldrWithKeyU f z (MaxPQ q) = Q.foldrWithKeyU (coerce f) z q
 
 -- | \(O(n)\). An unordered monoidal fold over the elements of the queue, in no particular order.
 --
 -- @since 1.4.2
 foldMapWithKeyU :: Monoid m => (k -> a -> m) -> MaxPQueue k a -> m
-foldMapWithKeyU f (MaxPQ q) = Q.foldMapWithKeyU (f . unDown) q
+foldMapWithKeyU f (MaxPQ q) = Q.foldMapWithKeyU (coerce f) q
 
 -- | \(O(n)\). An unordered left fold over the elements of the queue, in no
 -- particular order. This is rarely what you want; 'foldrU' and 'foldlU'' are
@@ -539,13 +517,13 @@ foldlU' f = foldlWithKeyU' (const . f)
 -- particular order. This is rarely what you want; 'foldrWithKeyU' and
 -- 'foldlWithKeyU'' are more likely to perform well.
 foldlWithKeyU :: (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
-foldlWithKeyU f z0 (MaxPQ q) = Q.foldlWithKeyU (\z -> f z . unDown) z0 q
+foldlWithKeyU f z0 (MaxPQ q) = Q.foldlWithKeyU (coerce f) z0 q
 
 -- | \(O(n)\). An unordered left fold over the elements of the queue, in no particular order.
 --
 -- @since 1.4.2
 foldlWithKeyU' :: (b -> k -> a -> b) -> b -> MaxPQueue k a -> b
-foldlWithKeyU' f z0 (MaxPQ q) = Q.foldlWithKeyU' (\z -> f z . unDown) z0 q
+foldlWithKeyU' f z0 (MaxPQ q) = Q.foldlWithKeyU' (coerce f) z0 q
 
 -- | \(O(n)\). An unordered traversal over a priority queue, in no particular order.
 -- While there is no guarantee in which order the elements are traversed, the resulting
@@ -557,7 +535,7 @@ traverseU = traverseWithKeyU . const
 -- While there is no guarantee in which order the elements are traversed, the resulting
 -- priority queue will be perfectly valid.
 traverseWithKeyU :: (Applicative f) => (k -> a -> f b) -> MaxPQueue k a -> f (MaxPQueue k b)
-traverseWithKeyU f (MaxPQ q) = MaxPQ <$> Q.traverseWithKeyU (f . unDown) q
+traverseWithKeyU f (MaxPQ q) = MaxPQ <$> Q.traverseWithKeyU (coerce f) q
 
 -- | \(O(n)\). Return all keys of the queue in no particular order.
 keysU :: MaxPQueue k a -> [k]
@@ -573,7 +551,7 @@ assocsU = toListU
 
 -- | \(O(n)\). Returns all (key, value) pairs in the queue in no particular order.
 toListU :: MaxPQueue k a -> [(k, a)]
-toListU (MaxPQ q) = fmap (first' unDown) (Q.toListU q)
+toListU = coerce Q.toListU
 
 -- | \(O(\log n)\). @seqSpine q r@ forces the spine of @q@ and returns @r@.
 --
