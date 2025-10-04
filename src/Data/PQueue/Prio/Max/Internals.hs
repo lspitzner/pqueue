@@ -3,6 +3,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
+{-# OPTIONS_GHC -Wno-deprecations #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.PQueue.Prio.Max

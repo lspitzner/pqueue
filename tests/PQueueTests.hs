@@ -6,6 +6,8 @@
 {-# language TupleSections #-}
 {-# language ViewPatterns #-}
 
+{-# options_ghc -Wno-x-partial #-}
+
 module Main (main) where
 
 import Data.Bifunctor (bimap, first, second)
