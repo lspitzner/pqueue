@@ -1,6 +1,6 @@
 # Revision history for pqueue
 
-## 1.6.0.0 -- 2025-10-04
+## 1.6.0.0 -- 2025-10-11
 
 * Deprecate `mapU` and replace it by `mapMonotonic` in `Data.PQeueu.Min` and `Data.PQueue.Max`
   ([#129](https://github.com/lspitzner/pqueue/pull/129))
