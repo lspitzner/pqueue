@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
 
+{-# OPTIONS_GHC -Wno-deprecations #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.PQueue.Max
