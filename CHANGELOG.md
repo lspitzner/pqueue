@@ -1,5 +1,10 @@
 # Revision history for pqueue
 
+## 1.7.0.0
+
+* Change `Read` and `Show` instances to use `fromList`
+  ([#144](https://github.com/lspitzner/pqueue/issues/144))
+
 ## 1.6.0.0 -- 2025-10-11
 
 * Deprecate `mapU` and replace it by `mapMonotonic` in `Data.PQeueu.Min` and `Data.PQueue.Max`
