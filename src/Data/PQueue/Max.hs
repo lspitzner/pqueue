@@ -124,21 +124,21 @@ instance NFData a => NFData (MaxQueue a) where
 
 instance (Ord a, Show a) => Show (MaxQueue a) where
   showsPrec p xs = showParen (p > 10) $
-    showString "fromDescList " . shows (toDescList xs)
+    showString "fromList " . shows (toDescList xs)
 
-instance Read a => Read (MaxQueue a) where
+instance (Ord a, Read a) => Read (MaxQueue a) where
 #ifdef __GLASGOW_HASKELL__
   readPrec = parens $ prec 10 $ do
-    Ident "fromDescList" <- lexP
+    Ident "fromList" <- lexP
     xs <- readPrec
-    return (fromDescList xs)
+    return (fromList xs)
 
   readListPrec = readListPrecDefault
 #else
   readsPrec p = readParen (p > 10) $ \r -> do
-    ("fromDescList",s) <- lex r
+    ("fromList",s) <- lex r
     (xs,t) <- reads s
-    return (fromDescList xs,t)
+    return (fromList xs,t)
 #endif
 
 instance Ord a => Semigroup (MaxQueue a) where

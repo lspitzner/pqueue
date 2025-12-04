@@ -357,21 +357,21 @@ instance NFData a => NFData (MinQueue a) where
 
 instance (Ord a, Show a) => Show (MinQueue a) where
   showsPrec p xs = showParen (p > 10) $
-    showString "fromAscList " . shows (toAscList xs)
+    showString "fromList " . shows (toAscList xs)
 
-instance Read a => Read (MinQueue a) where
+instance (Ord a, Read a) => Read (MinQueue a) where
 #ifdef __GLASGOW_HASKELL__
   readPrec = parens $ prec 10 $ do
-    Ident "fromAscList" <- lexP
+    Ident "fromList" <- lexP
     xs <- readPrec
-    return (fromAscList xs)
+    return (fromList xs)
 
   readListPrec = readListPrecDefault
 #else
   readsPrec p = readParen (p > 10) $ \r -> do
-    ("fromAscList",s) <- lex r
+    ("fromList",s) <- lex r
     (xs,t) <- reads s
-    return (fromAscList xs,t)
+    return (fromList xs,t)
 #endif
 
 instance Ord a => Semigroup (MinQueue a) where

@@ -130,21 +130,21 @@ instance Ord k => Monoid (MinPQueue k a) where
 
 instance (Ord k, Show k, Show a) => Show (MinPQueue k a) where
   showsPrec p xs = showParen (p > 10) $
-    showString "fromAscList " . shows (toAscList xs)
+    showString "fromList " . shows (toAscList xs)
 
-instance (Read k, Read a) => Read (MinPQueue k a) where
+instance (Ord k, Read k, Read a) => Read (MinPQueue k a) where
 #ifdef __GLASGOW_HASKELL__
   readPrec = parens $ prec 10 $ do
-    Ident "fromAscList" <- lexP
+    Ident "fromList" <- lexP
     xs <- readPrec
-    return (fromAscList xs)
+    return (fromList xs)
 
   readListPrec = readListPrecDefault
 #else
   readsPrec p = readParen (p > 10) $ \r -> do
-    ("fromAscList",s) <- lex r
+    ("fromList",s) <- lex r
     (xs,t) <- reads s
-    return (fromAscList xs,t)
+    return (fromList xs,t)
 #endif
 
 -- | The union of a list of queues: (@'unions' == 'List.foldl' 'union' 'empty'@).
