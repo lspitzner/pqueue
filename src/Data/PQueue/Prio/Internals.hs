@@ -17,7 +17,6 @@ module Data.PQueue.Prio.Internals (
   size,
   singleton,
   insert,
-  insertBehind,
   insertEager,
   union,
   getMin,
@@ -234,22 +233,6 @@ insertEager k a Empty = singleton k a
 insertEager k a (MinPQ n k' a' ts)
   | k <= k' = MinPQ (n + 1) k a  (insertEagerHeap k' a' ts)
   | otherwise = MinPQ (n + 1) k' a' (insertEagerHeap k a ts)
-
--- | \(O(n)\) (an earlier implementation had \(O(1)\) but was buggy).
--- Insert an element with the specified key into the priority queue,
--- putting it behind elements whose key compares equal to the
--- inserted one.
-{-# DEPRECATED insertBehind "This function is not reliable." #-}
-insertBehind :: Ord k => k -> a -> MinPQueue k a -> MinPQueue k a
-insertBehind k v q =
-  let (smaller, larger) = spanKey (<= k) q
-  in  foldr (uncurry insert) (insert k v larger) smaller
-
-spanKey :: Ord k => (k -> Bool) -> MinPQueue k a -> ([(k, a)], MinPQueue k a)
-spanKey p q = case minViewWithKey q of
-  Just (t@(k, _), q') | p k ->
-    let (kas, q'') = spanKey p q' in (t : kas, q'')
-  _ -> ([], q)
 
 -- | Amortized \(O(\log \min(n_1,n_2))\), worst-case \(O(\log \max(n_1,n_2))\). Returns the union
 -- of the two specified queues.
