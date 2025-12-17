@@ -2,6 +2,8 @@
 
 ## 1.7.0.0
 
+* Remove `insertBehind` ([#145](https://github.com/lspitzner/pqueue/pull/145))
+
 * Change `Read` and `Show` instances to use `fromList`
   ([#144](https://github.com/lspitzner/pqueue/issues/144))
 

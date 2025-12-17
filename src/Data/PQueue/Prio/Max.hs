@@ -32,7 +32,6 @@ module Data.PQueue.Prio.Max (
   empty,
   singleton,
   insert,
-  insertBehind,
   union,
   unions,
   -- * Query

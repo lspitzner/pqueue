@@ -20,7 +20,6 @@ module Data.PQueue.Prio.Max.Internals (
   empty,
   singleton,
   insert,
-  insertBehind,
   union,
   unions,
   -- * Query
@@ -217,14 +216,6 @@ singleton = coerce Q.singleton
 -- an element with the specified key into the queue.
 insert :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
 insert = coerce Q.insert
-
--- | \(O(n)\) (an earlier implementation had \(O(1)\) but was buggy).
--- Insert an element with the specified key into the priority queue,
--- putting it behind elements whose key compares equal to the
--- inserted one.
-{-# DEPRECATED insertBehind "This function is not reliable." #-}
-insertBehind :: Ord k => k -> a -> MaxPQueue k a -> MaxPQueue k a
-insertBehind = coerce Q.insertBehind
 
 -- | Amortized \(O(\log \min(n_1,n_2))\), worst-case \(O(\log \max(n_1,n_2))\). Returns the union
 -- of the two specified queues.
