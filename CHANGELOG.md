@@ -1,6 +1,6 @@
 # Revision history for pqueue
 
-## 1.7.0.0
+## 1.7.0.0 -- 2026-04-16
 
 * Remove `insertBehind` ([#145](https://github.com/lspitzner/pqueue/pull/145))
 
